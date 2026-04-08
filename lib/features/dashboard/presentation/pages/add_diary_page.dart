@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class AddDiaryPage extends StatefulWidget {
   const AddDiaryPage({super.key});
@@ -36,7 +37,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => context.pop(),
         ),
         title: const Text(
           'Tambah Diari',
@@ -285,7 +286,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Diari disimpan')),
                   );
-                  Navigator.pop(context);
+                  context.pop();
                 },
                 child: const Text(
                   'Simpan',
