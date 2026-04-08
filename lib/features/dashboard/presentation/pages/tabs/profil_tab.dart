@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 
 class ProfilTab extends StatelessWidget {
   const ProfilTab({super.key});
@@ -50,6 +51,29 @@ class ProfilTab extends StatelessWidget {
               _ActionRow(label: 'Bahasa Aplikasi'),
               _ActionRow(label: 'Notifikasi'),
             ],
+          ),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showToastDebugSheet(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2563EB),
+                  side: const BorderSide(color: Color(0xFF93C5FD)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.bug_report_outlined, size: 22),
+                label: const Text(
+                  'Debug Toast Tester',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           Padding(
@@ -159,6 +183,109 @@ class ProfilTab extends StatelessWidget {
             ),
           )
         ],
+      ),
+    );
+  }
+
+  void _showToastDebugSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Try Toaster Variants',
+                  style: TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _DebugToastButton(
+                  label: 'Show Success Toast',
+                  color: const Color(0xFF16A34A),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    AppToast.success(context, 'Ini contoh toast sukses.');
+                  },
+                ),
+                _DebugToastButton(
+                  label: 'Show Warning Toast',
+                  color: const Color(0xFFD97706),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    AppToast.warning(context, 'Ini contoh toast warning.');
+                  },
+                ),
+                _DebugToastButton(
+                  label: 'Show Info Toast',
+                  color: const Color(0xFF2563EB),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    AppToast.info(context, 'Ini contoh toast info.');
+                  },
+                ),
+                _DebugToastButton(
+                  label: 'Show Error Toast',
+                  color: const Color(0xFFDC2626),
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    AppToast.error(context, 'Ini contoh toast error.');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DebugToastButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _DebugToastButton({
+    required this.label,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
       ),
     );
   }

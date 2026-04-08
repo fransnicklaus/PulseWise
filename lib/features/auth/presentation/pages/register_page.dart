@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 
 // Assuming we reuse AuthProvider for now, or you can create a separate RegisterProvider
 import '../providers/auth_provider.dart';
@@ -42,9 +43,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       // Wait for loading to finish, then go back to login or straight to home
       // For now, simpler to just pop back to login if successful
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Simulated Registration Success!')),
-        );
+        AppToast.success(context, 'Simulated Registration Success!');
         context.pop();
       }
     }
@@ -53,9 +52,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   void _onRegisterWithGoogle() {
     ref.read(authProvider.notifier).loginWithGoogle();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Simulated Google Registration Success!')),
-      );
+      AppToast.info(context, 'Simulated Google Registration Success!');
       context.pop();
     }
   }
@@ -133,7 +130,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       // White Card Container
                       Container(
                         width: double.infinity,
-                        margin: const EdgeInsets.only(top: 56), // fixed offset for half logo height
+                        margin: const EdgeInsets.only(
+                            top: 56), // fixed offset for half logo height
                         decoration: const BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.only(
@@ -260,7 +258,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                       ),
                                       onPressed: () {
                                         setState(() {
-                                          _isPasswordVisible = !_isPasswordVisible;
+                                          _isPasswordVisible =
+                                              !_isPasswordVisible;
                                         });
                                       },
                                     ),
@@ -348,7 +347,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   width: double.infinity,
                                   height: 55,
                                   child: ElevatedButton(
-                                    onPressed: authState.isLoading ? null : _onRegister,
+                                    onPressed: authState.isLoading
+                                        ? null
+                                        : _onRegister,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFFE64060),
                                       shape: RoundedRectangleBorder(
@@ -382,7 +383,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                       ),
                                     ),
                                     Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 16),
+                                      padding:
+                                          EdgeInsets.symmetric(horizontal: 16),
                                       child: Text(
                                         'atau masuk dengan',
                                         style: TextStyle(
@@ -412,7 +414,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                         : _onRegisterWithGoogle,
                                     style: OutlinedButton.styleFrom(
                                       backgroundColor: const Color(0xFFFAFAFA),
-                                      side: const BorderSide(color: Color(0xFF536278)),
+                                      side: const BorderSide(
+                                          color: Color(0xFF536278)),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(37),
                                       ),
@@ -433,8 +436,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                     ),
                                   ),
                                 ),
-                                
-                                const SizedBox(height: 10),  
+
+                                const SizedBox(height: 10),
 
                                 // Bottom Text "Sudah punya akun? Masuk"
                                 Row(
@@ -449,7 +452,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        context.pop(); // Returns to /login route
+                                        context
+                                            .pop(); // Returns to /login route
                                       },
                                       child: const Text(
                                         'Masuk',

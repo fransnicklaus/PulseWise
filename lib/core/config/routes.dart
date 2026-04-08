@@ -8,6 +8,8 @@ import 'package:pulsewise/features/dashboard/presentation/pages/riwayat_diari_pa
 import 'package:pulsewise/features/dashboard/presentation/pages/detail_diari_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/add_pengingat_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
 
 final goRouterConfig = GoRouter(
   initialLocation: '/login',
@@ -39,6 +41,14 @@ final goRouterConfig = GoRouter(
         GoRoute(
           path: 'add-diary',
           builder: (context, state) => const AddDiaryPage(),
+        ),
+        GoRoute(
+          path: 'diary-qr',
+          builder: (context, state) => const DiaryQrPage(),
+        ),
+        GoRoute(
+          path: 'diary-qr/scan',
+          builder: (context, state) => const QrScannerPage(),
         ),
         GoRoute(
           path: 'diary',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 
 class AddPengingatPage extends StatefulWidget {
   const AddPengingatPage({super.key});
@@ -381,6 +382,9 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
+      hintStyle: TextStyle(
+        color: const Color(0xFF475569).withOpacity(0.45),
+      ),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -474,16 +478,12 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pengingat berhasil disimpan')),
-    );
+    AppToast.success(context, 'Pengingat berhasil disimpan');
     context.pop();
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    AppToast.warning(context, message);
   }
 
   String _formatTime(TimeOfDay time) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 
 class AddDiaryPage extends StatefulWidget {
   const AddDiaryPage({super.key});
@@ -283,9 +284,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 ),
                 onPressed: () {
                   // TODO: Implement save logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Diari disimpan')),
-                  );
+                  AppToast.success(context, 'Diari disimpan');
                   context.pop();
                 },
                 child: const Text(
