@@ -94,6 +94,7 @@ dependencies:
   flutter_svg: ^2.1.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.2.3
+  flutter_health_connect: ^1.2.3
 
 dev_dependencies:
   flutter_test:

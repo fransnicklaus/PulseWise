@@ -34,7 +34,7 @@ android {
         applicationId = "com.rdib.pulsewise"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -58,6 +58,9 @@ dependencies {
     // 1.9.24 works well with AGP 8.5.x; adjust only if your top-level uses another.
     implementation platform("org.jetbrains.kotlin:kotlin-bom:1.9.24")
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+
+    // flutter_health_connect references SleepStageRecord, available in 1.0.0-alpha11.
+    implementation "androidx.health.connect:connect-client:1.0.0-alpha11"
 
     // If you enabled desugaring above, also add:
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"

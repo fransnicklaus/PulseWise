@@ -10,6 +10,7 @@ import 'package:pulsewise/features/dashboard/presentation/pages/detail_pengingat
 import 'package:pulsewise/features/dashboard/presentation/pages/add_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
 
 final goRouterConfig = GoRouter(
   initialLocation: '/login',
@@ -49,6 +50,10 @@ final goRouterConfig = GoRouter(
         GoRoute(
           path: 'diary-qr/scan',
           builder: (context, state) => const QrScannerPage(),
+        ),
+        GoRoute(
+          path: 'health-connect',
+          builder: (context, state) => const HealthConnectPage(),
         ),
         GoRoute(
           path: 'diary',

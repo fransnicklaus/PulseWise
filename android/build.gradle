@@ -11,6 +11,12 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    configurations.configureEach {
+        resolutionStrategy {
+            force "androidx.health.connect:connect-client:1.0.0-alpha11"
+        }
+    }
 }
 
 rootProject.buildDir = "../build"
@@ -19,6 +25,19 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+// Fallback namespace for plugins that still rely on AndroidManifest package.
+// This avoids editing files under Pub cache on every clean/pub get.
+subprojects { subproject ->
+    subproject.plugins.withId("com.android.library") {
+        if (subproject.name == "flutter_health_connect") {
+            def androidExt = subproject.extensions.findByName("android")
+            if (androidExt != null && androidExt.hasProperty("namespace") && androidExt.namespace == null) {
+                androidExt.namespace = "dev.duynp.flutter_health_connect"
+            }
+        }
+    }
 }
 
 rootProject.ext.flutter = [
