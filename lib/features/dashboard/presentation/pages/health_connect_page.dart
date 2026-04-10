@@ -12,6 +12,70 @@ class HealthConnectPage extends StatefulWidget {
 }
 
 class _HealthConnectPageState extends State<HealthConnectPage> {
+  static const Map<int, String> _exerciseTypeCodeMap = {
+    0: 'Other Workout',
+    2: 'Badminton',
+    4: 'Baseball',
+    5: 'Basketball',
+    8: 'Biking',
+    9: 'Stationary Biking',
+    10: 'Boot Camp',
+    11: 'Boxing',
+    13: 'Calisthenics',
+    14: 'Cricket',
+    16: 'Dancing',
+    25: 'Elliptical',
+    26: 'Exercise Class',
+    27: 'Fencing',
+    28: 'American Football',
+    29: 'Australian Football',
+    31: 'Frisbee Disc',
+    32: 'Golf',
+    33: 'Guided Breathing',
+    34: 'Gymnastics',
+    35: 'Handball',
+    36: 'HIIT',
+    37: 'Hiking',
+    38: 'Ice Hockey',
+    39: 'Ice Skating',
+    44: 'Martial Arts',
+    46: 'Paddling',
+    47: 'Paragliding',
+    48: 'Pilates',
+    50: 'Racquetball',
+    51: 'Rock Climbing',
+    52: 'Roller Hockey',
+    53: 'Rowing',
+    54: 'Rowing Machine',
+    55: 'Rugby',
+    56: 'Running',
+    57: 'Treadmill Running',
+    58: 'Sailing',
+    59: 'Scuba Diving',
+    60: 'Skating',
+    61: 'Skiing',
+    62: 'Snowboarding',
+    63: 'Snowshoeing',
+    64: 'Soccer',
+    65: 'Softball',
+    66: 'Squash',
+    68: 'Stair Climbing',
+    69: 'Stair Climbing Machine',
+    70: 'Strength Training',
+    71: 'Stretching',
+    72: 'Surfing',
+    73: 'Open Water Swimming',
+    74: 'Pool Swimming',
+    75: 'Table Tennis',
+    76: 'Tennis',
+    78: 'Volleyball',
+    79: 'Walking',
+    80: 'Water Polo',
+    81: 'Weightlifting',
+    82: 'Wheelchair',
+    83: 'Yoga',
+  };
+
   bool _showRaw = false;
   String _lastAction = 'Belum ada aksi';
   Map<String, dynamic>? _prettyData;
@@ -20,6 +84,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
   final List<HealthConnectDataType> _types = [
     HealthConnectDataType.Steps,
     HealthConnectDataType.ExerciseSession,
+    HealthConnectDataType.HeartRate,
   ];
 
   @override
@@ -74,6 +139,14 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
               _ActionButton(
                 label: "Get Today's Steps",
                 onTap: _getTodaySteps,
+              ),
+              _ActionButton(
+                label: 'View Heart Rate Data',
+                onTap: _getHeartRateData,
+              ),
+              _ActionButton(
+                label: 'View Exercise Data',
+                onTap: _getExerciseData,
               ),
               const SizedBox(height: 18),
               _buildResultSection(),
@@ -278,7 +351,155 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
     }
   }
 
-  void _setResult({required String action, required Map<String, dynamic> data}) {
+  Future<void> _getHeartRateData() async {
+    final now = DateTime.now();
+    final start = now.subtract(const Duration(hours: 24));
+
+    try {
+      final result = await HealthConnectFactory.getRecord(
+        type: HealthConnectDataType.HeartRate,
+        startTime: start,
+        endTime: now,
+      );
+
+      final records = (result['records'] as List?) ?? const [];
+      final bpmValues = <num>[];
+
+      for (final record in records) {
+        if (record is! Map) continue;
+
+        final directValue = _toNum(record['beatsPerMinute'] ?? record['bpm']);
+        if (directValue != null) bpmValues.add(directValue);
+
+        final samples = record['samples'];
+        if (samples is List) {
+          for (final sample in samples) {
+            if (sample is! Map) continue;
+            final sampleValue = _toNum(
+                sample['beatsPerMinute'] ?? sample['bpm'] ?? sample['value']);
+            if (sampleValue != null) bpmValues.add(sampleValue);
+          }
+        }
+      }
+
+      num? minBpm;
+      num? maxBpm;
+      num avgBpm = 0;
+
+      if (bpmValues.isNotEmpty) {
+        minBpm = bpmValues.reduce((a, b) => a < b ? a : b);
+        maxBpm = bpmValues.reduce((a, b) => a > b ? a : b);
+        final total = bpmValues.fold<num>(0, (sum, value) => sum + value);
+        avgBpm = total / bpmValues.length;
+      }
+
+      _setResult(
+        action: 'View Heart Rate Data',
+        data: {
+          'recordCount': records.length,
+          'sampleCount': bpmValues.length,
+          'minBpm': minBpm,
+          'maxBpm': maxBpm,
+          'avgBpm': bpmValues.isEmpty ? null : avgBpm.toStringAsFixed(1),
+          'start': start.toIso8601String(),
+          'end': now.toIso8601String(),
+          'records': records,
+        },
+      );
+    } catch (e, s) {
+      _setResult(
+        action: 'View Heart Rate Data',
+        data: {'error': e.toString(), 'stack': s.toString()},
+      );
+    }
+  }
+
+  Future<void> _getExerciseData() async {
+    final now = DateTime.now();
+    final start = now.subtract(const Duration(days: 7));
+
+    try {
+      final result = await HealthConnectFactory.getRecord(
+        type: HealthConnectDataType.ExerciseSession,
+        startTime: start,
+        endTime: now,
+      );
+
+      final records = (result['records'] as List?) ?? const [];
+      final exerciseTypes = <String>{};
+      final exerciseDetails = <Map<String, dynamic>>[];
+
+      for (final record in records) {
+        if (record is! Map) continue;
+
+        final typeRaw = record['exerciseType'];
+        final typeLabel = _formatExerciseType(typeRaw);
+        exerciseTypes.add(typeLabel);
+
+        exerciseDetails.add({
+          'exerciseType': typeLabel,
+          'exerciseTypeRaw': typeRaw,
+          'title': record['title'],
+          'notes': record['notes'],
+          'startTime': record['startTime'],
+          'endTime': record['endTime'],
+        });
+      }
+
+      _setResult(
+        action: 'View Exercise Data',
+        data: {
+          'recordCount': records.length,
+          'uniqueExerciseTypes': exerciseTypes.toList(),
+          'exerciseDetails': exerciseDetails,
+          'start': start.toIso8601String(),
+          'end': now.toIso8601String(),
+          'records': records,
+        },
+      );
+    } catch (e, s) {
+      _setResult(
+        action: 'View Exercise Data',
+        data: {'error': e.toString(), 'stack': s.toString()},
+      );
+    }
+  }
+
+  String _formatExerciseType(dynamic type) {
+    if (type == null) return 'Unknown';
+
+    final raw = type.toString();
+    final upper = raw.toUpperCase();
+
+    final numericCode = type is num ? type.toInt() : int.tryParse(raw);
+    if (numericCode != null) {
+      final knownLabel = _exerciseTypeCodeMap[numericCode];
+      if (knownLabel != null) return knownLabel;
+      return 'Exercise type code $numericCode';
+    }
+
+    if (upper.startsWith('EXERCISE_TYPE_')) {
+      final words = upper
+          .replaceFirst('EXERCISE_TYPE_', '')
+          .split('_')
+          .where((part) => part.isNotEmpty)
+          .map((part) =>
+              '${part[0]}${part.substring(1).toLowerCase()}')
+          .toList();
+      return words.join(' ');
+    }
+
+    return raw;
+  }
+
+  num? _toNum(dynamic value) {
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
+  }
+
+  void _setResult(
+      {required String action, required Map<String, dynamic> data}) {
     setState(() {
       _lastAction = action;
       _prettyData = data;

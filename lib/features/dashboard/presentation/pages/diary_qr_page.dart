@@ -54,8 +54,10 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
                   const Spacer(),
                   IconButton(
                     onPressed: () async {
-                      final scanned = await context.push<String>('/home/diary-qr/scan');
-                      if (!mounted || scanned == null || scanned.isEmpty) return;
+                      final scanned =
+                          await context.push<String>('/home/diary-qr/scan');
+                      if (!mounted || scanned == null || scanned.isEmpty)
+                        return;
                       setState(() => _lastScannedCode = scanned);
                     },
                     style: IconButton.styleFrom(
