@@ -1,8 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/features/dashboard/presentation/widgets/diary_section_bottom_sheet.dart';
 
 class DiariTab extends StatelessWidget {
   const DiariTab({super.key});
+
+  void _openSectionModal(BuildContext context, String sectionTitle) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.80,
+        minChildSize: 0.25,
+        maxChildSize: 0.98,
+        builder: (context, scrollController) => DiarySectionBottomSheet(
+          title: sectionTitle,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +154,11 @@ class DiariTab extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF525252),
                               ),
+                            ),
+                            const Spacer(),
+                            _SectionAddButton(
+                              onTap: () => _openSectionModal(
+                                  context, 'Metriks Kesehatan'),
                             ),
                           ],
                         ),
@@ -296,52 +320,59 @@ class DiariTab extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Kodisi Section
+                  // Kondisi Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.favorite,
-                                color: Color(0xFF2D9744)),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Kodisi',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF525252),
+                    child: _SectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.favorite,
+                                  color: Color(0xFF2D9744)),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Kondisi',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF525252),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _ConditionItem(
-                          title: 'Pagi',
-                          status: 'Baik - 07.00 AM',
-                          icon: Icons.sentiment_satisfied,
-                          color: const Color(0xFF2D9744),
-                          onDelete: () {},
-                        ),
-                        const SizedBox(height: 8),
-                        _ConditionItem(
-                          title: 'Siang',
-                          status: 'Baik - 13.00 PM',
-                          icon: Icons.sentiment_satisfied,
-                          color: const Color(0xFF2D9744),
-                          onDelete: () {},
-                        ),
-                        const SizedBox(height: 8),
-                        _ConditionItem(
-                          title: 'Malam',
-                          status: 'Malam - 22.00 PM',
-                          icon: Icons.help_outline,
-                          color: const Color(0xFF62748E),
-                          onDelete: () {},
-                        ),
-                      ],
+                              const Spacer(),
+                              _SectionAddButton(
+                                onTap: () =>
+                                    _openSectionModal(context, 'Kondisi'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _ConditionItem(
+                            title: 'Pagi',
+                            status: 'Baik - 07.00 AM',
+                            icon: Icons.sentiment_satisfied,
+                            color: const Color(0xFF2D9744),
+                            onDelete: () {},
+                          ),
+                          const SizedBox(height: 8),
+                          _ConditionItem(
+                            title: 'Siang',
+                            status: 'Baik - 13.00 PM',
+                            icon: Icons.sentiment_satisfied,
+                            color: const Color(0xFF2D9744),
+                            onDelete: () {},
+                          ),
+                          const SizedBox(height: 8),
+                          _ConditionItem(
+                            title: 'Malam',
+                            status: 'Malam - 22.00 PM',
+                            icon: Icons.help_outline,
+                            color: const Color(0xFF62748E),
+                            onDelete: () {},
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -349,13 +380,7 @@ class DiariTab extends StatelessWidget {
                   // Gejala Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
+                    child: _SectionCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -371,6 +396,11 @@ class DiariTab extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF525252),
                                 ),
+                              ),
+                              const Spacer(),
+                              _SectionAddButton(
+                                onTap: () =>
+                                    _openSectionModal(context, 'Gejala'),
                               ),
                             ],
                           ),
@@ -391,13 +421,7 @@ class DiariTab extends StatelessWidget {
                   // Aktivitas Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
+                    child: _SectionCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -413,6 +437,11 @@ class DiariTab extends StatelessWidget {
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF525252),
                                 ),
+                              ),
+                              const Spacer(),
+                              _SectionAddButton(
+                                onTap: () =>
+                                    _openSectionModal(context, 'Aktivitas'),
                               ),
                             ],
                           ),
@@ -433,48 +462,55 @@ class DiariTab extends StatelessWidget {
                   // Konsumsi Harian Section
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.restaurant,
-                                color: Color(0xFF2D9744)),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Konsumsi Harian',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF525252),
+                    child: _SectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.restaurant,
+                                  color: Color(0xFF2D9744)),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Konsumsi Harian',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF525252),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        _MealItem(
-                          title: 'Sarapan Pagi',
-                          description:
-                              'Nasi goreng, telur mata sapi, teh manis',
-                        ),
-                        const SizedBox(height: 12),
-                        _MealItem(
-                          title: 'Makan Siang',
-                          description:
-                              'Nasi putih, ikan bakar, sayur bayam, tempe goreng',
-                        ),
-                        const SizedBox(height: 12),
-                        _MealItem(
-                          title: 'Makan Malam',
-                          description: 'Nasi merah, ayam rebus, sup sayuran',
-                        ),
-                        const SizedBox(height: 12),
-                        _MealItem(
-                          title: 'Camilan',
-                          description:
-                              'Buah apel, biskuit gandum, kopi tanpa gula',
-                        ),
-                      ],
+                              const Spacer(),
+                              _SectionAddButton(
+                                onTap: () => _openSectionModal(
+                                    context, 'Konsumsi Harian'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _MealItem(
+                            title: 'Sarapan Pagi',
+                            description:
+                                'Nasi goreng, telur mata sapi, teh manis',
+                          ),
+                          const SizedBox(height: 12),
+                          _MealItem(
+                            title: 'Makan Siang',
+                            description:
+                                'Nasi putih, ikan bakar, sayur bayam, tempe goreng',
+                          ),
+                          const SizedBox(height: 12),
+                          _MealItem(
+                            title: 'Makan Malam',
+                            description: 'Nasi merah, ayam rebus, sup sayuran',
+                          ),
+                          const SizedBox(height: 12),
+                          _MealItem(
+                            title: 'Camilan',
+                            description:
+                                'Buah apel, biskuit gandum, kopi tanpa gula',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -483,17 +519,52 @@ class DiariTab extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          context.push('/home/add-diary');
-        },
-        backgroundColor: const Color(0xFFE64060),
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Tambah Diari',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    );
+  }
+}
+
+class _SectionAddButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SectionAddButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFE7EE),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Color(0xFFE64060),
+          size: 18,
         ),
       ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: child,
     );
   }
 }

@@ -483,8 +483,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
           .replaceFirst('EXERCISE_TYPE_', '')
           .split('_')
           .where((part) => part.isNotEmpty)
-          .map((part) =>
-              '${part[0]}${part.substring(1).toLowerCase()}')
+          .map((part) => '${part[0]}${part.substring(1).toLowerCase()}')
           .toList();
       return words.join(' ');
     }
