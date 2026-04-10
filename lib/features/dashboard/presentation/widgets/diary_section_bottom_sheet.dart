@@ -30,8 +30,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   final TextEditingController _symptomOtherController = TextEditingController();
   final TextEditingController _symptomDescriptionController =
       TextEditingController();
-    final TextEditingController _mealNameController = TextEditingController();
-    final TextEditingController _mealDescriptionController =
+  final TextEditingController _mealNameController = TextEditingController();
+  final TextEditingController _mealDescriptionController =
       TextEditingController();
 
   final List<String> _activityOptions = const [
@@ -465,8 +465,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               child: TextField(
                 controller: _systolicController,
                 keyboardType: TextInputType.number,
-                style:
-                    const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
+                style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
                 decoration: InputDecoration(
                   labelText: 'Sistolik',
                   suffixText: 'mmHg',
@@ -496,8 +495,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               child: TextField(
                 controller: _diastolicController,
                 keyboardType: TextInputType.number,
-                style:
-                    const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
+                style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
                 decoration: InputDecoration(
                   labelText: 'Diastolik',
                   suffixText: 'mmHg',
