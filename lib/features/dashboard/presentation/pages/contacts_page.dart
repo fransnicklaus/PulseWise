@@ -44,10 +44,13 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
     await ref.read(emergencyContactsProvider.notifier).fetchInitial();
   }
 
-  Future<void> _callContact(String number) async {
-    final uri = Uri.parse('tel:$number');
+  Future<void> _openDialer(String number) async {
+    final uri = Uri(scheme: 'tel', path: number);
     if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
     }
   }
 
@@ -148,7 +151,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
               final contact = contactsState.items[index - firstItemIndex];
               return _EmergencyContactCard(
                 contact: contact,
-                onCallPressed: () => _callContact(contact.contactNumber),
+                onCallPressed: () => _openDialer(contact.contactNumber),
               );
             }
 
@@ -261,7 +264,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () => _callContact('112'),
+              onPressed: () => _openDialer('112'),
               child: const Text(
                 'HUBUNGI 112',
                 style: TextStyle(

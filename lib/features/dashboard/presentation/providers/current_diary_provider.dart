@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'profile_provider.dart';
 
@@ -12,74 +11,37 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
   CurrentDiaryNotifier(this._profileApi) : super(const CurrentDiaryState());
 
   final ProfileApi _profileApi;
-  static const _currentDiaryIdKey = 'curDiaryId';
 
   Future<void> loadCurrentDiaryForToday() async {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final curDiaryId = prefs.getString(_currentDiaryIdKey) ?? '';
-
-      if (curDiaryId.isEmpty) {
-        state = const CurrentDiaryState(
-          isLoading: false,
-          hasCurrentDiary: false,
-        );
-        return;
-      }
-
-      final diary = await _profileApi.fetchDiaryDetail(curDiaryId);
-      final today = DateTime.now();
-      final diaryDate = diary.diaryDate;
-      final isSameDate = diaryDate != null &&
-          diaryDate.year == today.year &&
-          diaryDate.month == today.month &&
-          diaryDate.day == today.day;
-
-      if (!isSameDate) {
-        await prefs.remove(_currentDiaryIdKey);
-        state = const CurrentDiaryState(
-          isLoading: false,
-          hasCurrentDiary: false,
-        );
-        return;
-      }
+      final diary = await _profileApi.fetchDiaryDetailByDate(DateTime.now());
 
       state = CurrentDiaryState(
         isLoading: false,
         hasCurrentDiary: true,
-        diaryId: curDiaryId,
+        diaryId: diary.diaryId,
         diary: diary,
       );
     } catch (e) {
+      final message = e.toString().toLowerCase();
+      if (message.contains('not found') ||
+          message.contains('404') ||
+          message.contains('tidak ditemukan')) {
+        state = const CurrentDiaryState(
+          isLoading: false,
+          hasCurrentDiary: false,
+        );
+        return;
+      }
+
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
         hasCurrentDiary: false,
       );
     }
-  }
-
-  Future<void> setCurrentDiaryId(String diaryId, {bool reload = true}) async {
-    if (diaryId.trim().isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_currentDiaryIdKey, diaryId.trim());
-
-    if (reload) {
-      await loadCurrentDiaryForToday();
-    }
-  }
-
-  Future<void> clearCurrentDiaryId() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_currentDiaryIdKey);
-
-    state = const CurrentDiaryState(
-      isLoading: false,
-      hasCurrentDiary: false,
-    );
   }
 }
 

@@ -20,8 +20,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
     });
   }
 
-  Future<void> _openSectionModal(BuildContext context, String sectionTitle) async {
-    final result = await showModalBottomSheet<Map<String, dynamic>>(
+  Future<void> _openSectionModal(
+      BuildContext context, String sectionTitle) async {
+    await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -37,10 +38,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
       ),
     );
 
-    final diaryId = result?['diaryId']?.toString();
-    if (diaryId != null && diaryId.isNotEmpty) {
-      await ref.read(currentDiaryProvider.notifier).setCurrentDiaryId(diaryId);
-    }
+    await ref.read(currentDiaryProvider.notifier).loadCurrentDiaryForToday();
   }
 
   String _todayLabel() {
@@ -89,10 +87,12 @@ class _DiariTabState extends ConsumerState<DiariTab> {
   Widget build(BuildContext context) {
     final diaryState = ref.watch(currentDiaryProvider);
     final diary = diaryState.diary;
-    final latestMetric =
-        (diary?.bodyMetrics.isNotEmpty ?? false) ? diary!.bodyMetrics.first : null;
-    final conditions =
-        (diary?.bodyMetrics ?? const []).where((m) => (m.conditionTag ?? '').isNotEmpty).toList();
+    final latestMetric = (diary?.bodyMetrics.isNotEmpty ?? false)
+        ? diary!.bodyMetrics.first
+        : null;
+    final conditions = (diary?.bodyMetrics ?? const [])
+        .where((m) => (m.conditionTag ?? '').isNotEmpty)
+        .toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -104,458 +104,123 @@ class _DiariTabState extends ConsumerState<DiariTab> {
             padding: const EdgeInsets.only(bottom: 120),
             child: Stack(
               children: [
-              // Red gradient background header
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 120,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(35),
-                    bottomRight: Radius.circular(35),
-                  ),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Color(0xFFE75480),
-                          Color(0xFFE64060),
-                        ],
+                // Red gradient background header
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 120,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(35),
+                      bottomRight: Radius.circular(35),
+                    ),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Color(0xFFE75480),
+                            Color(0xFFE64060),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
 
-              // Content
-              Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24.0, vertical: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Diari Kesehatan',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _todayLabel(),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => context.push('/home/diary'),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.history,
+                // Content
+                Column(
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24.0, vertical: 16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Diari Kesehatan',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
-                                  size: 20,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => context.push('/home/diary-qr'),
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(
-                                  Icons.qr_code_scanner,
+                              const SizedBox(height: 4),
+                              Text(
+                                _todayLabel(),
+                                style: const TextStyle(
+                                  fontSize: 14,
                                   color: Colors.white,
-                                  size: 20,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Health Metrics Section
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.favorite,
-                                color: Color(0xFFE64060), size: 20),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Metriks Kesehatan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF525252),
-                              ),
-                            ),
-                            const Spacer(),
-                            _SectionAddButton(
-                              onTap: () => _openSectionModal(
-                                  context, 'Metriks Kesehatan'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Berat Badan',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF62748E),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              latestMetric?.bodyWeight?.toString() ?? '-',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF525252),
-                              ),
-                            ),
-                            const Text(
-                              'Kg',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF62748E),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Sistolik',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF62748E),
-                                    ),
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => context.push('/home/diary'),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        latestMetric?.systolicPressure?.toString() ?? '-',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF525252),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'mmHg',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF62748E),
-                                        ),
-                                      ),
-                                    ],
+                                  child: const Icon(
+                                    Icons.history,
+                                    color: Colors.white,
+                                    size: 20,
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Diastolik',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Color(0xFF62748E),
-                                    ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => context.push('/home/diary-qr'),
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        latestMetric?.diastolicPressure?.toString() ?? '-',
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF525252),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        'mmHg',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF62748E),
-                                        ),
-                                      ),
-                                    ],
+                                  child: const Icon(
+                                    Icons.qr_code_scanner,
+                                    color: Colors.white,
+                                    size: 20,
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Detak Jantung',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF62748E),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              (diary?.activities.isNotEmpty ?? false)
-                                  ? (diary!.activities.first.heartRate?.toString() ?? '-')
-                                  : '-',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF525252),
-                              ),
-                            ),
-                            const Text(
-                              'BPM',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF62748E),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
 
-                  // Filter Periode
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.tune, color: Color(0xFF62748E)),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Filter Periode',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF525252),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Kondisi Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: _SectionCard(
+                    // Health Metrics Section
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
                               const Icon(Icons.favorite,
-                                  color: Color(0xFF2D9744)),
+                                  color: Color(0xFFE64060), size: 20),
                               const SizedBox(width: 8),
                               const Text(
-                                'Kondisi',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF525252),
-                                ),
-                              ),
-                              const Spacer(),
-                              _SectionAddButton(
-                                onTap: () =>
-                                    _openSectionModal(context, 'Kondisi'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (conditions.isEmpty)
-                            const Text(
-                              'Belum ada kondisi hari ini',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF62748E),
-                              ),
-                            )
-                          else
-                            ...conditions.map((metric) {
-                              final tag = metric.conditionTag ?? 'Kondisi';
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _ConditionItem(
-                                  title: tag[0].toUpperCase() + tag.substring(1),
-                                  status: '${tag.toUpperCase()} - ${_formatTime(metric.timeStamp)}',
-                                  icon: Icons.sentiment_satisfied,
-                                  color: const Color(0xFF2D9744),
-                                  onDelete: () {},
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Gejala Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: _SectionCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.info_outline,
-                                  color: Color(0xFFE08B3D)),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Gejala',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF525252),
-                                ),
-                              ),
-                              const Spacer(),
-                              _SectionAddButton(
-                                onTap: () =>
-                                    _openSectionModal(context, 'Gejala'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            (diary?.symptoms.isNotEmpty ?? false)
-                                ? diary!.symptoms.map((s) => s.symptomName).join(', ')
-                                : 'Tidak ada gejala hari ini',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF62748E),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Aktivitas Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: _SectionCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.directions_run,
-                                  color: Color(0xFF285DBE)),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Aktivitas',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF525252),
-                                ),
-                              ),
-                              const Spacer(),
-                              _SectionAddButton(
-                                onTap: () =>
-                                    _openSectionModal(context, 'Aktivitas'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (diary?.activities.isEmpty ?? true)
-                            const Text(
-                              'Belum ada aktivitas hari ini',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF62748E),
-                              ),
-                            )
-                          else
-                            Wrap(
-                              spacing: 8,
-                              children: (diary?.activities ?? const [])
-                                  .map((activity) => _TagChip(label: activity.name))
-                                  .toList(),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Konsumsi Harian Section
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: _SectionCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.restaurant,
-                                  color: Color(0xFF2D9744)),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Konsumsi Harian',
+                                'Metriks Kesehatan',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -565,48 +230,395 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                               const Spacer(),
                               _SectionAddButton(
                                 onTap: () => _openSectionModal(
-                                    context, 'Konsumsi Harian'),
+                                    context, 'Metriks Kesehatan'),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          if (diary?.consumptions.isEmpty ?? true)
-                            const Text(
-                              'Belum ada konsumsi hari ini',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF62748E),
-                              ),
-                            )
-                          else
-                            ...diary!.consumptions.map(
-                              (item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _MealItem(
-                                  title: item.name,
-                                  description: item.portion ?? item.note ?? '-',
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Berat Badan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF62748E),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                latestMetric?.bodyWeight?.toString() ?? '-',
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF525252),
                                 ),
                               ),
+                              const Text(
+                                'Kg',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF62748E),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Sistolik',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF62748E),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          latestMetric?.systolicPressure
+                                                  ?.toString() ??
+                                              '-',
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF525252),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'mmHg',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF62748E),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Diastolik',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF62748E),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          latestMetric?.diastolicPressure
+                                                  ?.toString() ??
+                                              '-',
+                                          style: const TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF525252),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'mmHg',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF62748E),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Detak Jantung',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF62748E),
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                (diary?.activities.isNotEmpty ?? false)
+                                    ? (diary!.activities.first.heartRate
+                                            ?.toString() ??
+                                        '-')
+                                    : '-',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF525252),
+                                ),
+                              ),
+                              const Text(
+                                'BPM',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF62748E),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  if (diaryState.error != null) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
+
+                    // Filter Periode
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      child: Text(
-                        diaryState.error!,
-                        style: const TextStyle(
-                          color: Color(0xFFB91C1C),
-                          fontSize: 12,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.tune, color: Color(0xFF62748E)),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Filter Periode',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF525252),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Kondisi Section
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: _SectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.favorite,
+                                    color: Color(0xFF2D9744)),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Kondisi',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF525252),
+                                  ),
+                                ),
+                                const Spacer(),
+                                _SectionAddButton(
+                                  onTap: () =>
+                                      _openSectionModal(context, 'Kondisi'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (conditions.isEmpty)
+                              const Text(
+                                'Belum ada kondisi hari ini',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF62748E),
+                                ),
+                              )
+                            else
+                              ...conditions.map((metric) {
+                                final tag = metric.conditionTag ?? 'Kondisi';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _ConditionItem(
+                                    title:
+                                        tag[0].toUpperCase() + tag.substring(1),
+                                    status:
+                                        '${tag.toUpperCase()} - ${_formatTime(metric.timeStamp)}',
+                                    icon: Icons.sentiment_satisfied,
+                                    color: const Color(0xFF2D9744),
+                                    onDelete: () {},
+                                  ),
+                                );
+                              }),
+                          ],
                         ),
                       ),
                     ),
+                    const SizedBox(height: 20),
+
+                    // Gejala Section
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: _SectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.info_outline,
+                                    color: Color(0xFFE08B3D)),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Gejala',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF525252),
+                                  ),
+                                ),
+                                const Spacer(),
+                                _SectionAddButton(
+                                  onTap: () =>
+                                      _openSectionModal(context, 'Gejala'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              (diary?.symptoms.isNotEmpty ?? false)
+                                  ? diary!.symptoms
+                                      .map((s) => s.symptomName)
+                                      .join(', ')
+                                  : 'Tidak ada gejala hari ini',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF62748E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Aktivitas Section
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: _SectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.directions_run,
+                                    color: Color(0xFF285DBE)),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Aktivitas',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF525252),
+                                  ),
+                                ),
+                                const Spacer(),
+                                _SectionAddButton(
+                                  onTap: () =>
+                                      _openSectionModal(context, 'Aktivitas'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (diary?.activities.isEmpty ?? true)
+                              const Text(
+                                'Belum ada aktivitas hari ini',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF62748E),
+                                ),
+                              )
+                            else
+                              Wrap(
+                                spacing: 8,
+                                children: (diary?.activities ?? const [])
+                                    .map((activity) =>
+                                        _TagChip(label: activity.name))
+                                    .toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Konsumsi Harian Section
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: _SectionCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.restaurant,
+                                    color: Color(0xFF2D9744)),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Konsumsi Harian',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF525252),
+                                  ),
+                                ),
+                                const Spacer(),
+                                _SectionAddButton(
+                                  onTap: () => _openSectionModal(
+                                      context, 'Konsumsi Harian'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (diary?.consumptions.isEmpty ?? true)
+                              const Text(
+                                'Belum ada konsumsi hari ini',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF62748E),
+                                ),
+                              )
+                            else
+                              ...diary!.consumptions.map(
+                                (item) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _MealItem(
+                                    title: item.name,
+                                    description:
+                                        item.portion ?? item.note ?? '-',
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (diaryState.error != null) ...[
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          diaryState.error!,
+                          style: const TextStyle(
+                            color: Color(0xFFB91C1C),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
               ],
             ),
           ),

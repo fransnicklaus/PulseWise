@@ -33,6 +33,11 @@ final patientProfileProvider = FutureProvider<PatientProfile>((ref) async {
   return api.fetchProfile();
 });
 
+final authMeProvider = FutureProvider<AuthMeUser>((ref) async {
+  final api = ref.watch(profileApiProvider);
+  return api.fetchAuthMe();
+});
+
 class ProfileApi {
   final Dio _dio;
   static const _tokenKey = 'auth_token';
@@ -75,6 +80,33 @@ class ProfileApi {
     return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
   }
 
+  Future<AuthMeUser> fetchAuthMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/auth/me',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['data'] == null) {
+      throw Exception('Respons auth me tidak valid dari server');
+    }
+
+    return AuthMeUser.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
   Future<DiaryDetail> fetchDiaryDetail(String diaryId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -106,6 +138,80 @@ class ProfileApi {
     }
 
     return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  Future<DiaryDetail> fetchDiaryDetailByDate(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId = prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final dateParam =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date',
+      queryParameters: {
+        'date': dateParam,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['data'] == null) {
+      throw Exception('Respons detail diary berdasarkan tanggal tidak valid');
+    }
+
+    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+  }
+}
+
+class AuthMeUser {
+  final String userId;
+  final String username;
+  final String email;
+  final String firstName;
+  final String lastName;
+  final String role;
+  final String accountStatus;
+  final DateTime? emailVerifiedAt;
+
+  const AuthMeUser({
+    required this.userId,
+    required this.username,
+    required this.email,
+    required this.firstName,
+    required this.lastName,
+    required this.role,
+    required this.accountStatus,
+    required this.emailVerifiedAt,
+  });
+
+  factory AuthMeUser.fromJson(Map<String, dynamic> json) {
+    return AuthMeUser(
+      userId: (json['userId'] ?? '').toString(),
+      username: (json['username'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+      firstName: (json['firstName'] ?? '').toString(),
+      lastName: (json['lastName'] ?? '').toString(),
+      role: (json['role'] ?? '').toString(),
+      accountStatus: (json['accountStatus'] ?? '').toString(),
+      emailVerifiedAt:
+          DateTime.tryParse((json['emailVerifiedAt'] ?? '').toString()),
+    );
   }
 }
 

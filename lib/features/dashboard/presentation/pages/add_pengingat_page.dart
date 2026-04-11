@@ -13,52 +13,89 @@ class AddPengingatPage extends StatefulWidget {
 class _AddPengingatPageState extends State<AddPengingatPage> {
   static const Map<String, String> _formIcons = {
     'Pill':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pill-icon lucide-pill"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>''',
     'Tablet':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tablets-icon lucide-tablets"><circle cx="7" cy="7" r="5"/><circle cx="17" cy="17" r="5"/><path d="M12 17h10"/><path d="m3.46 10.54 7.08-7.08"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="5"/><circle cx="17" cy="17" r="5"/><path d="M12 17h10"/><path d="m3.46 10.54 7.08-7.08"/></svg>''',
     'Kapsul':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pill-bottle-icon lucide-pill-bottle"><path d="M18 11h-4a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h4"/><path d="M6 7v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7"/><rect width="16" height="5" x="4" y="2" rx="1"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11h-4a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h4"/><path d="M6 7v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7"/><rect width="16" height="5" x="4" y="2" rx="1"/></svg>''',
     'Tetes':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-droplet-icon lucide-droplet"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>''',
     'Sirup':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-milk-icon lucide-milk"><path d="M8 2h8"/><path d="M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2"/><path d="M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2h8"/><path d="M9 2v2.789a4 4 0 0 1-.672 2.219l-.656.984A4 4 0 0 0 7 10.212V20a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-9.789a4 4 0 0 0-.672-2.219l-.656-.984A4 4 0 0 1 15 4.788V2"/><path d="M7 15a6.472 6.472 0 0 1 5 0 6.47 6.47 0 0 0 5 0"/></svg>''',
     'Cairan':
-        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-glass-water-icon lucide-glass-water"><path d="M5.116 4.104A1 1 0 0 1 6.11 3h11.78a1 1 0 0 1 .994 1.105L17.19 20.21A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.79z"/><path d="M6 12a5 5 0 0 1 6 0 5 5 0 0 0 6 0"/></svg>''',
+        '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.116 4.104A1 1 0 0 1 6.11 3h11.78a1 1 0 0 1 .994 1.105L17.19 20.21A2 2 0 0 1 15.2 22H8.8a2 2 0 0 1-2-1.79z"/><path d="M6 12a5 5 0 0 1 6 0 5 5 0 0 0 6 0"/></svg>''',
   };
+
+  static const List<String> _forms = [
+    'Pill',
+    'Tablet',
+    'Kapsul',
+    'Cairan',
+    'Sirup',
+    'Tetes',
+  ];
+
+  static const List<String> _doseUnits = [
+    'mg',
+    'ml',
+    'tablet',
+    'kapsul',
+    'tetes'
+  ];
+
+  static const List<String> _weekdays = [
+    'Min',
+    'Sen',
+    'Sel',
+    'Rab',
+    'Kam',
+    'Jum',
+    'Sab'
+  ];
+
+  static const List<Color> _medicationColors = [
+    Color(0xFFE64060),
+    Color(0xFFEF4444),
+    Color(0xFFF97316),
+    Color(0xFFF59E0B),
+    Color(0xFFEAB308),
+    Color(0xFF84CC16),
+    Color(0xFF22C55E),
+    Color(0xFF10B981),
+    Color(0xFF14B8A6),
+    Color(0xFF06B6D4),
+    Color(0xFF0EA5E9),
+    Color(0xFF3B82F6),
+    Color(0xFF6366F1),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+  ];
 
   int _currentStep = 0;
 
   final _nameController = TextEditingController();
   final _formSearchController = TextEditingController();
   final _doseController = TextEditingController();
-  final _frequencyCountController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
-
-  final List<String> _forms = [
-    'Pill',
-    'Tablet',
-    'Kapsul',
-    'Cairan',
-    'Sirup',
-    'Tetes'
-  ];
-  final List<String> _doseUnits = ['mg', 'ml', 'tablet', 'kapsul', 'tetes'];
 
   String? _selectedForm;
   String _formSearchQuery = '';
   String _selectedDoseUnit = 'mg';
-  String _selectedFrequencyType = 'Per Hari';
+  Color _selectedMedicationColor = _medicationColors.first;
 
-  final Set<String> _periods = {};
-  final List<TimeOfDay> _customTimes = [];
+  String _selectedFrequencyMode = 'Daily';
+  int _dailyEvery = 1;
+  final Set<int> _selectedWeekdays = {};
   DateTime _startDate = DateTime.now();
+
+  int _intakeCount = 1;
+  List<TimeOfDay> _intakeTimes = [const TimeOfDay(hour: 8, minute: 0)];
 
   @override
   void dispose() {
     _nameController.dispose();
     _formSearchController.dispose();
     _doseController.dispose();
-    _frequencyCountController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -101,10 +138,11 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   }
 
   Widget _buildStepIndicator() {
-    final labels = [
-      'Nama & Bentuk',
+    const labels = [
+      'Nama, Bentuk, Warna',
       'Dosis',
-      'Jadwal',
+      'Frekuensi',
+      'Jumlah Minum',
     ];
 
     return Container(
@@ -115,11 +153,11 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: List.generate(3, (index) {
+            children: List.generate(4, (index) {
               final isActive = index <= _currentStep;
               return Expanded(
                 child: Container(
-                  margin: EdgeInsets.only(right: index == 2 ? 0 : 8),
+                  margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
                   height: 6,
                   decoration: BoxDecoration(
                     color: isActive
@@ -133,7 +171,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Langkah ${_currentStep + 1} dari 3: ${labels[_currentStep]}',
+            'Langkah ${_currentStep + 1} dari 4: ${labels[_currentStep]}',
             style: const TextStyle(
               color: Color(0xFF64748B),
               fontSize: 13,
@@ -146,16 +184,22 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   }
 
   Widget _buildCurrentStep() {
-    if (_currentStep == 0) return _buildStepOne();
-    if (_currentStep == 1) return _buildStepTwo();
-    return _buildStepThree();
+    switch (_currentStep) {
+      case 0:
+        return _buildStepOne();
+      case 1:
+        return _buildStepTwo();
+      case 2:
+        return _buildStepThree();
+      default:
+        return _buildStepFour();
+    }
   }
 
   Widget _buildStepOne() {
     final filteredForms = _forms
-        .where(
-          (item) => item.toLowerCase().contains(_formSearchQuery.toLowerCase()),
-        )
+        .where((item) =>
+            item.toLowerCase().contains(_formSearchQuery.toLowerCase()))
         .toList();
 
     return Column(
@@ -220,12 +264,11 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                             activeColor: const Color(0xFFE64060),
                             secondary: Padding(
                               padding: const EdgeInsets.only(right: 8),
-                              child: _buildFormIcon(item),
+                              child: _buildFormIcon(
+                                  item, _selectedMedicationColor),
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 0,
-                            ),
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 8),
                             title: Text(
                               item,
                               style: TextStyle(
@@ -246,21 +289,52 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        _sectionCard(
+          title: 'Warna Obat',
+          child: SizedBox(
+            height: 46,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _medicationColors.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, index) {
+                final color = _medicationColors[index];
+                final selected = color == _selectedMedicationColor;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedMedicationColor = color),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color:
+                            selected ? const Color(0xFF0F172A) : Colors.white,
+                        width: selected ? 2.5 : 1.5,
+                      ),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: color.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: selected
+                        ? const Icon(Icons.check, color: Colors.white, size: 18)
+                        : null,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ],
-    );
-  }
-
-  Widget _buildFormIcon(String form) {
-    final svg = _formIcons[form];
-    if (svg == null) {
-      return const SizedBox(width: 24, height: 24);
-    }
-
-    return SvgPicture.string(
-      svg,
-      width: 22,
-      height: 22,
-      colorFilter: const ColorFilter.mode(Color(0xFFE64060), BlendMode.srcIn),
     );
   }
 
@@ -295,10 +369,8 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                     ),
                   ),
                   items: _doseUnits
-                      .map((unit) => DropdownMenuItem(
-                            value: unit,
-                            child: Text(unit),
-                          ))
+                      .map((unit) =>
+                          DropdownMenuItem(value: unit, child: Text(unit)))
                       .toList(),
                   onChanged: (value) {
                     if (value != null) {
@@ -328,83 +400,138 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionCard(
-          title: 'Periode Waktu',
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _periodChip('Pagi'),
-              _periodChip('Siang'),
-              _periodChip('Malam'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _sectionCard(
-          title: 'Waktu Khusus',
+          title: 'Seberapa sering obat diminum',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _customTimes
-                    .map((time) => Chip(
-                          label: Text(_formatTime(time)),
-                          onDeleted: () {
-                            setState(() => _customTimes.remove(time));
-                          },
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _addCustomTime,
-                icon: const Icon(Icons.access_time),
-                label: const Text('Tambah Waktu'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        _sectionCard(
-          title: 'Frekuensi',
-          child: Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedFrequencyType,
-                  dropdownColor: Colors.white,
-                  iconEnabledColor: const Color(0xFF64748B),
-                  decoration: _inputDecoration('Tipe').copyWith(
-                    fillColor: Colors.white,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _frequencyModeButton('Daily', 'Harian'),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'Per Hari', child: Text('Per Hari')),
-                    DropdownMenuItem(
-                        value: 'Per Minggu', child: Text('Per Minggu')),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _frequencyModeButton('Weekly', 'Mingguan'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (_selectedFrequencyMode == 'Daily')
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Setiap berapa hari',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        padding: const EdgeInsets.all(6),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 44,
+                              child: _stepperButton(
+                                icon: Icons.remove,
+                                onTap: _dailyEvery > 1
+                                    ? () => setState(() => _dailyEvery -= 1)
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                alignment: Alignment.center,
+                                child: Text(
+                                  '$_dailyEvery Hari',
+                                  style: const TextStyle(
+                                    color: Color(0xFF334155),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 44,
+                              child: _stepperButton(
+                                icon: Icons.add,
+                                onTap: _dailyEvery < 10
+                                    ? () => setState(() => _dailyEvery += 1)
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedFrequencyType = value);
-                    }
-                  },
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pilih hari',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF475569),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 42,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _weekdays.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, index) {
+                          final selected = _selectedWeekdays.contains(index);
+                          return ChoiceChip(
+                            label: Text(_weekdays[index]),
+                            selected: selected,
+                            onSelected: (_) {
+                              setState(() {
+                                if (selected) {
+                                  _selectedWeekdays.remove(index);
+                                } else {
+                                  _selectedWeekdays.add(index);
+                                }
+                              });
+                            },
+                            selectedColor: const Color(0xFFFFE7EE),
+                            backgroundColor: Colors.white,
+                            labelStyle: TextStyle(
+                              color: selected
+                                  ? const Color(0xFFE64060)
+                                  : const Color(0xFF475569),
+                              fontWeight: FontWeight.w700,
+                            ),
+                            side: BorderSide(
+                              color: selected
+                                  ? const Color(0xFFE64060)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            showCheckmark: false,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 90,
-                child: TextField(
-                  controller: _frequencyCountController,
-                  keyboardType: TextInputType.number,
-                  decoration: _inputDecoration('Jumlah'),
-                ),
-              ),
             ],
           ),
         ),
@@ -432,8 +559,174 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     );
   }
 
+  Widget _buildStepFour() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionCard(
+          title: 'Sehari berapa banyak minumnya',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: _stepperButton(
+                          icon: Icons.remove,
+                          onTap: _intakeCount > 1
+                              ? () => _setIntakeCount(_intakeCount - 1)
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$_intakeCount Kali',
+                            style: const TextStyle(
+                              color: Color(0xFF334155),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 44,
+                        child: _stepperButton(
+                          icon: Icons.add,
+                          onTap: _intakeCount < 8
+                              ? () => _setIntakeCount(_intakeCount + 1)
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ...List.generate(_intakeCount, (index) {
+                final label = '${_ordinalIntake(index + 1)} intake';
+                final selectedTime = _intakeTimes[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            color: Color(0xFF1E293B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 170,
+                        child: OutlinedButton(
+                          onPressed: () => _pickIntakeTime(index),
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF8FAFC),
+                            foregroundColor: const Color(0xFF334155),
+                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _formatTime(selectedTime),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  color: Color(0xFF334155),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 22,
+                                color: Color(0xFF64748B),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _frequencyModeButton(String value, String label) {
+    final selected = _selectedFrequencyMode == value;
+    return OutlinedButton(
+      onPressed: () => setState(() => _selectedFrequencyMode = value),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: selected ? const Color(0xFFFFE7EE) : Colors.white,
+        foregroundColor:
+            selected ? const Color(0xFFE64060) : const Color(0xFF475569),
+        side: BorderSide(
+          color: selected ? const Color(0xFFE64060) : const Color(0xFFE2E8F0),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  Widget _stepperButton(
+      {required IconData icon, required VoidCallback? onTap}) {
+    final isEnabled = onTap != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: isEnabled ? Colors.white : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isEnabled ? const Color(0xFFE64060) : const Color(0xFF94A3B8),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomActions() {
-    final isLast = _currentStep == 2;
+    final isLast = _currentStep == 3;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
@@ -521,42 +814,18 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     );
   }
 
-  Widget _periodChip(String label) {
-    final selected = _periods.contains(label);
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) {
-        setState(() {
-          if (selected) {
-            _periods.remove(label);
-          } else {
-            _periods.add(label);
-          }
-        });
-      },
-      selectedColor: Colors.white,
-      backgroundColor: Colors.white,
-      labelStyle: TextStyle(
-        color: selected ? const Color(0xFFE64060) : const Color(0xFF475569),
-        fontWeight: FontWeight.w600,
-      ),
-      side: BorderSide(
-        color: selected ? const Color(0xFFE64060) : const Color(0xFFE2E8F0),
-      ),
-      showCheckmark: true,
-      checkmarkColor: const Color(0xFFE64060),
-    );
-  }
-
-  Future<void> _addCustomTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() => _customTimes.add(picked));
+  Widget _buildFormIcon(String form, Color color) {
+    final svg = _formIcons[form];
+    if (svg == null) {
+      return const SizedBox(width: 24, height: 24);
     }
+
+    return SvgPicture.string(
+      svg,
+      width: 22,
+      height: 22,
+      colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+    );
   }
 
   Future<void> _pickStartDate() async {
@@ -571,6 +840,33 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     }
   }
 
+  Future<void> _pickIntakeTime(int index) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _intakeTimes[index],
+    );
+    if (picked != null) {
+      setState(() => _intakeTimes[index] = picked);
+    }
+  }
+
+  void _setIntakeCount(int value) {
+    setState(() {
+      _intakeCount = value;
+      if (_intakeTimes.length < value) {
+        _intakeTimes = [
+          ..._intakeTimes,
+          ...List.generate(
+            value - _intakeTimes.length,
+            (i) => _defaultIntakeTime(_intakeTimes.length + i),
+          ),
+        ];
+      } else if (_intakeTimes.length > value) {
+        _intakeTimes = _intakeTimes.sublist(0, value);
+      }
+    });
+  }
+
   void _nextStep() {
     if (_currentStep == 0) {
       if (_nameController.text.trim().isEmpty || _selectedForm == null) {
@@ -578,9 +874,22 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
         return;
       }
     }
+
     if (_currentStep == 1) {
-      if (_doseController.text.trim().isEmpty) {
+      final doseValue = _doseController.text.trim();
+      if (doseValue.isEmpty) {
         _showError('Isi besar dosis terlebih dahulu.');
+        return;
+      }
+      if (num.tryParse(doseValue) == null) {
+        _showError('Besar dosis hanya boleh angka.');
+        return;
+      }
+    }
+
+    if (_currentStep == 2) {
+      if (_selectedFrequencyMode == 'Weekly' && _selectedWeekdays.isEmpty) {
+        _showError('Pilih minimal satu hari untuk jadwal mingguan.');
         return;
       }
     }
@@ -589,16 +898,24 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   }
 
   void _saveReminder() {
-    if (_periods.isEmpty && _customTimes.isEmpty) {
-      _showError('Pilih minimal satu periode atau satu waktu khusus.');
-      return;
-    }
+    final payload = {
+      'name': _nameController.text.trim(),
+      'form': _selectedForm,
+      'color': _selectedMedicationColor.value.toRadixString(16),
+      'dose': _doseController.text.trim(),
+      'doseUnit': _selectedDoseUnit,
+      'notes': _notesController.text.trim(),
+      'frequencyMode': _selectedFrequencyMode,
+      'dailyEvery': _selectedFrequencyMode == 'Daily' ? _dailyEvery : null,
+      'weeklyDays': _selectedFrequencyMode == 'Weekly'
+          ? _selectedWeekdays.map((i) => _weekdays[i]).toList()
+          : const [],
+      'startDate': _startDate.toIso8601String(),
+      'intakeCount': _intakeCount,
+      'intakeTimes': _intakeTimes.map(_formatTime).toList(),
+    };
 
-    if (_frequencyCountController.text.trim().isEmpty) {
-      _showError('Isi jumlah frekuensi.');
-      return;
-    }
-
+    debugPrint('Reminder payload: $payload');
     AppToast.success(context, 'Pengingat berhasil disimpan');
     context.pop();
   }
@@ -611,5 +928,17 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String _ordinalIntake(int number) {
+    if (number == 1) return '1st';
+    if (number == 2) return '2nd';
+    if (number == 3) return '3rd';
+    return '${number}th';
+  }
+
+  TimeOfDay _defaultIntakeTime(int index) {
+    final hour = (8 + index) % 24;
+    return TimeOfDay(hour: hour, minute: 0);
   }
 }

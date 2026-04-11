@@ -1,15 +1,17 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
-class BerandaTab extends StatefulWidget {
+class BerandaTab extends ConsumerStatefulWidget {
   const BerandaTab({super.key});
 
   @override
-  State<BerandaTab> createState() => _BerandaTabState();
+  ConsumerState<BerandaTab> createState() => _BerandaTabState();
 }
 
-class _BerandaTabState extends State<BerandaTab> {
+class _BerandaTabState extends ConsumerState<BerandaTab> {
   int _healthStatusIndex = 0;
   final int _healthStatusCount = 2;
 
@@ -94,8 +96,46 @@ class _BerandaTabState extends State<BerandaTab> {
     }
   }
 
+  String _formatCurrentDate() {
+    final now = DateTime.now();
+    const weekdays = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    final dayName = weekdays[now.weekday - 1];
+    final monthName = months[now.month - 1];
+    return '$dayName, ${now.day} $monthName ${now.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final authMe = ref.watch(authMeProvider);
+    final firstName = authMe.maybeWhen(
+      data: (user) => user.firstName.trim(),
+      orElse: () => '',
+    );
+    final greetingName = firstName.isEmpty ? 'Halo' : 'Halo, $firstName';
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 120), // Space for bottom nav
@@ -138,21 +178,21 @@ class _BerandaTabState extends State<BerandaTab> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Halo, Jhoni',
-                            style: TextStyle(
+                            greetingName,
+                            style: const TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
                           ),
-                          SizedBox(height: 4),
+                          const SizedBox(height: 4),
                           Text(
-                            'Senin, 13 Oktober 2025',
-                            style: TextStyle(
+                            _formatCurrentDate(),
+                            style: const TextStyle(
                               fontSize: 14,
                               color: Colors.white,
                             ),
