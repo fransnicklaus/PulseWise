@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/widgets/diary_section_bottom_sheet.dart';
 
-class DiariTab extends StatelessWidget {
+class DiariTab extends ConsumerStatefulWidget {
   const DiariTab({super.key});
 
-  void _openSectionModal(BuildContext context, String sectionTitle) {
-    showModalBottomSheet<void>(
+  @override
+  ConsumerState<DiariTab> createState() => _DiariTabState();
+}
+
+class _DiariTabState extends ConsumerState<DiariTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(currentDiaryProvider.notifier).loadCurrentDiaryForToday();
+    });
+  }
+
+  Future<void> _openSectionModal(BuildContext context, String sectionTitle) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -21,17 +36,74 @@ class DiariTab extends StatelessWidget {
         ),
       ),
     );
+
+    final diaryId = result?['diaryId']?.toString();
+    if (diaryId != null && diaryId.isNotEmpty) {
+      await ref.read(currentDiaryProvider.notifier).setCurrentDiaryId(diaryId);
+    }
+  }
+
+  String _todayLabel() {
+    const dayNames = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
+    const monthNames = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    final now = DateTime.now();
+    final dayName = dayNames[now.weekday - 1];
+    final monthName = monthNames[now.month - 1];
+    return '$dayName, ${now.day} $monthName ${now.year}';
+  }
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return '--:--';
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _refreshDiary() async {
+    await ref.read(currentDiaryProvider.notifier).loadCurrentDiaryForToday();
   }
 
   @override
   Widget build(BuildContext context) {
+    final diaryState = ref.watch(currentDiaryProvider);
+    final diary = diaryState.diary;
+    final latestMetric =
+        (diary?.bodyMetrics.isNotEmpty ?? false) ? diary!.bodyMetrics.first : null;
+    final conditions =
+        (diary?.bodyMetrics ?? const []).where((m) => (m.conditionTag ?? '').isNotEmpty).toList();
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 120),
-          child: Stack(
-            children: [
+        child: RefreshIndicator(
+          onRefresh: _refreshDiary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 120),
+            child: Stack(
+              children: [
               // Red gradient background header
               Positioned(
                 top: 0,
@@ -68,10 +140,10 @@ class DiariTab extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            const Text(
                               'Diari Kesehatan',
                               style: TextStyle(
                                 fontSize: 24,
@@ -79,10 +151,10 @@ class DiariTab extends StatelessWidget {
                                 color: Colors.white,
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
-                              'Senin, 13 Oktober 2025',
-                              style: TextStyle(
+                              _todayLabel(),
+                              style: const TextStyle(
                                 fontSize: 14,
                                 color: Colors.white,
                               ),
@@ -174,9 +246,9 @@ class DiariTab extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              '72',
-                              style: TextStyle(
+                            Text(
+                              latestMetric?.bodyWeight?.toString() ?? '-',
+                              style: const TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF525252),
@@ -208,9 +280,9 @@ class DiariTab extends StatelessWidget {
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      const Text(
-                                        '120',
-                                        style: TextStyle(
+                                      Text(
+                                        latestMetric?.systolicPressure?.toString() ?? '-',
+                                        style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF525252),
@@ -243,9 +315,9 @@ class DiariTab extends StatelessWidget {
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      const Text(
-                                        '80',
-                                        style: TextStyle(
+                                      Text(
+                                        latestMetric?.diastolicPressure?.toString() ?? '-',
+                                        style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                           color: Color(0xFF525252),
@@ -278,9 +350,11 @@ class DiariTab extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              '72',
-                              style: TextStyle(
+                            Text(
+                              (diary?.activities.isNotEmpty ?? false)
+                                  ? (diary!.activities.first.heartRate?.toString() ?? '-')
+                                  : '-',
+                              style: const TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF525252),
@@ -348,29 +422,28 @@ class DiariTab extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _ConditionItem(
-                            title: 'Pagi',
-                            status: 'Baik - 07.00 AM',
-                            icon: Icons.sentiment_satisfied,
-                            color: const Color(0xFF2D9744),
-                            onDelete: () {},
-                          ),
-                          const SizedBox(height: 8),
-                          _ConditionItem(
-                            title: 'Siang',
-                            status: 'Baik - 13.00 PM',
-                            icon: Icons.sentiment_satisfied,
-                            color: const Color(0xFF2D9744),
-                            onDelete: () {},
-                          ),
-                          const SizedBox(height: 8),
-                          _ConditionItem(
-                            title: 'Malam',
-                            status: 'Malam - 22.00 PM',
-                            icon: Icons.help_outline,
-                            color: const Color(0xFF62748E),
-                            onDelete: () {},
-                          ),
+                          if (conditions.isEmpty)
+                            const Text(
+                              'Belum ada kondisi hari ini',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF62748E),
+                              ),
+                            )
+                          else
+                            ...conditions.map((metric) {
+                              final tag = metric.conditionTag ?? 'Kondisi';
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _ConditionItem(
+                                  title: tag[0].toUpperCase() + tag.substring(1),
+                                  status: '${tag.toUpperCase()} - ${_formatTime(metric.timeStamp)}',
+                                  icon: Icons.sentiment_satisfied,
+                                  color: const Color(0xFF2D9744),
+                                  onDelete: () {},
+                                ),
+                              );
+                            }),
                         ],
                       ),
                     ),
@@ -405,9 +478,11 @@ class DiariTab extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Tidak ada gejala hari ini',
-                            style: TextStyle(
+                          Text(
+                            (diary?.symptoms.isNotEmpty ?? false)
+                                ? diary!.symptoms.map((s) => s.symptomName).join(', ')
+                                : 'Tidak ada gejala hari ini',
+                            style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF62748E),
                             ),
@@ -446,13 +521,21 @@ class DiariTab extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              _TagChip(label: 'Jalan Kaki'),
-                              _TagChip(label: 'Senam'),
-                            ],
-                          ),
+                          if (diary?.activities.isEmpty ?? true)
+                            const Text(
+                              'Belum ada aktivitas hari ini',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF62748E),
+                              ),
+                            )
+                          else
+                            Wrap(
+                              spacing: 8,
+                              children: (diary?.activities ?? const [])
+                                  .map((activity) => _TagChip(label: activity.name))
+                                  .toList(),
+                            ),
                         ],
                       ),
                     ),
@@ -487,35 +570,45 @@ class DiariTab extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          _MealItem(
-                            title: 'Sarapan Pagi',
-                            description:
-                                'Nasi goreng, telur mata sapi, teh manis',
-                          ),
-                          const SizedBox(height: 12),
-                          _MealItem(
-                            title: 'Makan Siang',
-                            description:
-                                'Nasi putih, ikan bakar, sayur bayam, tempe goreng',
-                          ),
-                          const SizedBox(height: 12),
-                          _MealItem(
-                            title: 'Makan Malam',
-                            description: 'Nasi merah, ayam rebus, sup sayuran',
-                          ),
-                          const SizedBox(height: 12),
-                          _MealItem(
-                            title: 'Camilan',
-                            description:
-                                'Buah apel, biskuit gandum, kopi tanpa gula',
-                          ),
+                          if (diary?.consumptions.isEmpty ?? true)
+                            const Text(
+                              'Belum ada konsumsi hari ini',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF62748E),
+                              ),
+                            )
+                          else
+                            ...diary!.consumptions.map(
+                              (item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: _MealItem(
+                                  title: item.name,
+                                  description: item.portion ?? item.note ?? '-',
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
+                  if (diaryState.error != null) ...[
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Text(
+                        diaryState.error!,
+                        style: const TextStyle(
+                          color: Color(0xFFB91C1C),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

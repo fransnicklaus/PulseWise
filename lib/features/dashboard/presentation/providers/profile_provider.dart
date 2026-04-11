@@ -1,13 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/core/network/api_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'current_diary_provider.dart';
 
 final dioProvider = Provider<Dio>((ref) {
   final baseUrl = dotenv.env['API_BASE_URL'] ??
       'https://pulsewise-backend.vercel.app/api/v1';
 
-  return Dio(
+  final dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 20),
@@ -17,6 +19,9 @@ final dioProvider = Provider<Dio>((ref) {
       },
     ),
   );
+
+  ApiLogger.attach(dio);
+  return dio;
 });
 
 final profileApiProvider = Provider<ProfileApi>((ref) {
@@ -68,6 +73,39 @@ class ProfileApi {
     }
 
     return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  Future<DiaryDetail> fetchDiaryDetail(String diaryId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/diaries/$diaryId',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['data'] == null) {
+      throw Exception('Respons detail diary tidak valid dari server');
+    }
+
+    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 }
 

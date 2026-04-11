@@ -1,0 +1,193 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'profile_provider.dart';
+
+final emergencyContactsProvider =
+    StateNotifierProvider<EmergencyContactsNotifier, EmergencyContactsState>(
+  (ref) => EmergencyContactsNotifier(ref.watch(dioProvider)),
+);
+
+class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
+  EmergencyContactsNotifier(this._dio) : super(const EmergencyContactsState());
+
+  final Dio _dio;
+
+  static const _tokenKey = 'auth_token';
+  static const _userIdKey = 'auth_user_id';
+  static const _defaultLimit = 20;
+
+  Future<void> fetchInitial() async {
+    if (state.isLoadingInitial) return;
+
+    state = state.copyWith(
+      isLoadingInitial: true,
+      isLoadingMore: false,
+      error: null,
+      items: const [],
+      page: 1,
+      hasMore: true,
+    );
+
+    try {
+      final result = await _fetchPage(page: 1, limit: _defaultLimit);
+      state = state.copyWith(
+        isLoadingInitial: false,
+        items: result.items,
+        page: result.page,
+        hasMore: result.hasMore,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingInitial: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<void> fetchNextPage() async {
+    if (state.isLoadingInitial || state.isLoadingMore || !state.hasMore) return;
+
+    state = state.copyWith(isLoadingMore: true, error: null);
+
+    try {
+      final nextPage = state.page + 1;
+      final result = await _fetchPage(page: nextPage, limit: _defaultLimit);
+      state = state.copyWith(
+        isLoadingMore: false,
+        items: [...state.items, ...result.items],
+        page: result.page,
+        hasMore: result.hasMore,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<_PageResult> _fetchPage(
+      {required int page, required int limit}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/emergency-contacts',
+      queryParameters: {'page': page, 'limit': limit},
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['data'] == null) {
+      throw Exception('Respons emergency contact tidak valid.');
+    }
+
+    final data = body['data'] as Map<String, dynamic>;
+    final rawItems = (data['items'] as List?) ?? const [];
+    final items = rawItems
+        .map((item) => EmergencyContact.fromJson(item as Map<String, dynamic>))
+        .toList();
+
+    final pagination =
+        (data['pagination'] as Map<String, dynamic>?) ?? const {};
+    final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? page;
+    final currentPage = (pagination['page'] as num?)?.toInt() ?? page;
+    final hasMore = currentPage < totalPages;
+
+    return _PageResult(items: items, page: currentPage, hasMore: hasMore);
+  }
+}
+
+class EmergencyContactsState {
+  final List<EmergencyContact> items;
+  final bool isLoadingInitial;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final int page;
+  final String? error;
+
+  const EmergencyContactsState({
+    this.items = const [],
+    this.isLoadingInitial = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.page = 1,
+    this.error,
+  });
+
+  EmergencyContactsState copyWith({
+    List<EmergencyContact>? items,
+    bool? isLoadingInitial,
+    bool? isLoadingMore,
+    bool? hasMore,
+    int? page,
+    String? error,
+  }) {
+    return EmergencyContactsState(
+      items: items ?? this.items,
+      isLoadingInitial: isLoadingInitial ?? this.isLoadingInitial,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      page: page ?? this.page,
+      error: error,
+    );
+  }
+}
+
+class EmergencyContact {
+  final String emergencyContactId;
+  final String userId;
+  final String contactLabel;
+  final String contactNumber;
+  final DateTime? createdAt;
+  final bool? isPrioritas;
+
+  const EmergencyContact({
+    required this.emergencyContactId,
+    required this.userId,
+    required this.contactLabel,
+    required this.contactNumber,
+    required this.createdAt,
+    required this.isPrioritas,
+  });
+
+  factory EmergencyContact.fromJson(Map<String, dynamic> json) {
+    return EmergencyContact(
+      emergencyContactId: (json['emergencyContactId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      contactLabel: (json['contactLabel'] ?? '').toString(),
+      contactNumber: (json['contactNumber'] ?? '').toString(),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+      isPrioritas: null,
+    );
+  }
+}
+
+class _PageResult {
+  final List<EmergencyContact> items;
+  final int page;
+  final bool hasMore;
+
+  const _PageResult({
+    required this.items,
+    required this.page,
+    required this.hasMore,
+  });
+}

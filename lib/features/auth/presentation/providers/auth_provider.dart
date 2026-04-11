@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/core/network/api_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -62,6 +63,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           headers: const {'Accept': 'application/json'},
         ),
       );
+      ApiLogger.attach(dio);
 
       final response = await dio.post<Map<String, dynamic>>(
         '/auth/login',
