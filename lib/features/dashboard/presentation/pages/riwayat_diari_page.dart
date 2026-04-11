@@ -60,14 +60,8 @@ class _RiwayatDiariPageState extends State<RiwayatDiariPage> {
       'gejala': 'Lemas ringan setelah siang hari',
       'aktivitas': ['Jalan Kaki'],
       'konsumsi': [
-        {
-          'waktu': 'Sarapan Pagi',
-          'deskripsi': 'Bubur ayam, teh hangat'
-        },
-        {
-          'waktu': 'Makan Malam',
-          'deskripsi': 'Sup sayur, ikan kukus'
-        },
+        {'waktu': 'Sarapan Pagi', 'deskripsi': 'Bubur ayam, teh hangat'},
+        {'waktu': 'Makan Malam', 'deskripsi': 'Sup sayur, ikan kukus'},
       ],
       'catatan':
           'Perlu istirahat lebih banyak. Besok coba kurangi aktivitas berat.',

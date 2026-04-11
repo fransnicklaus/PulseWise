@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
@@ -11,7 +12,7 @@ void main() async {
   await Hive.initFlutter();
 
   // Initialize environment variables (uncomment when .env exists)
-  // await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: '.env');
 
   // Initialize DI / Services
   await di.init();

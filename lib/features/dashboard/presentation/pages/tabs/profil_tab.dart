@@ -1,157 +1,305 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
-class ProfilTab extends StatelessWidget {
+class ProfilTab extends ConsumerStatefulWidget {
   const ProfilTab({super.key});
 
   @override
+  ConsumerState<ProfilTab> createState() => _ProfilTabState();
+}
+
+class _ProfilTabState extends ConsumerState<ProfilTab> {
+  Future<void> _refreshProfile() async {
+    ref.invalidate(patientProfileProvider);
+    await ref.read(patientProfileProvider.future);
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    const monthNames = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    final month = monthNames[date.month - 1];
+    return '${date.day.toString().padLeft(2, '0')} $month ${date.year}';
+  }
+
+  String _formatSex(String sex) {
+    switch (sex.toLowerCase()) {
+      case 'male':
+        return 'Laki-laki';
+      case 'female':
+        return 'Perempuan';
+      default:
+        return sex.isEmpty ? '-' : sex;
+    }
+  }
+
+  Future<void> _onLogout() async {
+    await ref.read(authProvider.notifier).logout();
+    ref.invalidate(patientProfileProvider);
+    ref.read(previousNavIndexProvider.notifier).state = 0;
+    ref.read(dashboardNavIndexProvider.notifier).state = 0;
+    if (!mounted) return;
+    AppToast.success(context, 'Berhasil keluar dari akun');
+    context.go('/login');
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 120),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 18),
-          _SectionCard(
-            title: 'Informasi Pribadi',
+    final profileAsync = ref.watch(patientProfileProvider);
+
+    return RefreshIndicator(
+      onRefresh: _refreshProfile,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 120),
+        child: profileAsync.when(
+          loading: () => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: const [
-              _InfoRow(label: 'Nama Lengkap', value: 'Fransiskus Nugroho'),
-              _InfoRow(label: 'Email', value: 'frans@example.com'),
-              _InfoRow(label: 'Nomor Telepon', value: '+62 812-3456-7890'),
-              _InfoRow(label: 'Jenis Kelamin', value: 'Laki-laki'),
-              _InfoRow(label: 'Tanggal Lahir', value: '12 Oktober 1998'),
+              SizedBox(height: 140),
+              Center(child: CircularProgressIndicator()),
             ],
           ),
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'Data Kesehatan',
-            children: const [
-              _InfoRow(label: 'Golongan Darah', value: 'O+'),
-              _InfoRow(label: 'Tinggi / Berat', value: '175 cm / 72 kg'),
-              _InfoRow(label: 'Alergi', value: 'Tidak ada'),
-              _InfoRow(label: 'Kondisi Khusus', value: 'Hipertensi ringan'),
+          error: (error, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(),
+              const SizedBox(height: 22),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF1F2),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Gagal memuat profil',
+                        style: TextStyle(
+                          color: Color(0xFF991B1B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        error.toString(),
+                        style: const TextStyle(
+                          color: Color(0xFF7F1D1D),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              ref.invalidate(patientProfileProvider),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDC2626),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Coba Lagi'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'Kontak Darurat Utama',
-            children: const [
-              _InfoRow(label: 'Nama', value: 'Siti (Istri)'),
-              _InfoRow(label: 'Hubungan', value: 'Keluarga'),
-              _InfoRow(label: 'Nomor Telepon', value: '+62 812-3456-7890'),
+          data: (profile) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(profile.fullName),
+              const SizedBox(height: 18),
+              _SectionCard(
+                title: 'Informasi Pribadi',
+                children: [
+                  _InfoRow(
+                    label: 'Nama Lengkap',
+                    value: profile.fullName.isEmpty ? '-' : profile.fullName,
+                  ),
+                  _InfoRow(
+                    label: 'Email',
+                    value: profile.email.isEmpty ? '-' : profile.email,
+                  ),
+                  _InfoRow(
+                    label: 'Jenis Kelamin',
+                    value: _formatSex(profile.sex),
+                  ),
+                  _InfoRow(
+                    label: 'Tanggal Lahir',
+                    value: _formatDate(profile.dateOfBirth),
+                  ),
+                  _InfoRow(
+                    label: 'Alamat',
+                    value: profile.address.isEmpty ? '-' : profile.address,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _SectionCard(
+                title: 'Data Kesehatan',
+                children: [
+                  _InfoRow(
+                    label: 'Golongan Darah',
+                    value: profile.bloodType.isEmpty ? '-' : profile.bloodType,
+                  ),
+                  _InfoRow(
+                    label: 'Tinggi',
+                    value: profile.bodyHeightCm.isEmpty
+                        ? '-'
+                        : '${profile.bodyHeightCm} cm',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _SectionCard(
+                title: 'Kontak Darurat Utama',
+                children: const [
+                  _InfoRow(label: 'Nama', value: 'Siti (Istri)'),
+                  _InfoRow(label: 'Hubungan', value: 'Keluarga'),
+                  _InfoRow(label: 'Nomor Telepon', value: '+62 812-3456-7890'),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _SectionCard(
+                title: 'Pengaturan Akun',
+                children: const [
+                  _ActionRow(label: 'Ubah Kata Sandi'),
+                  _ActionRow(label: 'Privasi & Izin Data'),
+                  _ActionRow(label: 'Bahasa Aplikasi'),
+                  _ActionRow(label: 'Notifikasi'),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showToastDebugSheet(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF2563EB),
+                      side: const BorderSide(color: Color(0xFF93C5FD)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.bug_report_outlined, size: 22),
+                    label: const Text(
+                      'Debug Toast Tester',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/home/health-connect'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF16A34A),
+                      side: const BorderSide(color: Color(0xFF86EFAC)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.monitor_heart_outlined, size: 22),
+                    label: const Text(
+                      'Test Health Connect',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_outlined, size: 22),
+                    label: const Text(
+                      'Edit Profil',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _onLogout,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFE64060),
+                      side: const BorderSide(color: Color(0xFFE64060)),
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.logout, size: 22),
+                    label: const Text(
+                      'Keluar',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          _SectionCard(
-            title: 'Pengaturan Akun',
-            children: const [
-              _ActionRow(label: 'Ubah Kata Sandi'),
-              _ActionRow(label: 'Privasi & Izin Data'),
-              _ActionRow(label: 'Bahasa Aplikasi'),
-              _ActionRow(label: 'Notifikasi'),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _showToastDebugSheet(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF2563EB),
-                  side: const BorderSide(color: Color(0xFF93C5FD)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.bug_report_outlined, size: 22),
-                label: const Text(
-                  'Debug Toast Tester',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push('/home/health-connect'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF16A34A),
-                  side: const BorderSide(color: Color(0xFF86EFAC)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.monitor_heart_outlined, size: 22),
-                label: const Text(
-                  'Test Health Connect',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE64060),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.edit_outlined, size: 22),
-                label: const Text(
-                  'Edit Profil',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE64060),
-                  side: const BorderSide(color: Color(0xFFE64060)),
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(Icons.logout, size: 22),
-                label: const Text(
-                  'Keluar',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader([String? fullName]) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
@@ -182,11 +330,11 @@ class ProfilTab extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Profil Saya',
                   style: TextStyle(
                     color: Colors.white,
@@ -194,9 +342,11 @@ class ProfilTab extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  'Kelola data pribadi dan kesehatan Anda',
+                  (fullName != null && fullName.isNotEmpty)
+                      ? fullName
+                      : 'Kelola data pribadi dan kesehatan Anda',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,

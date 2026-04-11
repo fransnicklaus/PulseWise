@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -24,13 +26,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  void _onLogin() {
+  Future<void> _onLogin() async {
     final email = _emailController.text;
     final password = _passwordController.text;
     if (email.isNotEmpty && password.isNotEmpty) {
-      ref.read(authProvider.notifier).login(email, password);
+      await ref.read(authProvider.notifier).login(email, password);
+      if (!mounted) return;
+
+      final authState = ref.read(authProvider);
+      if (authState.isAuthenticated) {
+        ref.read(previousNavIndexProvider.notifier).state = 0;
+        ref.read(dashboardNavIndexProvider.notifier).state = 0;
+        context.go('/home');
+      } else if (authState.error != null && authState.error!.isNotEmpty) {
+        AppToast.error(context, authState.error!);
+      }
+    } else {
+      AppToast.warning(context, 'Email dan kata sandi wajib diisi');
     }
-    context.go('/home');
   }
 
   void _onGoogleLogin() {
