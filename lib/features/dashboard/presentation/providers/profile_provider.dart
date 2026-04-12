@@ -140,7 +140,7 @@ class ProfileApi {
     return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
-  Future<DiaryDetail> fetchDiaryDetailByDate(DateTime date) async {
+  Future<DiaryDetail?> fetchDiaryDetailByDate(DateTime date) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
         dotenv.env['AUTH_TOKEN'] ??
@@ -150,7 +150,8 @@ class ProfileApi {
       throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
     }
 
-    final userId = prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
     if (userId.isEmpty) {
       throw Exception('userId tidak ditemukan. Silakan login ulang.');
     }
@@ -171,11 +172,216 @@ class ProfileApi {
     );
 
     final body = response.data;
-    if (body == null || body['data'] == null) {
+    if (body == null) {
       throw Exception('Respons detail diary berdasarkan tanggal tidak valid');
     }
 
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal mengambil detail diary berdasarkan tanggal')
+            .toString(),
+      );
+    }
+
+    if (body['data'] == null) {
+      return null;
+    }
+
     return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> addDiarySymptomByDate({
+    required String diaryDate,
+    required String symptomName,
+    required int intensity,
+    required String time,
+    required String note,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date/symptoms',
+      data: {
+        'diaryDate': diaryDate,
+        'symptomName': symptomName,
+        'intensity': intensity,
+        'time': time,
+        'note': note,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan gejala').toString());
+    }
+  }
+
+  Future<void> addDiaryConsumptionByDate({
+    required String diaryDate,
+    required String type,
+    required String name,
+    required String portion,
+    required String time,
+    required String note,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date/consumptions',
+      data: {
+        'diaryDate': diaryDate,
+        'type': type,
+        'name': name,
+        'portion': portion,
+        'time': time,
+        'note': note,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan konsumsi harian').toString());
+    }
+  }
+
+  Future<void> addDiaryActivityByDate({
+    required String diaryDate,
+    required String name,
+    required int duration,
+    required int heartRate,
+    required String userFeeling,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date/activities',
+      data: {
+        'diaryDate': diaryDate,
+        'name': name,
+        'duration': duration,
+        'heartRate': heartRate,
+        'userFeeling': userFeeling,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan aktivitas').toString());
+    }
+  }
+
+  Future<void> updateDiaryBodyMetricsByDate({
+    required String diaryDate,
+    required String conditionTag,
+    required String timeStamp,
+    double? bodyHeight,
+    double? bodyWeight,
+    double? bmi,
+    int? systolicPressure,
+    int? diastolicPressure,
+    int? heartRate,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final data = <String, dynamic>{
+      'diaryDate': diaryDate,
+      'conditionTag': conditionTag,
+      'timeStamp': timeStamp,
+    };
+    if (bodyHeight != null) data['bodyHeight'] = bodyHeight;
+    if (bodyWeight != null) data['bodyWeight'] = bodyWeight;
+    if (bmi != null) data['bmi'] = bmi;
+    if (systolicPressure != null) data['systolicPressure'] = systolicPressure;
+    if (diastolicPressure != null) {
+      data['diastolicPressure'] = diastolicPressure;
+    }
+    if (heartRate != null) data['heartRate'] = heartRate;
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date/body-metrics',
+      data: data,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan metrik kesehatan').toString());
+    }
   }
 }
 

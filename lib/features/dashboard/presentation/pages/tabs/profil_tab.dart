@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilTab extends ConsumerStatefulWidget {
   const ProfilTab({super.key});
@@ -58,6 +60,24 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun');
     context.go('/login');
+  }
+
+  Future<void> _copyAndPrintAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+
+    if (token.isEmpty) {
+      debugPrint('[AUTH_TOKEN] <empty>');
+      if (!mounted) return;
+      AppToast.warning(context, 'Token tidak ditemukan. Silakan login ulang.');
+      return;
+    }
+
+    await Clipboard.setData(ClipboardData(text: token));
+    debugPrint('[AUTH_TOKEN] $token');
+
+    if (!mounted) return;
+    AppToast.success(context, 'Token disalin dan dicetak ke debugger.');
   }
 
   @override
@@ -213,6 +233,30 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     icon: const Icon(Icons.bug_report_outlined, size: 22),
                     label: const Text(
                       'Debug Toast Tester',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _copyAndPrintAuthToken,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF7C3AED),
+                      side: const BorderSide(color: Color(0xFFC4B5FD)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.key_outlined, size: 22),
+                    label: const Text(
+                      'Copy Auth Token',
                       style:
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),

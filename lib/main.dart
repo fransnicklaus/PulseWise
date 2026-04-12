@@ -56,10 +56,24 @@ Future<String> _resolveInitialLocation() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   final String initialLocation;
 
   const MyApp({super.key, required this.initialLocation});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final router =
+      buildRouterConfig(initialLocation: widget.initialLocation);
+
+  @override
+  void dispose() {
+    router.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +85,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Outfit',
       ),
       debugShowCheckedModeBanner: false,
-      routerConfig: buildRouterConfig(initialLocation: initialLocation),
+      routerConfig: router,
     );
   }
 }

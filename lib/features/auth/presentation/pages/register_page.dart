@@ -67,8 +67,8 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Dio _buildDio() {
-    final baseUrl =
-        dotenv.env['API_BASE_URL'] ?? 'https://pulsewise-backend.vercel.app/api/v1';
+    final baseUrl = dotenv.env['API_BASE_URL'] ??
+        'https://pulsewise-backend.vercel.app/api/v1';
 
     final dio = Dio(
       BaseOptions(
@@ -380,7 +380,8 @@ class _RegisterPageState extends State<RegisterPage> {
         throw Exception('Data akun belum terdaftar. Ulangi langkah 1.');
       }
       if ((_bearerToken ?? '').isEmpty) {
-        throw Exception('Token autentikasi belum tersedia. Ulangi langkah autentikasi.');
+        throw Exception(
+            'Token autentikasi belum tersedia. Ulangi langkah autentikasi.');
       }
 
       await _updatePatientProfile(patientId);
@@ -493,8 +494,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   hint: 'Username',
                   icon: FluentIcons.person_accounts_24_regular,
                 ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Username wajib diisi' : null,
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'Username wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -503,8 +505,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   hint: 'First Name',
                   icon: FluentIcons.person_24_regular,
                 ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'First name wajib diisi' : null,
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'First name wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -513,8 +516,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   hint: 'Last Name',
                   icon: FluentIcons.person_24_regular,
                 ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Last name wajib diisi' : null,
+                validator: (value) => (value ?? '').trim().isEmpty
+                    ? 'Last name wajib diisi'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -627,7 +631,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   final otp = (value ?? '').trim();
                   if (otp.isEmpty) return 'OTP wajib diisi';
                   if (otp.length != 6) return 'OTP harus 6 digit';
-                  if (int.tryParse(otp) == null) return 'OTP harus berupa angka';
+                  if (int.tryParse(otp) == null)
+                    return 'OTP harus berupa angka';
                   return null;
                 },
               ),
@@ -677,15 +682,17 @@ class _RegisterPageState extends State<RegisterPage> {
                   icon: FluentIcons.person_feedback_24_regular,
                 ),
                 onChanged: (value) => setState(() => _selectedGender = value),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'Jenis kelamin wajib dipilih' : null,
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Jenis kelamin wajib dipilih'
+                    : null,
               ),
               const SizedBox(height: 12),
               InkWell(
                 borderRadius: BorderRadius.circular(15),
                 onTap: _pickBirthDate,
                 child: Ink(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FBFD),
                     borderRadius: BorderRadius.circular(15),
@@ -755,9 +762,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   hint: 'Golongan Darah',
                   icon: FluentIcons.heart_pulse_24_regular,
                 ),
-                onChanged: (value) => setState(() => _selectedBloodType = value),
-                validator: (value) =>
-                    (value == null || value.isEmpty) ? 'Golongan darah wajib dipilih' : null,
+                onChanged: (value) =>
+                    setState(() => _selectedBloodType = value),
+                validator: (value) => (value == null || value.isEmpty)
+                    ? 'Golongan darah wajib dipilih'
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -896,12 +905,16 @@ class _RegisterPageState extends State<RegisterPage> {
                                 children: [
                                   Expanded(
                                     child: OutlinedButton(
-                                      onPressed: _isSubmitting ? null : _previousStep,
+                                      onPressed:
+                                          _isSubmitting ? null : _previousStep,
                                       style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        side: const BorderSide(
+                                            color: Color(0xFFE2E8F0)),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                         ),
                                       ),
                                       child: Text(
@@ -916,12 +929,16 @@ class _RegisterPageState extends State<RegisterPage> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: ElevatedButton(
-                                      onPressed: _isSubmitting ? null : _nextStep,
+                                      onPressed:
+                                          _isSubmitting ? null : _nextStep,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFE64060),
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        backgroundColor:
+                                            const Color(0xFFE64060),
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                         ),
                                         elevation: 0,
                                       ),
@@ -1004,7 +1021,8 @@ class _StepIndicator extends StatelessWidget {
             margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
             height: 8,
             decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFE64060) : const Color(0xFFE2E8F0),
+              color:
+                  isActive ? const Color(0xFFE64060) : const Color(0xFFE2E8F0),
               borderRadius: BorderRadius.circular(999),
             ),
           ),
