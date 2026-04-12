@@ -190,6 +190,61 @@ class ProfileApi {
     return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
+  Future<DiaryHistoryResponse> fetchDiaryHistory({
+    int page = 1,
+    int limit = 20,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    String formatDate(DateTime date) {
+      return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/diaries',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (startDate != null) 'startDate': formatDate(startDate),
+        if (endDate != null) 'endDate': formatDate(endDate),
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons riwayat diary tidak valid dari server');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal mengambil riwayat diary').toString(),
+      );
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return DiaryHistoryResponse.fromJson(data);
+  }
+
   Future<void> addDiarySymptomByDate({
     required String diaryDate,
     required String symptomName,
@@ -417,6 +472,73 @@ class AuthMeUser {
       accountStatus: (json['accountStatus'] ?? '').toString(),
       emailVerifiedAt:
           DateTime.tryParse((json['emailVerifiedAt'] ?? '').toString()),
+    );
+  }
+}
+
+class DiaryHistoryResponse {
+  final List<DiaryHistoryItem> items;
+  final DiaryHistoryPagination pagination;
+
+  const DiaryHistoryResponse({
+    required this.items,
+    required this.pagination,
+  });
+
+  factory DiaryHistoryResponse.fromJson(Map<String, dynamic> json) {
+    return DiaryHistoryResponse(
+      items: ((json['items'] as List?) ?? const [])
+          .map((e) => DiaryHistoryItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: DiaryHistoryPagination.fromJson(
+        (json['pagination'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}
+
+class DiaryHistoryItem {
+  final String diaryId;
+  final String userId;
+  final DateTime? diaryDate;
+  final DateTime? createdAt;
+
+  const DiaryHistoryItem({
+    required this.diaryId,
+    required this.userId,
+    required this.diaryDate,
+    required this.createdAt,
+  });
+
+  factory DiaryHistoryItem.fromJson(Map<String, dynamic> json) {
+    return DiaryHistoryItem(
+      diaryId: (json['diaryId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      diaryDate: DateTime.tryParse((json['diaryDate'] ?? '').toString()),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+    );
+  }
+}
+
+class DiaryHistoryPagination {
+  final int page;
+  final int limit;
+  final int totalItems;
+  final int totalPages;
+
+  const DiaryHistoryPagination({
+    required this.page,
+    required this.limit,
+    required this.totalItems,
+    required this.totalPages,
+  });
+
+  factory DiaryHistoryPagination.fromJson(Map<String, dynamic> json) {
+    return DiaryHistoryPagination(
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      limit: (json['limit'] as num?)?.toInt() ?? 20,
+      totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
     );
   }
 }

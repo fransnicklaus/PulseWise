@@ -1,510 +1,782 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/widgets/custom_app_bar.dart';
 
-class RiwayatDiariPage extends StatefulWidget {
+import '../../../../core/widgets/custom_app_bar.dart';
+import '../providers/current_diary_provider.dart';
+import '../providers/diary_history_provider.dart';
+import '../providers/profile_provider.dart';
+
+class RiwayatDiariPage extends ConsumerStatefulWidget {
   const RiwayatDiariPage({super.key});
 
   @override
-  State<RiwayatDiariPage> createState() => _RiwayatDiariPageState();
+  ConsumerState<RiwayatDiariPage> createState() => _RiwayatDiariPageState();
 }
 
-class _RiwayatDiariPageState extends State<RiwayatDiariPage> {
+class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
   final ScrollController _scrollController = ScrollController();
-  int? _expandedIndex;
-  late final List<GlobalKey> _itemKeys;
-
-  final List<Map<String, dynamic>> diaryEntries = [
-    {
-      'date': '12 October 2025',
-      'time': '08:30',
-      'condition': 'Baik',
-      'conditionIcon': Icons.sentiment_satisfied,
-      'conditionColor': Color(0xFF2D9744),
-      'conditionBgColor': Color(0xFFF6FFF8),
-      'metrics': {
-        'berat': '72 KG',
-        'tekanan': '120/80',
-        'detak': '72 BPM',
-      },
-      'note': '',
-      'gejala': 'Tidak ada gejala hari ini',
-      'aktivitas': ['Jalan Kaki', 'Senam'],
-      'konsumsi': [
-        {
-          'waktu': 'Sarapan Pagi',
-          'deskripsi': 'Nasi goreng, telur mata sapi, teh manis'
-        },
-        {
-          'waktu': 'Makan Siang',
-          'deskripsi': 'Nasi putih, ikan bakar, sayur bayam, tempe goreng'
-        },
-      ],
-      'catatan':
-          'Kondisi tubuh stabil dan cukup bertenaga. Sudah minum obat tepat waktu.',
-    },
-    {
-      'date': '11 October 2025',
-      'time': '10:15',
-      'condition': 'Cukup',
-      'conditionIcon': Icons.sentiment_neutral,
-      'conditionColor': Color(0xFFF59E0B),
-      'conditionBgColor': Color(0xFFFEF3C7),
-      'metrics': {
-        'berat': '72 KG',
-        'tekanan': '128/82',
-        'detak': '75 BPM',
-      },
-      'note':
-          'Sedikit lelah setelah aktivitas, tapi obat sudah diminum teratur',
-      'gejala': 'Lemas ringan setelah siang hari',
-      'aktivitas': ['Jalan Kaki'],
-      'konsumsi': [
-        {'waktu': 'Sarapan Pagi', 'deskripsi': 'Bubur ayam, teh hangat'},
-        {'waktu': 'Makan Malam', 'deskripsi': 'Sup sayur, ikan kukus'},
-      ],
-      'catatan':
-          'Perlu istirahat lebih banyak. Besok coba kurangi aktivitas berat.',
-    },
-    {
-      'date': '10 October 2025',
-      'time': '09:00',
-      'condition': 'Baik',
-      'conditionIcon': Icons.sentiment_satisfied,
-      'conditionColor': Color(0xFF2D9744),
-      'conditionBgColor': Color(0xFFF6FFF8),
-      'metrics': {
-        'berat': '72 KG',
-        'tekanan': '120/80',
-        'detak': '72 BPM',
-      },
-      'note': 'Kondisi baik, tekanan darah normal, jalan pagi 20 menit',
-      'gejala': 'Tidak ada gejala berarti',
-      'aktivitas': ['Jalan Kaki'],
-      'konsumsi': [
-        {
-          'waktu': 'Makan Siang',
-          'deskripsi': 'Nasi putih, ayam rebus, tumis bayam'
-        },
-      ],
-      'catatan':
-          'Tidur cukup semalam. Nafsu makan baik dan tidak ada keluhan tambahan.',
-    },
-  ];
+  final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
+  String? _expandedDiaryId;
 
   @override
   void initState() {
     super.initState();
-    _itemKeys = List.generate(diaryEntries.length, (_) => GlobalKey());
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadThisMonth();
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _toggleEntry(int index) {
-    final isAlreadyExpanded = _expandedIndex == index;
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final threshold = _scrollController.position.maxScrollExtent - 220;
+    if (_scrollController.position.pixels >= threshold) {
+      ref.read(diaryHistoryProvider.notifier).loadNextPage();
+    }
+  }
+
+  Future<void> _loadThisMonth() async {
+    final now = DateTime.now();
+    final startDate = DateTime(now.year, now.month, 1);
+    final endDate = DateTime(now.year, now.month + 1, 0);
+
+    await ref.read(diaryHistoryProvider.notifier).loadDiaryHistory(
+          page: 1,
+          limit: 10,
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
+  Future<void> _refreshHistory() async {
+    final state = ref.read(diaryHistoryProvider);
+    final now = DateTime.now();
+    final startDate = state.startDate ?? DateTime(now.year, now.month, 1);
+    final endDate = state.endDate ?? DateTime(now.year, now.month + 1, 0);
 
     setState(() {
-      _expandedIndex = isAlreadyExpanded ? null : index;
+      _expandedDiaryId = null;
     });
 
-    if (!isAlreadyExpanded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final itemContext = _itemKeys[index].currentContext;
-        if (itemContext != null) {
-          Scrollable.ensureVisible(
-            itemContext,
-            alignment: 0,
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      });
+    await ref.read(diaryHistoryProvider.notifier).refreshHistory(
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
+  Future<void> _toggleEntry(DiaryHistoryItem item) async {
+    final isExpanded = _expandedDiaryId == item.diaryId;
+
+    setState(() {
+      _expandedDiaryId = isExpanded ? null : item.diaryId;
+    });
+
+    if (isExpanded) return;
+
+    await ref.read(diaryHistoryProvider.notifier).loadDiaryDetail(item.diaryId);
+
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final key = _itemKeys[item.diaryId];
+      final ctx = key?.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+  }
+
+  DateTime _asDateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final state = ref.read(diaryHistoryProvider);
+    final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
+    final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentStart,
+      firstDate: DateTime(now.year - 5, 1, 1),
+      lastDate: DateTime(now.year + 2, 12, 31),
+    );
+
+    if (picked == null || !mounted) return;
+
+    var startDate = _asDateOnly(picked);
+    var endDate = _asDateOnly(currentEnd);
+
+    if (startDate.isAfter(endDate)) {
+      endDate = startDate;
     }
+
+    setState(() {
+      _expandedDiaryId = null;
+    });
+
+    await ref.read(diaryHistoryProvider.notifier).loadDiaryHistory(
+          page: 1,
+          limit: 10,
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
+  Future<void> _pickEndDate() async {
+    final now = DateTime.now();
+    final state = ref.read(diaryHistoryProvider);
+    final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
+    final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentEnd,
+      firstDate: DateTime(now.year - 5, 1, 1),
+      lastDate: DateTime(now.year + 2, 12, 31),
+    );
+
+    if (picked == null || !mounted) return;
+
+    var startDate = _asDateOnly(currentStart);
+    var endDate = _asDateOnly(picked);
+
+    if (endDate.isBefore(startDate)) {
+      startDate = endDate;
+    }
+
+    setState(() {
+      _expandedDiaryId = null;
+    });
+
+    await ref.read(diaryHistoryProvider.notifier).loadDiaryHistory(
+          page: 1,
+          limit: 10,
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agt',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _formatTime(DateTime? date) {
+    if (date == null) return '--:--';
+    return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(diaryHistoryProvider);
+    final startLabel =
+        state.startDate != null ? _formatDate(state.startDate) : 'Start date';
+    final endLabel =
+        state.endDate != null ? _formatDate(state.endDate) : 'End date';
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: CustomAppBar(
         title: 'Riwayat Diari',
         subtitle: 'Semua catatan kesehatan Anda',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
-      body: SingleChildScrollView(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Filter Periode
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.filter_list, size: 18),
-                label: const Text('Filter Periode'),
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF525252),
-                  side: const BorderSide(color: Color(0xFFE2E8F0)),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Diary Entries
-            ...List.generate(diaryEntries.length, (index) {
-              final entry = diaryEntries[index];
-              final isExpanded = _expandedIndex == index;
-
-              return Padding(
-                key: _itemKeys[index],
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: GestureDetector(
-                  onTap: () => _toggleEntry(index),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(
-                        color: const Color(0xFFE2E8F0),
-                        width: 1.5,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: RefreshIndicator(
+        onRefresh: _refreshHistory,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                entry['date'],
-                                style: const TextStyle(
-                                  color: Color(0xFF525252),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.event_available, size: 18),
+                            label: Text(startLabel),
+                            onPressed: state.isLoading ? null : _pickStartDate,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              side: const BorderSide(color: Color(0xFFD9E2EC)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
                               ),
-                              AnimatedCrossFade(
-                                firstChild: const SizedBox.shrink(),
-                                secondChild: Padding(
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: _ExpandedDiaryContent(entry: entry),
-                                ),
-                                crossFadeState: isExpanded
-                                    ? CrossFadeState.showSecond
-                                    : CrossFadeState.showFirst,
-                                duration: const Duration(milliseconds: 220),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        AnimatedRotation(
-                          turns: isExpanded ? 0.25 : 0,
-                          duration: const Duration(milliseconds: 220),
-                          child: const Padding(
-                            padding: EdgeInsets.only(top: 2),
-                            child: Icon(
-                              Icons.chevron_right,
-                              color: Color(0xFF94A3B8),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '-',
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.event, size: 18),
+                            label: Text(endLabel),
+                            onPressed: state.isLoading ? null : _pickEndDate,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              side: const BorderSide(color: Color(0xFFD9E2EC)),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '${state.totalItems} item',
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        // if (state.isLoading) ...[
+                        //   const SizedBox(width: 10),
+                        //   const SizedBox(
+                        //     width: 16,
+                        //     height: 16,
+                        //     child: CircularProgressIndicator(
+                        //       strokeWidth: 2.2,
+                        //       color: Color(0xFFE64060),
+                        //     ),
+                        //   ),
+                        //   const SizedBox(width: 6),
+                        //   const Text(
+                        //     'Memuat filter...',
+                        //     style: TextStyle(
+                        //       color: Color(0xFF64748B),
+                        //       fontSize: 12,
+                        //       fontWeight: FontWeight.w500,
+                        //     ),
+                        //   ),
+                        // ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (state.isLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFFE64060)),
+                  ),
+                )
+              else if (state.items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+                  child: Center(
+                    child: Text(
+                      'Belum ada riwayat diari pada periode ini',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...state.items.map((item) {
+                  final isExpanded = _expandedDiaryId == item.diaryId;
+                  final isDetailLoading =
+                      state.loadingDetailDiaryIds.contains(item.diaryId);
+                  final detail = state.detailsByDiaryId[item.diaryId];
+                  final detailError = state.detailErrorsByDiaryId[item.diaryId];
+
+                  _itemKeys[item.diaryId] ??= GlobalKey();
+
+                  return Padding(
+                    key: _itemKeys[item.diaryId],
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 7,
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _toggleEntry(item),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _formatDate(item.diaryDate),
+                                        style: const TextStyle(
+                                          color: Color(0xFF1E293B),
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        'Dibuat ${_formatTime(item.createdAt)}',
+                                        style: const TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                AnimatedRotation(
+                                  turns: isExpanded ? 0.25 : 0,
+                                  duration: const Duration(milliseconds: 220),
+                                  child: const Icon(
+                                    Icons.chevron_right,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            ClipRect(
+                              child: AnimatedSize(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeInOutCubic,
+                                alignment: Alignment.topCenter,
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 180),
+                                  switchInCurve: Curves.easeOut,
+                                  switchOutCurve: Curves.easeIn,
+                                  transitionBuilder: (child, animation) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    );
+                                  },
+                                  child: isExpanded
+                                      ? Padding(
+                                          key: ValueKey<String>(
+                                            'expanded-${item.diaryId}',
+                                          ),
+                                          padding:
+                                              const EdgeInsets.only(top: 12),
+                                          child: _ExpandedArea(
+                                            isLoading: isDetailLoading,
+                                            error: detailError,
+                                            detail: detail,
+                                            onRetry: () => ref
+                                                .read(diaryHistoryProvider
+                                                    .notifier)
+                                                .loadDiaryDetail(item.diaryId),
+                                            formatTime: _formatTime,
+                                          ),
+                                        )
+                                      : const SizedBox(
+                                          key: ValueKey<String>('collapsed'),
+                                        ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              if (state.error != null && state.items.isEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Text(
+                    state.error!,
+                    style: const TextStyle(
+                      color: Color(0xFFB91C1C),
+                      fontSize: 13,
+                    ),
                   ),
                 ),
-              );
-            }),
-            const SizedBox(height: 20),
-          ],
+              if (state.isLoadingMore)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8, bottom: 18),
+                  child: Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.3,
+                        color: Color(0xFFE64060),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 18),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ExpandedDiaryContent extends StatelessWidget {
-  final Map<String, dynamic> entry;
+class _ExpandedArea extends StatelessWidget {
+  final bool isLoading;
+  final String? error;
+  final DiaryDetail? detail;
+  final VoidCallback onRetry;
+  final String Function(DateTime?) formatTime;
 
-  const _ExpandedDiaryContent({required this.entry});
+  const _ExpandedArea({
+    required this.isLoading,
+    required this.error,
+    required this.detail,
+    required this.onRetry,
+    required this.formatTime,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final metrics = (entry['metrics'] as Map<String, dynamic>?) ?? {};
-    final konsumsi = (entry['konsumsi'] as List?) ?? const [];
-    final aktivitas = (entry['aktivitas'] as List?) ?? const [];
-    final tekanan = (metrics['tekanan']?.toString() ?? '').split('/');
-    final sistolik = tekanan.isNotEmpty ? tekanan[0] : '-';
-    final diastolik = tekanan.length > 1 ? tekanan[1] : '-';
+    if (isLoading) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: Color(0xFFE64060),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              error!,
+              style: const TextStyle(
+                color: Color(0xFFB91C1C),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                foregroundColor: const Color(0xFFB91C1C),
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (detail == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _ExpandedDiaryContent(
+      detail: detail!,
+      formatTime: formatTime,
+    );
+  }
+}
+
+class _ExpandedDiaryContent extends StatelessWidget {
+  final DiaryDetail detail;
+  final String Function(DateTime?) formatTime;
+
+  const _ExpandedDiaryContent({
+    required this.detail,
+    required this.formatTime,
+  });
+
+  String _v(num? value, [String unit = '']) {
+    if (value == null) return '-';
+    return unit.isEmpty ? '$value' : '$value $unit';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bodyMetrics = [...detail.bodyMetrics]..sort((a, b) =>
+        (b.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    final symptoms = [...detail.symptoms]..sort((a, b) =>
+        (b.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    final activities = [...detail.activities]..sort((a, b) =>
+        (b.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    final consumptions = [...detail.consumptions]..sort((a, b) =>
+        (b.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
+
+    final latestMetric = bodyMetrics.isNotEmpty ? bodyMetrics.first : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+        const SizedBox(height: 12),
         const Text(
-          'Kondisi',
+          'Ringkasan Metriks',
           style: TextStyle(
-            color: Color(0xFF525252),
+            color: Color(0xFF1E293B),
             fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: entry['conditionBgColor'],
-            border: Border.all(
-              color: (entry['conditionColor'] as Color).withOpacity(0.3),
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                entry['conditionIcon'],
-                color: entry['conditionColor'],
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '${entry['condition']} - ${entry['time']}',
-                style: TextStyle(
-                  color: entry['conditionColor'],
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        const Text(
-          'Metriks Kesehatan',
-          style: TextStyle(
-            color: Color(0xFF525252),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Berat: ${metrics['berat'] ?? '-'}',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-              ),
-              Text(
-                'Detak: ${metrics['detak'] ?? '-'}',
-                style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _MetricPill(label: 'Sistolik', value: sistolik),
-            _MetricPill(label: 'Diastolik', value: diastolik),
-            _MetricPill(label: 'Tekanan', value: metrics['tekanan'] ?? '-'),
-          ],
-        ),
-        const SizedBox(height: 14),
-        const Text(
-          'Gejala',
-          style: TextStyle(
-            color: Color(0xFF525252),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7),
-            border: Border.all(color: const Color(0xFFFBD34D)),
-            borderRadius: BorderRadius.circular(10),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            entry['gejala']?.toString().isNotEmpty == true
-                ? entry['gejala']
-                : '-',
-            style: const TextStyle(color: Color(0xFF62748E), fontSize: 12),
+            'Berat ${_v(latestMetric?.bodyWeight, 'kg')} • Tekanan ${_v(latestMetric?.systolicPressure)}/${_v(latestMetric?.diastolicPressure)} mmHg • Nadi ${_v(latestMetric?.heartRate, 'BPM')}',
+            style: const TextStyle(
+              color: Color(0xFF334155),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
           ),
         ),
-        const SizedBox(height: 14),
-        const Text(
-          'Aktivitas',
-          style: TextStyle(
-            color: Color(0xFF525252),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: aktivitas
+        const SizedBox(height: 12),
+        _SimpleSection(
+          title: 'Gejala',
+          isEmpty: symptoms.isEmpty,
+          emptyLabel: 'Tidak ada gejala',
+          children: symptoms
               .map(
-                (activity) => Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE3F2FD),
-                    border: Border.all(color: const Color(0xFFCBDCFE)),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Text(
-                    activity.toString(),
-                    style: const TextStyle(
-                      color: Color(0xFF285DBE),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                (symptom) => _SimpleRow(
+                  leading: formatTime(symptom.timeStamp),
+                  title: symptom.symptomName,
+                  subtitle:
+                      'Intensitas ${symptom.intensity?.toString() ?? '-'}${(symptom.note ?? '').isEmpty ? '' : ' • ${symptom.note}'}',
                 ),
               )
               .toList(),
         ),
-        const SizedBox(height: 14),
-        const Text(
-          'Konsumsi Harian',
-          style: TextStyle(
-            color: Color(0xFF525252),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+        _SimpleSection(
+          title: 'Aktivitas',
+          isEmpty: activities.isEmpty,
+          emptyLabel: 'Tidak ada aktivitas',
+          children: activities
+              .map(
+                (activity) => _SimpleRow(
+                  leading: formatTime(activity.timeStamp),
+                  title: activity.name,
+                  subtitle:
+                      '${activity.duration?.toString() ?? '-'} menit • ${activity.heartRate?.toString() ?? '-'} BPM • ${(activity.userFeeling ?? '').isEmpty ? '-' : activity.userFeeling}',
+                ),
+              )
+              .toList(),
         ),
-        const SizedBox(height: 8),
-        ...konsumsi.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['waktu']?.toString() ?? '-',
-                    style: const TextStyle(
-                      color: Color(0xFF525252),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item['deskripsi']?.toString() ?? '-',
-                    style: const TextStyle(
-                      color: Color(0xFF62748E),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Catatan Tambahan',
-          style: TextStyle(
-            color: Color(0xFF525252),
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            (entry['catatan']?.toString().isNotEmpty == true
-                    ? entry['catatan']
-                    : entry['note'])
-                .toString(),
-            style: const TextStyle(
-              color: Color(0xFF62748E),
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
+        _SimpleSection(
+          title: 'Konsumsi',
+          isEmpty: consumptions.isEmpty,
+          emptyLabel: 'Tidak ada konsumsi',
+          children: consumptions
+              .map(
+                (item) => _SimpleRow(
+                  leading: formatTime(item.timeStamp),
+                  title: item.name,
+                  subtitle:
+                      '${item.type} • ${(item.portion ?? '').isEmpty ? '-' : item.portion}${(item.note ?? '').isEmpty ? '' : ' • ${item.note}'}',
+                ),
+              )
+              .toList(),
         ),
       ],
     );
   }
 }
 
-class _MetricPill extends StatelessWidget {
-  final String label;
-  final dynamic value;
+class _SimpleSection extends StatelessWidget {
+  final String title;
+  final bool isEmpty;
+  final String emptyLabel;
+  final List<Widget> children;
 
-  const _MetricPill({required this.label, required this.value});
+  const _SimpleSection({
+    required this.title,
+    required this.isEmpty,
+    required this.emptyLabel,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF5F8FF),
-          border: Border.all(color: const Color(0xFFCBDCFE)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFF62748E),
-                fontSize: 10,
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
             ),
-            const SizedBox(height: 4),
+          ),
+          const SizedBox(height: 6),
+          if (isEmpty)
             Text(
-              value.toString(),
+              emptyLabel,
               style: const TextStyle(
-                color: Color(0xFF525252),
+                color: Color(0xFF64748B),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            )
+          else
+            ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _SimpleRow extends StatelessWidget {
+  final String leading;
+  final String title;
+  final String subtitle;
+
+  const _SimpleRow({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 48,
+            child: Text(
+              leading,
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
                 fontSize: 12,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

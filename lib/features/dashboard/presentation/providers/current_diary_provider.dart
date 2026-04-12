@@ -12,22 +12,39 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
 
   final ProfileApi _profileApi;
 
-  Future<void> loadCurrentDiaryForToday() async {
-    state = state.copyWith(isLoading: true, error: null);
+  Future<void> ensureCurrentDiaryLoaded() async {
+    if (state.hasLoadedOnce) return;
+    await loadCurrentDiaryForToday();
+  }
+
+  Future<void> loadCurrentDiaryForToday({bool preserveCurrentData = false}) async {
+    final hasCurrentData = state.diary != null;
+    final shouldPreserve = preserveCurrentData && hasCurrentData;
+
+    state = state.copyWith(
+      isLoading: !shouldPreserve,
+      isRefreshing: shouldPreserve,
+      error: null,
+    );
 
     try {
       final diary = await _profileApi.fetchDiaryDetailByDate(DateTime.now());
 
       if (diary == null) {
-        state = const CurrentDiaryState(
+        state = CurrentDiaryState(
           isLoading: false,
+          isRefreshing: false,
+          hasLoadedOnce: true,
           hasCurrentDiary: false,
+          diary: shouldPreserve ? state.diary : null,
         );
         return;
       }
 
       state = CurrentDiaryState(
         isLoading: false,
+        isRefreshing: false,
+        hasLoadedOnce: true,
         hasCurrentDiary: true,
         diaryId: diary.diaryId,
         diary: diary,
@@ -37,19 +54,28 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       if (message.contains('not found') ||
           message.contains('404') ||
           message.contains('tidak ditemukan')) {
-        state = const CurrentDiaryState(
+        state = CurrentDiaryState(
           isLoading: false,
+          isRefreshing: false,
+          hasLoadedOnce: true,
           hasCurrentDiary: false,
+          diary: shouldPreserve ? state.diary : null,
         );
         return;
       }
 
       state = state.copyWith(
         isLoading: false,
+        isRefreshing: false,
+        hasLoadedOnce: true,
         error: e.toString(),
-        hasCurrentDiary: false,
+        hasCurrentDiary: shouldPreserve ? state.hasCurrentDiary : false,
       );
     }
+  }
+
+  Future<void> invalidateCurrentDiaryQuery() async {
+    await loadCurrentDiaryForToday(preserveCurrentData: true);
   }
 
   Future<void> addSymptomsFromModal(Map<String, dynamic> payload) async {
@@ -78,7 +104,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       );
     }
 
-    await loadCurrentDiaryForToday();
   }
 
   Future<void> addConsumptionsFromModal(Map<String, dynamic> payload) async {
@@ -102,7 +127,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       note: note,
     );
 
-    await loadCurrentDiaryForToday();
   }
 
   Future<void> addActivitiesFromModal(Map<String, dynamic> payload) async {
@@ -156,7 +180,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       userFeeling: userFeeling,
     );
 
-    await loadCurrentDiaryForToday();
   }
 
   Future<void> addBodyMetricsFromModal(Map<String, dynamic> payload) async {
@@ -206,12 +229,13 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       heartRate: heartRate,
     );
 
-    await loadCurrentDiaryForToday();
   }
 }
 
 class CurrentDiaryState {
   final bool isLoading;
+  final bool isRefreshing;
+  final bool hasLoadedOnce;
   final bool hasCurrentDiary;
   final String? diaryId;
   final DiaryDetail? diary;
@@ -219,6 +243,8 @@ class CurrentDiaryState {
 
   const CurrentDiaryState({
     this.isLoading = false,
+    this.isRefreshing = false,
+    this.hasLoadedOnce = false,
     this.hasCurrentDiary = false,
     this.diaryId,
     this.diary,
@@ -227,6 +253,8 @@ class CurrentDiaryState {
 
   CurrentDiaryState copyWith({
     bool? isLoading,
+    bool? isRefreshing,
+    bool? hasLoadedOnce,
     bool? hasCurrentDiary,
     String? diaryId,
     DiaryDetail? diary,
@@ -234,6 +262,8 @@ class CurrentDiaryState {
   }) {
     return CurrentDiaryState(
       isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      hasLoadedOnce: hasLoadedOnce ?? this.hasLoadedOnce,
       hasCurrentDiary: hasCurrentDiary ?? this.hasCurrentDiary,
       diaryId: diaryId ?? this.diaryId,
       diary: diary ?? this.diary,

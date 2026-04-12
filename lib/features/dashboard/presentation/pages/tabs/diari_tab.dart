@@ -18,7 +18,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(currentDiaryProvider.notifier).loadCurrentDiaryForToday();
+      ref.read(currentDiaryProvider.notifier).ensureCurrentDiaryLoaded();
     });
   }
 
@@ -66,26 +66,44 @@ class _DiariTabState extends ConsumerState<DiariTab> {
     try {
       if (section == 'gejala') {
         if (result['saved'] == true) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
           AppToast.success(context, 'Gejala berhasil disimpan');
         } else if ((result['symptoms'] as List?)?.isNotEmpty == true) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addSymptomsFromModal(result);
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
           if (!mounted) return;
           AppToast.success(context, 'Gejala berhasil disimpan');
         }
       } else if (section.contains('konsumsi')) {
         if (result['saved'] == true) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
           AppToast.success(context, 'Konsumsi harian berhasil disimpan');
         } else if ((result['name'] ?? '').toString().trim().isNotEmpty) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addConsumptionsFromModal(result);
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
           if (!mounted) return;
           AppToast.success(context, 'Konsumsi harian berhasil disimpan');
         }
       } else if (section.contains('aktivitas')) {
         if (result['saved'] == true) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
           AppToast.success(context, 'Aktivitas berhasil disimpan');
         } else if (((result['name'] ?? result['activity']) ?? '')
             .toString()
@@ -94,11 +112,18 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           await ref
               .read(currentDiaryProvider.notifier)
               .addActivitiesFromModal(result);
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
           if (!mounted) return;
           AppToast.success(context, 'Aktivitas berhasil disimpan');
         }
       } else if (section.contains('metriks')) {
         if (result['saved'] == true) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
           AppToast.success(context, 'Metriks kesehatan berhasil disimpan');
         } else if (result['bodyHeight'] != null ||
             result['bodyWeight'] != null ||
@@ -108,6 +133,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           await ref
               .read(currentDiaryProvider.notifier)
               .addBodyMetricsFromModal(result);
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
           if (!mounted) return;
           AppToast.success(context, 'Metriks kesehatan berhasil disimpan');
         }
@@ -197,6 +225,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
     final diaryState = ref.watch(currentDiaryProvider);
     final diary = diaryState.diary;
     final isSkeleton = diaryState.isLoading;
+    final isRefreshing = diaryState.isRefreshing;
     int compareByTimeDesc(DateTime? a, DateTime? b) {
       final at = a ?? DateTime.fromMillisecondsSinceEpoch(0);
       final bt = b ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -216,14 +245,15 @@ class _DiariTabState extends ConsumerState<DiariTab> {
         ? diary!.bodyMetrics.first
         : null;
     final weightDisplay =
-      isSkeleton ? '74.0' : (latestMetric?.bodyWeight?.toString() ?? '-');
-    final systolicDisplay =
-      isSkeleton ? '122' : (latestMetric?.systolicPressure?.toString() ?? '-');
+        isSkeleton ? '74.0' : (latestMetric?.bodyWeight?.toString() ?? '-');
+    final systolicDisplay = isSkeleton
+        ? '122'
+        : (latestMetric?.systolicPressure?.toString() ?? '-');
     final diastolicDisplay = isSkeleton
-      ? '78'
-      : (latestMetric?.diastolicPressure?.toString() ?? '-');
+        ? '78'
+        : (latestMetric?.diastolicPressure?.toString() ?? '-');
     final heartRateDisplay =
-      isSkeleton ? '98' : (latestMetric?.heartRate?.toString() ?? '-');
+        isSkeleton ? '98' : (latestMetric?.heartRate?.toString() ?? '-');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -246,694 +276,710 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                 ),
                 child: Stack(
                   children: [
-                  // Red gradient background header
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: 120,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(35),
-                        bottomRight: Radius.circular(35),
+                    if (isRefreshing)
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: LinearProgressIndicator(
+                          minHeight: 2,
+                          color: Color(0xFFE64060),
+                          backgroundColor: Color(0xFFF1F5F9),
+                        ),
                       ),
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0xFFE75480),
-                              Color(0xFFE64060),
-                            ],
+                    // Red gradient background header
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 120,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(35),
+                          bottomRight: Radius.circular(35),
+                        ),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0xFFE75480),
+                                Color(0xFFE64060),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Content
-                  Column(
-                    children: [
-                      // Header
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0, vertical: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Diari Kesehatan',
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
+                    // Content
+                    Column(
+                      children: [
+                        // Header
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0, vertical: 16.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Diari Kesehatan',
+                                    style: TextStyle(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _todayLabel(),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.white,
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    _todayLabel(),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
                                   ),
+                                ],
+                              ),
+                              if (!isSkeleton)
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () => context.push('/home/diary'),
+                                      child: Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.history,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          context.push('/home/diary-qr'),
+                                      child: Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.2),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(
+                                          Icons.qr_code_scanner,
+                                          color: Colors.white,
+                                          size: 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            if (!isSkeleton)
+                            ],
+                          ),
+                        ),
+
+                        // Health Metrics Section
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 24),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.025),
+                                blurRadius: 14,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Row(
                                 children: [
-                                  GestureDetector(
-                                    onTap: () => context.push('/home/diary'),
-                                    child: Container(
-                                      width: 48,
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.history,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
+                                  const Icon(Icons.favorite,
+                                      color: Color(0xFFE64060), size: 24),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Metriks Kesehatan',
+                                    style: TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF525252),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  GestureDetector(
-                                    onTap: () => context.push('/home/diary-qr'),
-                                    child: Container(
-                                      width: 48,
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(
-                                        Icons.qr_code_scanner,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
+                                  if (!isSkeleton) ...[
+                                    const Spacer(),
+                                    _SectionAddButton(
+                                      onTap: () => _openSectionModal(
+                                          'Metriks Kesehatan'),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
-                          ],
-                        ),
-                      ),
-
-                      // Health Metrics Section
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.025),
-                              blurRadius: 14,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.favorite,
-                                    color: Color(0xFFE64060), size: 24),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Metriks Kesehatan',
-                                  style: TextStyle(
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF525252),
-                                  ),
-                                ),
-                                if (!isSkeleton) ...[
-                                  const Spacer(),
-                                  _SectionAddButton(
-                                    onTap: () =>
-                                        _openSectionModal('Metriks Kesehatan'),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Berat Badan',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF62748E),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  weightDisplay,
-                                  style: const TextStyle(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF525252),
-                                  ),
-                                ),
-                                const Text(
-                                  'Kg',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: Color(0xFF62748E),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Sistolik',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Color(0xFF62748E),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            systolicDisplay,
-                                            style: const TextStyle(
-                                              fontSize: 30,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF525252),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Text(
-                                            'mmHg',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFF62748E),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Diastolik',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Color(0xFF62748E),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            diastolicDisplay,
-                                            style: const TextStyle(
-                                              fontSize: 30,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF525252),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          const Text(
-                                            'mmHg',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Color(0xFF62748E),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            const Text(
-                              'Detak Jantung',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF62748E),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  heartRateDisplay,
-                                  style: const TextStyle(
-                                    fontSize: 33,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF525252),
-                                  ),
-                                ),
-                                const Text(
-                                  'BPM',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Color(0xFF62748E),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            const Divider(color: Color(0xFFE2E8F0), height: 1),
-                            const SizedBox(height: 14),
-                            const Text(
-                              'Riwayat Metriks Hari Ini',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF334155),
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            if (bodyMetrics.isEmpty && !isSkeleton)
+                              const SizedBox(height: 16),
                               const Text(
-                                'Belum ada metrik tersimpan',
+                                'Berat Badan',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  color: Color(0xFF62748E),
-                                ),
-                              )
-                            else
-                              ...(isSkeleton && bodyMetrics.isEmpty
-                                  ? List.generate(2, (index) => index)
-                                  : bodyMetrics.asMap().keys)
-                                .map(
-                                    (entry) => Padding(
-                                      padding: EdgeInsets.only(
-                                  bottom: isSkeleton
-                                    ? (entry == 1 ? 0 : 10)
-                                    : (entry == bodyMetrics.length - 1
-                                      ? 0
-                                      : 10),
-                                      ),
-                                      child: _BodyMetricEntryItem(
-                                  conditionLabel: isSkeleton
-                                    ? 'Pagi'
-                                    : _formatConditionTag(
-                                      bodyMetrics[entry].conditionTag,
-                                      ),
-                                  recordedTime: isSkeleton
-                                    ? '07:10'
-                                    : _formatTime(
-                                      bodyMetrics[entry].timeStamp,
-                                      ),
-                                  bodyHeight: isSkeleton
-                                    ? 170
-                                    : bodyMetrics[entry].bodyHeight,
-                                  bodyWeight: isSkeleton
-                                    ? 74
-                                    : bodyMetrics[entry].bodyWeight,
-                                  systolicPressure: isSkeleton
-                                    ? 122
-                                    : bodyMetrics[entry]
-                                      .systolicPressure,
-                                  diastolicPressure: isSkeleton
-                                    ? 78
-                                    : bodyMetrics[entry]
-                                      .diastolicPressure,
-                                  heartRate: isSkeleton
-                                    ? 98
-                                    : bodyMetrics[entry].heartRate,
-                                  showDivider: isSkeleton
-                                    ? entry != 1
-                                    : entry != bodyMetrics.length - 1,
-                                      ),
-                                    ),
-                                  ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Filter Periode
-                      // Padding(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      //   child: Row(
-                      //     children: [
-                      //       const Icon(Icons.tune, color: Color(0xFF62748E)),
-                      //       const SizedBox(width: 8),
-                      //       const Text(
-                      //         'Filter Periode',
-                      //         style: TextStyle(
-                      //           fontSize: 16,
-                      //           fontWeight: FontWeight.w600,
-                      //           color: Color(0xFF525252),
-                      //         ),
-                      //       ),
-                      //     ],
-                      //   ),
-                      // ),
-                      // const SizedBox(height: 16),
-
-                      // Kondisi Section
-                      // Padding(
-                      //   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                      //   child: _SectionCard(
-                      //     child: Column(
-                      //       crossAxisAlignment: CrossAxisAlignment.start,
-                      //       children: [
-                      //         Row(
-                      //           children: [
-                      //             const Icon(Icons.favorite,
-                      //                 color: Color(0xFF2D9744)),
-                      //             const SizedBox(width: 8),
-                      //             const Text(
-                      //               'Kondisi',
-                      //               style: TextStyle(
-                      //                 fontSize: 16,
-                      //                 fontWeight: FontWeight.w600,
-                      //                 color: Color(0xFF525252),
-                      //               ),
-                      //             ),
-                      //             const Spacer(),
-                      //             _SectionAddButton(
-                      //               onTap: () => _openSectionModal('Kondisi'),
-                      //             ),
-                      //           ],
-                      //         ),
-                      //         const SizedBox(height: 12),
-                      //         if (conditions.isEmpty)
-                      //           const Text(
-                      //             'Belum ada kondisi hari ini',
-                      //             style: TextStyle(
-                      //               fontSize: 14,
-                      //               color: Color(0xFF62748E),
-                      //             ),
-                      //           )
-                      //         else
-                      //           ...conditions.map((metric) {
-                      //             final tag = metric.conditionTag ?? 'Kondisi';
-                      //             return Padding(
-                      //               padding: const EdgeInsets.only(bottom: 8),
-                      //               child: _ConditionItem(
-                      //                 title:
-                      //                     tag[0].toUpperCase() + tag.substring(1),
-                      //                 status:
-                      //                     '${tag.toUpperCase()} - ${_formatTime(metric.timeStamp)}',
-                      //                 icon: Icons.sentiment_satisfied,
-                      //                 color: const Color(0xFF2D9744),
-                      //                 onDelete: () {},
-                      //               ),
-                      //             );
-                      //           }),
-                      //       ],
-                      //     ),
-                      //   ),
-                      // ),
-                      // const SizedBox(height: 20),
-
-                      // Gejala Section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: _SectionCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.info_outline,
-                                      color: Color(0xFFE08B3D), size: 24),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Gejala',
-                                    style: TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF525252),
-                                    ),
-                                  ),
-                                  if (!isSkeleton) ...[
-                                    const Spacer(),
-                                    _SectionAddButton(
-                                      onTap: () => _openSectionModal('Gejala'),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                symptoms.isNotEmpty
-                                    ? 'Total ${symptoms.length} gejala tercatat'
-                                    : 'Tidak ada gejala hari ini',
-                                style: const TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 16,
                                   color: Color(0xFF62748E),
                                 ),
                               ),
-                                if (symptoms.isNotEmpty || isSkeleton) ...[
-                                const SizedBox(height: 10),
-                                ...(isSkeleton && symptoms.isEmpty
-                                    ? List.generate(2, (index) => index)
-                                    : symptoms.asMap().keys)
-                                  .map(
-                                      (entry) => Padding(
-                                        padding: EdgeInsets.only(
-                                      bottom: isSkeleton
-                                        ? (entry == 1 ? 0 : 10)
-                                        : (entry == symptoms.length - 1
-                                          ? 0
-                                          : 10),
-                                        ),
-                                        child: _SymptomEntryItem(
-                                      name: isSkeleton
-                                        ? 'Pusing'
-                                        : symptoms[entry].symptomName,
-                                      intensity: isSkeleton
-                                        ? 4
-                                        : symptoms[entry].intensity,
-                                      note: isSkeleton
-                                        ? 'Muncul setelah bangun tidur'
-                                        : symptoms[entry].note,
-                                      recordedTime: isSkeleton
-                                        ? (entry == 0 ? '14:52' : '07:30')
-                                        : _formatTime(
-                                          symptoms[entry].timeStamp,
-                                        ),
-                                      showDivider: isSkeleton
-                                        ? entry != 1
-                                        : entry != symptoms.length - 1,
-                                        ),
-                                      ),
-                                    ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Aktivitas Section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: _SectionCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                              const SizedBox(height: 8),
                               Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Icon(Icons.directions_run,
-                                      color: Color(0xFF285DBE), size: 24),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Aktivitas',
-                                    style: TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w600,
+                                  Text(
+                                    weightDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.bold,
                                       color: Color(0xFF525252),
                                     ),
                                   ),
-                                  if (!isSkeleton) ...[
-                                    const Spacer(),
-                                    _SectionAddButton(
-                                      onTap: () =>
-                                          _openSectionModal('Aktivitas'),
+                                  const Text(
+                                    'Kg',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Color(0xFF62748E),
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              if (activities.isEmpty && !isSkeleton)
+                              const SizedBox(height: 20),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Sistolik',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: Color(0xFF62748E),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              systolicDisplay,
+                                              style: const TextStyle(
+                                                fontSize: 30,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF525252),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text(
+                                              'mmHg',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF62748E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Diastolik',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: Color(0xFF62748E),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              diastolicDisplay,
+                                              style: const TextStyle(
+                                                fontSize: 30,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF525252),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Text(
+                                              'mmHg',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Color(0xFF62748E),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Detak Jantung',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF62748E),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    heartRateDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 33,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF525252),
+                                    ),
+                                  ),
+                                  const Text(
+                                    'BPM',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF62748E),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              const Divider(
+                                  color: Color(0xFFE2E8F0), height: 1),
+                              const SizedBox(height: 14),
+                              const Text(
+                                'Riwayat Metriks Hari Ini',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF334155),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              if (bodyMetrics.isEmpty && !isSkeleton)
                                 const Text(
-                                  'Belum ada aktivitas hari ini',
+                                  'Belum ada metrik tersimpan',
                                   style: TextStyle(
                                     fontSize: 15,
                                     color: Color(0xFF62748E),
                                   ),
                                 )
                               else
-                                ...(isSkeleton && activities.isEmpty
-                                    ? List.generate(2, (index) => index)
-                                    : activities.asMap().keys)
-                                  .map(
-                                      (entry) => Padding(
-                                        padding: EdgeInsets.only(
+                                ...(isSkeleton && bodyMetrics.isEmpty
+                                        ? List.generate(2, (index) => index)
+                                        : bodyMetrics.asMap().keys)
+                                    .map(
+                                  (entry) => Padding(
+                                    padding: EdgeInsets.only(
                                       bottom: isSkeleton
-                                        ? (entry == 1 ? 0 : 10)
-                                        : (entry == activities.length - 1
-                                          ? 0
-                                          : 10),
-                                        ),
-                                        child: _ActivityEntryItem(
-                                      name: isSkeleton
-                                        ? 'Jalan kaki'
-                                        : activities[entry].name,
-                                      duration: isSkeleton
-                                        ? 30
-                                        : activities[entry].duration,
+                                          ? (entry == 1 ? 0 : 10)
+                                          : (entry == bodyMetrics.length - 1
+                                              ? 0
+                                              : 10),
+                                    ),
+                                    child: _BodyMetricEntryItem(
+                                      conditionLabel: isSkeleton
+                                          ? 'Pagi'
+                                          : _formatConditionTag(
+                                              bodyMetrics[entry].conditionTag,
+                                            ),
+                                      recordedTime: isSkeleton
+                                          ? '07:10'
+                                          : _formatTime(
+                                              bodyMetrics[entry].timeStamp,
+                                            ),
+                                      bodyHeight: isSkeleton
+                                          ? 170
+                                          : bodyMetrics[entry].bodyHeight,
+                                      bodyWeight: isSkeleton
+                                          ? 74
+                                          : bodyMetrics[entry].bodyWeight,
+                                      systolicPressure: isSkeleton
+                                          ? 122
+                                          : bodyMetrics[entry].systolicPressure,
+                                      diastolicPressure: isSkeleton
+                                          ? 78
+                                          : bodyMetrics[entry]
+                                              .diastolicPressure,
                                       heartRate: isSkeleton
-                                        ? 98
-                                        : activities[entry].heartRate,
-                                      feeling: isSkeleton
-                                        ? 'lebih baik'
-                                        : activities[entry].userFeeling,
-                                      recordedTime: isSkeleton
-                                        ? (entry == 0 ? '14:53' : '14:52')
-                                        : _formatTime(
-                                          activities[entry].timeStamp,
-                                        ),
+                                          ? 98
+                                          : bodyMetrics[entry].heartRate,
                                       showDivider: isSkeleton
-                                        ? entry != 1
-                                        : entry != activities.length - 1,
-                                        ),
-                                      ),
+                                          ? entry != 1
+                                          : entry != bodyMetrics.length - 1,
                                     ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 20),
 
-                      // Konsumsi Harian Section
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                        child: _SectionCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.restaurant,
-                                      color: Color(0xFF2D9744), size: 24),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Konsumsi Harian',
-                                    style: TextStyle(
-                                      fontSize: 19,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF525252),
-                                    ),
-                                  ),
-                                  if (!isSkeleton) ...[
-                                    const Spacer(),
-                                    _SectionAddButton(
-                                      onTap: () =>
-                                          _openSectionModal('Konsumsi Harian'),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              if (consumptions.isEmpty && !isSkeleton)
-                                const Text(
-                                  'Belum ada konsumsi hari ini',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    color: Color(0xFF62748E),
-                                  ),
-                                )
-                              else
-                                ...(isSkeleton && consumptions.isEmpty
-                                    ? List.generate(2, (index) => index)
-                                    : consumptions.asMap().keys)
-                                  .map(
-                                      (entry) => Padding(
-                                        padding: EdgeInsets.only(
-                                      bottom: isSkeleton
-                                        ? (entry == 1 ? 0 : 12)
-                                        : (entry ==
-                                            consumptions.length - 1
-                                          ? 0
-                                          : 12),
-                                        ),
-                                        child: _ConsumptionEntryItem(
-                                      typeLabel: isSkeleton
-                                        ? 'Makanan'
-                                        : _formatConsumptionType(
-                                          consumptions[entry].type,
-                                        ),
-                                      title: isSkeleton
-                                        ? (entry == 0
-                                          ? 'Oatmeal'
-                                          : 'Aspirin')
-                                        : consumptions[entry].name,
-                                      portion: isSkeleton
-                                        ? (entry == 0
-                                          ? '1 mangkuk'
-                                          : '1 tablet')
-                                        : consumptions[entry].portion,
-                                      note: isSkeleton
-                                        ? (entry == 0
-                                          ? null
-                                          : 'Sesudah makan malam')
-                                        : consumptions[entry].note,
-                                      recordedTime: isSkeleton
-                                        ? (entry == 0 ? '14:53' : '21:15')
-                                        : _formatTime(
-                                          consumptions[entry].timeStamp,
-                                        ),
-                                      showDivider: isSkeleton
-                                        ? entry != 1
-                                        : entry !=
-                                          consumptions.length - 1,
-                                        ),
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (diaryState.error != null) ...[
-                        const SizedBox(height: 16),
+                        // Filter Periode
+                        // Padding(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        //   child: Row(
+                        //     children: [
+                        //       const Icon(Icons.tune, color: Color(0xFF62748E)),
+                        //       const SizedBox(width: 8),
+                        //       const Text(
+                        //         'Filter Periode',
+                        //         style: TextStyle(
+                        //           fontSize: 16,
+                        //           fontWeight: FontWeight.w600,
+                        //           color: Color(0xFF525252),
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 16),
+
+                        // Kondisi Section
+                        // Padding(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        //   child: _SectionCard(
+                        //     child: Column(
+                        //       crossAxisAlignment: CrossAxisAlignment.start,
+                        //       children: [
+                        //         Row(
+                        //           children: [
+                        //             const Icon(Icons.favorite,
+                        //                 color: Color(0xFF2D9744)),
+                        //             const SizedBox(width: 8),
+                        //             const Text(
+                        //               'Kondisi',
+                        //               style: TextStyle(
+                        //                 fontSize: 16,
+                        //                 fontWeight: FontWeight.w600,
+                        //                 color: Color(0xFF525252),
+                        //               ),
+                        //             ),
+                        //             const Spacer(),
+                        //             _SectionAddButton(
+                        //               onTap: () => _openSectionModal('Kondisi'),
+                        //             ),
+                        //           ],
+                        //         ),
+                        //         const SizedBox(height: 12),
+                        //         if (conditions.isEmpty)
+                        //           const Text(
+                        //             'Belum ada kondisi hari ini',
+                        //             style: TextStyle(
+                        //               fontSize: 14,
+                        //               color: Color(0xFF62748E),
+                        //             ),
+                        //           )
+                        //         else
+                        //           ...conditions.map((metric) {
+                        //             final tag = metric.conditionTag ?? 'Kondisi';
+                        //             return Padding(
+                        //               padding: const EdgeInsets.only(bottom: 8),
+                        //               child: _ConditionItem(
+                        //                 title:
+                        //                     tag[0].toUpperCase() + tag.substring(1),
+                        //                 status:
+                        //                     '${tag.toUpperCase()} - ${_formatTime(metric.timeStamp)}',
+                        //                 icon: Icons.sentiment_satisfied,
+                        //                 color: const Color(0xFF2D9744),
+                        //                 onDelete: () {},
+                        //               ),
+                        //             );
+                        //           }),
+                        //       ],
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 20),
+
+                        // Gejala Section
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          child: Text(
-                            diaryState.error!,
-                            style: const TextStyle(
-                              color: Color(0xFFB91C1C),
-                              fontSize: 14,
+                          child: _SectionCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.info_outline,
+                                        color: Color(0xFFE08B3D), size: 24),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Gejala',
+                                      style: TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF525252),
+                                      ),
+                                    ),
+                                    if (!isSkeleton) ...[
+                                      const Spacer(),
+                                      _SectionAddButton(
+                                        onTap: () =>
+                                            _openSectionModal('Gejala'),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  symptoms.isNotEmpty
+                                      ? 'Total ${symptoms.length} gejala tercatat'
+                                      : 'Tidak ada gejala hari ini',
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Color(0xFF62748E),
+                                  ),
+                                ),
+                                if (symptoms.isNotEmpty || isSkeleton) ...[
+                                  const SizedBox(height: 10),
+                                  ...(isSkeleton && symptoms.isEmpty
+                                          ? List.generate(2, (index) => index)
+                                          : symptoms.asMap().keys)
+                                      .map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: isSkeleton
+                                            ? (entry == 1 ? 0 : 10)
+                                            : (entry == symptoms.length - 1
+                                                ? 0
+                                                : 10),
+                                      ),
+                                      child: _SymptomEntryItem(
+                                        name: isSkeleton
+                                            ? 'Pusing'
+                                            : symptoms[entry].symptomName,
+                                        intensity: isSkeleton
+                                            ? 4
+                                            : symptoms[entry].intensity,
+                                        note: isSkeleton
+                                            ? 'Muncul setelah bangun tidur'
+                                            : symptoms[entry].note,
+                                        recordedTime: isSkeleton
+                                            ? (entry == 0 ? '14:52' : '07:30')
+                                            : _formatTime(
+                                                symptoms[entry].timeStamp,
+                                              ),
+                                        showDivider: isSkeleton
+                                            ? entry != 1
+                                            : entry != symptoms.length - 1,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                         ),
+                        const SizedBox(height: 20),
+
+                        // Aktivitas Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: _SectionCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.directions_run,
+                                        color: Color(0xFF285DBE), size: 24),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Aktivitas',
+                                      style: TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF525252),
+                                      ),
+                                    ),
+                                    if (!isSkeleton) ...[
+                                      const Spacer(),
+                                      _SectionAddButton(
+                                        onTap: () =>
+                                            _openSectionModal('Aktivitas'),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                if (activities.isEmpty && !isSkeleton)
+                                  const Text(
+                                    'Belum ada aktivitas hari ini',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF62748E),
+                                    ),
+                                  )
+                                else
+                                  ...(isSkeleton && activities.isEmpty
+                                          ? List.generate(2, (index) => index)
+                                          : activities.asMap().keys)
+                                      .map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: isSkeleton
+                                            ? (entry == 1 ? 0 : 10)
+                                            : (entry == activities.length - 1
+                                                ? 0
+                                                : 10),
+                                      ),
+                                      child: _ActivityEntryItem(
+                                        name: isSkeleton
+                                            ? 'Jalan kaki'
+                                            : activities[entry].name,
+                                        duration: isSkeleton
+                                            ? 30
+                                            : activities[entry].duration,
+                                        heartRate: isSkeleton
+                                            ? 98
+                                            : activities[entry].heartRate,
+                                        feeling: isSkeleton
+                                            ? 'lebih baik'
+                                            : activities[entry].userFeeling,
+                                        recordedTime: isSkeleton
+                                            ? (entry == 0 ? '14:53' : '14:52')
+                                            : _formatTime(
+                                                activities[entry].timeStamp,
+                                              ),
+                                        showDivider: isSkeleton
+                                            ? entry != 1
+                                            : entry != activities.length - 1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Konsumsi Harian Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: _SectionCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.restaurant,
+                                        color: Color(0xFF2D9744), size: 24),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Konsumsi Harian',
+                                      style: TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF525252),
+                                      ),
+                                    ),
+                                    if (!isSkeleton) ...[
+                                      const Spacer(),
+                                      _SectionAddButton(
+                                        onTap: () => _openSectionModal(
+                                            'Konsumsi Harian'),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                if (consumptions.isEmpty && !isSkeleton)
+                                  const Text(
+                                    'Belum ada konsumsi hari ini',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF62748E),
+                                    ),
+                                  )
+                                else
+                                  ...(isSkeleton && consumptions.isEmpty
+                                          ? List.generate(2, (index) => index)
+                                          : consumptions.asMap().keys)
+                                      .map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: isSkeleton
+                                            ? (entry == 1 ? 0 : 12)
+                                            : (entry == consumptions.length - 1
+                                                ? 0
+                                                : 12),
+                                      ),
+                                      child: _ConsumptionEntryItem(
+                                        typeLabel: isSkeleton
+                                            ? 'Makanan'
+                                            : _formatConsumptionType(
+                                                consumptions[entry].type,
+                                              ),
+                                        title: isSkeleton
+                                            ? (entry == 0
+                                                ? 'Oatmeal'
+                                                : 'Aspirin')
+                                            : consumptions[entry].name,
+                                        portion: isSkeleton
+                                            ? (entry == 0
+                                                ? '1 mangkuk'
+                                                : '1 tablet')
+                                            : consumptions[entry].portion,
+                                        note: isSkeleton
+                                            ? (entry == 0
+                                                ? null
+                                                : 'Sesudah makan malam')
+                                            : consumptions[entry].note,
+                                        recordedTime: isSkeleton
+                                            ? (entry == 0 ? '14:53' : '21:15')
+                                            : _formatTime(
+                                                consumptions[entry].timeStamp,
+                                              ),
+                                        showDivider: isSkeleton
+                                            ? entry != 1
+                                            : entry != consumptions.length - 1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (diaryState.error != null) ...[
+                          const SizedBox(height: 16),
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 24.0),
+                            child: Text(
+                              diaryState.error!,
+                              style: const TextStyle(
+                                color: Color(0xFFB91C1C),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
+                    ),
                   ],
                 ),
               ),
