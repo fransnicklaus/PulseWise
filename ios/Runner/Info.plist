@@ -47,5 +47,7 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera is used to scan QR codes for user identification.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Kontak digunakan untuk memilih nomor darurat dengan lebih cepat.</string>
 </dict>
 </plist>

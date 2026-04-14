@@ -69,6 +69,118 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     }
   }
 
+  Future<void> addEmergencyContact({
+    required String contactLabel,
+    required String contactNumber,
+    required bool isPriority,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$patientId/emergency-contacts',
+      data: {
+        'contactLabel': contactLabel,
+        'contactNumber': contactNumber,
+        'isPriority': isPriority,
+      },
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal menambah kontak darurat').toString(),
+      );
+    }
+  }
+
+  Future<void> updateEmergencyContact({
+    required String emergencyContactId,
+    required String contactLabel,
+    required String contactNumber,
+    required bool isPriority,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$patientId/emergency-contacts/$emergencyContactId',
+      data: {
+        'contactLabel': contactLabel,
+        'contactNumber': contactNumber,
+        'isPriority': isPriority,
+      },
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal memperbarui kontak darurat').toString(),
+      );
+    }
+  }
+
+  Future<void> deleteEmergencyContact(String emergencyContactId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '/users/$patientId/emergency-contacts/$emergencyContactId',
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal menghapus kontak darurat').toString(),
+      );
+    }
+  }
+
   Future<_PageResult> _fetchPage(
       {required int page, required int limit}) async {
     final prefs = await SharedPreferences.getInstance();
@@ -169,13 +281,17 @@ class EmergencyContact {
   });
 
   factory EmergencyContact.fromJson(Map<String, dynamic> json) {
+    final dynamic priorityRaw = json['isPriority'] ?? json['isPrioritas'];
+
     return EmergencyContact(
       emergencyContactId: (json['emergencyContactId'] ?? '').toString(),
       userId: (json['userId'] ?? '').toString(),
       contactLabel: (json['contactLabel'] ?? '').toString(),
       contactNumber: (json['contactNumber'] ?? '').toString(),
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
-      isPrioritas: null,
+      isPrioritas: priorityRaw is bool
+          ? priorityRaw
+          : (priorityRaw?.toString().toLowerCase() == 'true'),
     );
   }
 }

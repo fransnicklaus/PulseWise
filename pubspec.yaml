@@ -97,6 +97,7 @@ dependencies:
   mobile_scanner: ^5.2.3
   flutter_health_connect: ^1.2.3
   skeletonizer: ^1.4.3
+  flutter_contacts: ^1.1.9+2
 
 dev_dependencies:
   flutter_test:

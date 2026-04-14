@@ -13,9 +13,13 @@ class PengingatTab extends ConsumerStatefulWidget {
   ConsumerState<PengingatTab> createState() => _PengingatTabState();
 }
 
-class _PengingatTabState extends ConsumerState<PengingatTab> {
+class _PengingatTabState extends ConsumerState<PengingatTab>
+    with AutomaticKeepAliveClientMixin {
   late DateTime _selectedDate;
   late DateTime _focusedDate;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -27,6 +31,8 @@ class _PengingatTabState extends ConsumerState<PengingatTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final now = DateTime.now();
     final fromDate = _dateOnly(now);
     final toDate = _dateOnly(DateTime(now.year, now.month + 1, 0));
@@ -50,8 +56,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab> {
           },
         ),
         data: (calendarData) {
-          final events = [...calendarData.items]
-            ..sort((a, b) {
+          final events = [...calendarData.items]..sort((a, b) {
               final dateA = a.scheduledDate ?? DateTime(1970);
               final dateB = b.scheduledDate ?? DateTime(1970);
               final dateCompare = dateA.compareTo(dateB);

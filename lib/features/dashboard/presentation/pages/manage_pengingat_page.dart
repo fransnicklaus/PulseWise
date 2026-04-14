@@ -116,92 +116,92 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
         child: RefreshIndicator(
           onRefresh: _onRefresh,
           child: ListView.builder(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 120),
-        itemCount: 1 +
-            (showInitialLoader || showInitialError || showEmptyState
-                ? 1
-                : state.items.length +
-                    (showRefreshing ? 1 : 0) +
-                    (state.isLoadingMore ? 1 : 0)),
-        itemBuilder: (context, index) {
-          if (index == 0) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 14),
-              ],
-            );
-          }
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 120),
+            itemCount: 1 +
+                (showInitialLoader || showInitialError || showEmptyState
+                    ? 1
+                    : state.items.length +
+                        (showRefreshing ? 1 : 0) +
+                        (state.isLoadingMore ? 1 : 0)),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 14),
+                  ],
+                );
+              }
 
-          if (showInitialLoader) {
-            return const Padding(
-              padding: EdgeInsets.only(top: 40),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFE64060),
-                ),
-              ),
-            );
-          }
-
-          if (showInitialError) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: _StateCard(
-                message: state.error!,
-                actionLabel: 'Coba Lagi',
-                onTap: _retryLoad,
-              ),
-            );
-          }
-
-          if (showEmptyState) {
-            return const Padding(
-              padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
-              child: _StateCard(
-                message:
-                    'Belum ada pengingat obat. Tekan tombol + untuk menambah.',
-              ),
-            );
-          }
-
-          if (showRefreshing && index == 1) {
-            return const Padding(
-              padding: EdgeInsets.only(top: 40),
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFFE64060),
-                ),
-              ),
-            );
-          }
-
-          final dataIndex = index - 1 - (showRefreshing ? 1 : 0);
-          if (dataIndex >= state.items.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 18),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Color(0xFFE64060),
+              if (showInitialLoader) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFE64060),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }
+                );
+              }
 
-          final item = state.items[dataIndex];
-          return _MedicationCard(
-            item: item,
-            onTap: () => _openMedicationDetail(item.medicationId),
-          );
-        },
+              if (showInitialError) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: _StateCard(
+                    message: state.error!,
+                    actionLabel: 'Coba Lagi',
+                    onTap: _retryLoad,
+                  ),
+                );
+              }
+
+              if (showEmptyState) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: _StateCard(
+                    message:
+                        'Belum ada pengingat obat. Tekan tombol + untuk menambah.',
+                  ),
+                );
+              }
+
+              if (showRefreshing && index == 1) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: 40),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFE64060),
+                    ),
+                  ),
+                );
+              }
+
+              final dataIndex = index - 1 - (showRefreshing ? 1 : 0);
+              if (dataIndex >= state.items.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 18),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Color(0xFFE64060),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final item = state.items[dataIndex];
+              return _MedicationCard(
+                item: item,
+                onTap: () => _openMedicationDetail(item.medicationId),
+              );
+            },
           ),
         ),
       ),

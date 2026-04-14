@@ -729,8 +729,8 @@ class ProfileApi {
     }
 
     if (body['success'] != true) {
-      throw Exception(
-          (body['message'] ?? 'Gagal mengambil kalender medication').toString());
+      throw Exception((body['message'] ?? 'Gagal mengambil kalender medication')
+          .toString());
     }
 
     final data = (body['data'] as Map<String, dynamic>?) ?? const {};
@@ -1000,7 +1000,8 @@ class MedicationCalendarResponse {
       ),
       totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
       items: ((json['items'] as List?) ?? const [])
-          .map((e) => MedicationCalendarItem.fromJson(e as Map<String, dynamic>))
+          .map(
+              (e) => MedicationCalendarItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

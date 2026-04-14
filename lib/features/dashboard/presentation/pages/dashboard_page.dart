@@ -29,7 +29,10 @@ class DashboardPage extends ConsumerWidget {
       // backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SizedBox.expand(
-          child: tabs[navIndex],
+          child: IndexedStack(
+            index: navIndex,
+            children: tabs,
+          ),
         ),
       ),
 

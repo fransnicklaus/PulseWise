@@ -12,7 +12,11 @@ class BerandaTab extends ConsumerStatefulWidget {
   ConsumerState<BerandaTab> createState() => _BerandaTabState();
 }
 
-class _BerandaTabState extends ConsumerState<BerandaTab> {
+class _BerandaTabState extends ConsumerState<BerandaTab>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   int _healthStatusIndex = 0;
   final int _healthStatusCount = 2;
 
@@ -130,6 +134,8 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final authMe = ref.watch(authMeProvider);
     final firstName = authMe.maybeWhen(
       data: (user) => user.firstName.trim(),
@@ -778,8 +784,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
                 ),
               ),
               data: (response) {
-                final items = [...response.items]
-                  ..sort((a, b) {
+                final items = [...response.items]..sort((a, b) {
                     final dateA = a.scheduledDate ?? DateTime(1970);
                     final dateB = b.scheduledDate ?? DateTime(1970);
                     final dateCompare = dateA.compareTo(dateB);
@@ -809,7 +814,8 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: _HomeMedicationTile(
                             item: item,
-                            onTap: () => _showMedicationBottomSheet(context, item),
+                            onTap: () =>
+                                _showMedicationBottomSheet(context, item),
                           ),
                         ),
                       )
