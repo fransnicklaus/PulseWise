@@ -8,6 +8,8 @@ import 'package:pulsewise/features/dashboard/presentation/pages/riwayat_diari_pa
 import 'package:pulsewise/features/dashboard/presentation/pages/detail_diari_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/add_pengingat_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/edit_pengingat_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
@@ -70,12 +72,26 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             ],
           ),
           GoRoute(
-            path: 'reminder/detail/:index',
-            builder: (context, state) => const DetailPengingatPage(),
+            path: 'reminder/detail/:medicationId',
+            builder: (context, state) {
+              final medicationId = state.pathParameters['medicationId'] ?? '';
+              return DetailPengingatPage(medicationId: medicationId);
+            },
           ),
           GoRoute(
             path: 'reminder/add',
             builder: (context, state) => const AddPengingatPage(),
+          ),
+          GoRoute(
+            path: 'reminder/edit/:medicationId',
+            builder: (context, state) {
+              final medicationId = state.pathParameters['medicationId'] ?? '';
+              return EditPengingatPage(medicationId: medicationId);
+            },
+          ),
+          GoRoute(
+            path: 'reminder/manage',
+            builder: (context, state) => const ManagePengingatPage(),
           ),
         ],
       ),

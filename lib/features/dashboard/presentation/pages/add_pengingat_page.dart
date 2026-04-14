@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
-class AddPengingatPage extends StatefulWidget {
+class AddPengingatPage extends ConsumerStatefulWidget {
   const AddPengingatPage({super.key});
 
   @override
-  State<AddPengingatPage> createState() => _AddPengingatPageState();
+  ConsumerState<AddPengingatPage> createState() => _AddPengingatPageState();
 }
 
-class _AddPengingatPageState extends State<AddPengingatPage> {
+class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   static const Map<String, String> _formIcons = {
     'Pill':
         '''<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>''',
@@ -90,6 +93,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
 
   int _intakeCount = 1;
   List<TimeOfDay> _intakeTimes = [const TimeOfDay(hour: 8, minute: 0)];
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -108,7 +112,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          onPressed: () => context.pop(),
+          onPressed: _isSubmitting ? null : () => context.pop(),
           icon: const Icon(Icons.arrow_back, color: Color(0xFF4F5F7B)),
         ),
         title: const Text(
@@ -120,18 +124,21 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildStepIndicator(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-                child: _buildCurrentStep(),
+      body: AbsorbPointer(
+        absorbing: _isSubmitting,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildStepIndicator(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: _buildCurrentStep(),
+                ),
               ),
-            ),
-            _buildBottomActions(),
-          ],
+              _buildBottomActions(),
+            ],
+          ),
         ),
       ),
     );
@@ -209,6 +216,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           title: 'Nama Obat',
           child: TextField(
             controller: _nameController,
+            enabled: !_isSubmitting,
             decoration: _inputDecoration('Contoh: Obat Jantung'),
           ),
         ),
@@ -220,6 +228,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
             children: [
               TextField(
                 controller: _formSearchController,
+                enabled: !_isSubmitting,
                 onChanged: (value) {
                   setState(() => _formSearchQuery = value);
                 },
@@ -280,6 +289,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                               ),
                             ),
                             onChanged: (value) {
+                              if (_isSubmitting) return;
                               setState(() => _selectedForm = value);
                             },
                           );
@@ -302,7 +312,9 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                 final color = _medicationColors[index];
                 final selected = color == _selectedMedicationColor;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedMedicationColor = color),
+                  onTap: _isSubmitting
+                      ? null
+                      : () => setState(() => _selectedMedicationColor = color),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
                     width: 38,
@@ -350,6 +362,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                 flex: 2,
                 child: TextField(
                   controller: _doseController,
+                  enabled: !_isSubmitting,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   decoration: _inputDecoration('Contoh: 2'),
@@ -373,6 +386,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
                           DropdownMenuItem(value: unit, child: Text(unit)))
                       .toList(),
                   onChanged: (value) {
+                    if (_isSubmitting) return;
                     if (value != null) {
                       setState(() => _selectedDoseUnit = value);
                     }
@@ -387,6 +401,7 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           title: 'Catatan (Opsional)',
           child: TextField(
             controller: _notesController,
+            enabled: !_isSubmitting,
             maxLines: 3,
             decoration: _inputDecoration('Contoh: diminum setelah makan'),
           ),
@@ -685,7 +700,9 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   Widget _frequencyModeButton(String value, String label) {
     final selected = _selectedFrequencyMode == value;
     return OutlinedButton(
-      onPressed: () => setState(() => _selectedFrequencyMode = value),
+      onPressed: _isSubmitting
+          ? null
+          : () => setState(() => _selectedFrequencyMode = value),
       style: OutlinedButton.styleFrom(
         backgroundColor: selected ? const Color(0xFFFFE7EE) : Colors.white,
         foregroundColor:
@@ -736,7 +753,9 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           if (_currentStep > 0)
             Expanded(
               child: OutlinedButton(
-                onPressed: () => setState(() => _currentStep -= 1),
+                onPressed: _isSubmitting
+                    ? null
+                    : () => setState(() => _currentStep -= 1),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF64748B),
                   side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -748,14 +767,24 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
           if (_currentStep > 0) const SizedBox(width: 10),
           Expanded(
             child: ElevatedButton(
-              onPressed: isLast ? _saveReminder : _nextStep,
+              onPressed:
+                  _isSubmitting ? null : (isLast ? _saveReminder : _nextStep),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE64060),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 elevation: 0,
               ),
-              child: Text(isLast ? 'Simpan Pengingat' : 'Lanjut'),
+              child: isLast && _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(isLast ? 'Simpan Pengingat' : 'Lanjut'),
             ),
           ),
         ],
@@ -897,27 +926,78 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     setState(() => _currentStep += 1);
   }
 
-  void _saveReminder() {
-    final payload = {
-      'name': _nameController.text.trim(),
-      'form': _selectedForm,
-      'color': _selectedMedicationColor.value.toRadixString(16),
-      'dose': _doseController.text.trim(),
-      'doseUnit': _selectedDoseUnit,
-      'notes': _notesController.text.trim(),
-      'frequencyMode': _selectedFrequencyMode,
-      'dailyEvery': _selectedFrequencyMode == 'Daily' ? _dailyEvery : null,
-      'weeklyDays': _selectedFrequencyMode == 'Weekly'
-          ? _selectedWeekdays.map((i) => _weekdays[i]).toList()
-          : const [],
-      'startDate': _startDate.toIso8601String(),
-      'intakeCount': _intakeCount,
-      'intakeTimes': _intakeTimes.map(_formatTime).toList(),
-    };
+  Future<void> _saveReminder() async {
+    if (_isSubmitting) {
+      return;
+    }
 
-    debugPrint('Reminder payload: $payload');
-    AppToast.success(context, 'Pengingat berhasil disimpan');
-    context.pop();
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      _showError('Nama obat wajib diisi.');
+      return;
+    }
+
+    final selectedForm = _selectedForm?.trim();
+    if (selectedForm == null || selectedForm.isEmpty) {
+      _showError('Bentuk obat wajib dipilih.');
+      return;
+    }
+
+    final doseValue = _doseController.text.trim();
+    final parsedDose = num.tryParse(doseValue);
+    if (parsedDose == null || parsedDose <= 0) {
+      _showError('Besar dosis harus berupa angka lebih dari 0.');
+      return;
+    }
+
+    if (_selectedFrequencyMode == 'Weekly' && _selectedWeekdays.isEmpty) {
+      _showError('Pilih minimal satu hari untuk jadwal mingguan.');
+      return;
+    }
+
+    if (_intakeTimes.isEmpty || _intakeTimes.length != _intakeCount) {
+      _showError('Waktu minum belum lengkap.');
+      return;
+    }
+
+    final formattedIntakeTimes = _intakeTimes.map(_formatTime).toList();
+    final uniqueIntakeTimes = formattedIntakeTimes.toSet();
+    if (uniqueIntakeTimes.length != formattedIntakeTimes.length) {
+      _showError('Waktu minum tidak boleh sama.');
+      return;
+    }
+
+    final isWeekly = _selectedFrequencyMode == 'Weekly';
+    final apiDaysOfWeek = _selectedWeekdays.map(_toApiDayOfWeek).toList()
+      ..sort();
+
+    setState(() => _isSubmitting = true);
+    try {
+      await ref.read(profileApiProvider).addMedication(
+            name: name,
+            form: selectedForm.toLowerCase(),
+            color: _hexColor(_selectedMedicationColor),
+            singleDose: parsedDose,
+            singleDoseUnit: _selectedDoseUnit,
+            startDate: _formatDateOnly(_startDate),
+            frequency: _selectedFrequencyMode.toLowerCase(),
+            numOfDays: isWeekly ? null : _dailyEvery,
+            daysOfWeek: isWeekly ? apiDaysOfWeek : null,
+            intakeTimes: formattedIntakeTimes,
+            note: _notesController.text.trim(),
+          );
+
+      if (!mounted) return;
+      ref.read(dashboardNavIndexProvider.notifier).state = 3;
+      context.pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   void _showError(String message) {
@@ -930,6 +1010,18 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
     return '$hour:$minute';
   }
 
+  String _formatDateOnly(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  String _hexColor(Color color) {
+    final rgb = color.value & 0x00FFFFFF;
+    return '#${rgb.toRadixString(16).padLeft(6, '0')}';
+  }
+
   String _ordinalIntake(int number) {
     if (number == 1) return '1st';
     if (number == 2) return '2nd';
@@ -940,5 +1032,11 @@ class _AddPengingatPageState extends State<AddPengingatPage> {
   TimeOfDay _defaultIntakeTime(int index) {
     final hour = (8 + index) % 24;
     return TimeOfDay(hour: hour, minute: 0);
+  }
+
+  int _toApiDayOfWeek(int selectedIndex) {
+    // Backend convention: Monday=1 ... Saturday=6, Sunday=7.
+    if (selectedIndex == 0) return 7;
+    return selectedIndex;
   }
 }

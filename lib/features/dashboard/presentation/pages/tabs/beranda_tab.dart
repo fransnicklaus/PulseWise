@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class BerandaTab extends ConsumerStatefulWidget {
@@ -135,6 +136,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
       orElse: () => '',
     );
     final greetingName = firstName.isEmpty ? 'Halo' : 'Halo, $firstName';
+
+    final now = DateTime.now();
+    final fromDate = DateTime(now.year, now.month, now.day);
+    final toDate = DateTime(now.year, now.month, now.day + 2);
+    final calendarQuery = MedicationCalendarRangeQuery(
+      from: fromDate,
+      to: toDate,
+    );
+    final upcomingMedicationAsync =
+        ref.watch(medicationCalendarRangeProvider(calendarQuery));
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -524,6 +535,11 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                _buildUpcomingMedicationSection(
+                  context,
+                  upcomingMedicationAsync,
+                ),
 
                 // Menu Utama header
                 const Padding(
@@ -699,4 +715,293 @@ class _BerandaTabState extends ConsumerState<BerandaTab> {
       ),
     );
   }
+
+  Widget _buildUpcomingMedicationSection(
+    BuildContext context,
+    AsyncValue<MedicationCalendarResponse> asyncValue,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Pengingat Obat 3 Hari',
+              style: TextStyle(
+                color: Color(0xFF334155),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Jadwal obat terdekat Anda',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            asyncValue.when(
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: CircularProgressIndicator(
+                    color: Color(0xFFE64060),
+                  ),
+                ),
+              ),
+              error: (error, _) => Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFED7AA)),
+                ),
+                child: Text(
+                  error.toString().replaceFirst('Exception: ', ''),
+                  style: const TextStyle(
+                    color: Color(0xFF9A3412),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              data: (response) {
+                final items = [...response.items]
+                  ..sort((a, b) {
+                    final dateA = a.scheduledDate ?? DateTime(1970);
+                    final dateB = b.scheduledDate ?? DateTime(1970);
+                    final dateCompare = dateA.compareTo(dateB);
+                    if (dateCompare != 0) return dateCompare;
+                    return a.scheduledTime.compareTo(b.scheduledTime);
+                  });
+
+                if (items.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Belum ada jadwal obat untuk 3 hari ke depan.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: items
+                      .take(6)
+                      .map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _HomeMedicationTile(
+                            item: item,
+                            onTap: () => _showMedicationBottomSheet(context, item),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMedicationBottomSheet(
+    BuildContext context,
+    MedicationCalendarItem item,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                item.name,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${_doseText(item.singleDose)} ${item.singleDoseUnit}',
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${_formatDate(item.scheduledDate)} • ${item.scheduledTime}',
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                    context.push('/home/reminder/detail/${item.medicationId}');
+                  },
+                  icon: const Icon(Icons.settings),
+                  label: const Text(
+                    'Kelola Obat',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE64060),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '-';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  String _doseText(num dose) {
+    return dose % 1 == 0 ? dose.toInt().toString() : dose.toString();
+  }
+}
+
+class _HomeMedicationTile extends StatelessWidget {
+  const _HomeMedicationTile({
+    required this.item,
+    required this.onTap,
+  });
+
+  final MedicationCalendarItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _resolveColor(item.color),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_doseText(item.singleDose)} ${item.singleDoseUnit} • ${item.scheduledTime}',
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _doseText(num dose) {
+    return dose % 1 == 0 ? dose.toInt().toString() : dose.toString();
+  }
+}
+
+Color _resolveColor(String raw) {
+  final cleaned = raw.replaceFirst('#', '').trim();
+  if (cleaned.isEmpty) return const Color(0xFFE64060);
+
+  final value = int.tryParse(cleaned, radix: 16);
+  if (value == null) return const Color(0xFFE64060);
+
+  if (cleaned.length <= 6) {
+    return Color(0xFF000000 | value);
+  }
+
+  return Color(value);
 }

@@ -17,7 +17,8 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     await loadCurrentDiaryForToday();
   }
 
-  Future<void> loadCurrentDiaryForToday({bool preserveCurrentData = false}) async {
+  Future<void> loadCurrentDiaryForToday(
+      {bool preserveCurrentData = false}) async {
     final hasCurrentData = state.diary != null;
     final shouldPreserve = preserveCurrentData && hasCurrentData;
 
@@ -103,7 +104,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         note: note,
       );
     }
-
   }
 
   Future<void> addConsumptionsFromModal(Map<String, dynamic> payload) async {
@@ -126,7 +126,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       time: time,
       note: note,
     );
-
   }
 
   Future<void> addActivitiesFromModal(Map<String, dynamic> payload) async {
@@ -179,7 +178,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       heartRate: heartRate,
       userFeeling: userFeeling,
     );
-
   }
 
   Future<void> addBodyMetricsFromModal(Map<String, dynamic> payload) async {
@@ -228,7 +226,6 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       diastolicPressure: diastolicPressure,
       heartRate: heartRate,
     );
-
   }
 }
 

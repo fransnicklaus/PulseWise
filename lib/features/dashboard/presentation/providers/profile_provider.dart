@@ -438,6 +438,304 @@ class ProfileApi {
           (body?['message'] ?? 'Gagal menyimpan metrik kesehatan').toString());
     }
   }
+
+  Future<void> addMedication({
+    required String name,
+    required String form,
+    required String color,
+    required num singleDose,
+    required String singleDoseUnit,
+    required String startDate,
+    required String frequency,
+    int? numOfDays,
+    List<int>? daysOfWeek,
+    required List<String> intakeTimes,
+    String? note,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final normalizedFrequency = frequency.toLowerCase();
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/medications',
+      data: {
+        'name': name,
+        'form': form,
+        'color': color,
+        'singleDose': singleDose,
+        'singleDoseUnit': singleDoseUnit,
+        'startDate': startDate,
+        'frequency': normalizedFrequency,
+        if (normalizedFrequency == 'daily' && numOfDays != null)
+          'numOfDays': numOfDays,
+        if (normalizedFrequency == 'weekly' && daysOfWeek != null)
+          'daysOfWeek': daysOfWeek,
+        'intakeTimes': intakeTimes,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menambah pengingat obat').toString());
+    }
+  }
+
+  Future<MedicationListResponse> fetchMedications({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/medications',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons daftar medication tidak valid dari server');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+          (body['message'] ?? 'Gagal mengambil daftar medication').toString());
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return MedicationListResponse.fromJson(data);
+  }
+
+  Future<MedicationItem> fetchMedicationDetail(String medicationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/medications/$medicationId',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons detail medication tidak valid dari server');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+          (body['message'] ?? 'Gagal mengambil detail medication').toString());
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return MedicationItem.fromJson(data);
+  }
+
+  Future<void> updateMedication({
+    required String medicationId,
+    required String form,
+    required String color,
+    required num singleDose,
+    required String singleDoseUnit,
+    required String startDate,
+    required String frequency,
+    bool clearOppositeScheduleField = false,
+    int? numOfDays,
+    required List<int> daysOfWeek,
+    required List<String> intakeTimes,
+    String? note,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final normalizedFrequency = frequency.toLowerCase();
+
+    final payload = <String, dynamic>{
+      'form': form,
+      'color': color,
+      'singleDose': singleDose,
+      'singleDoseUnit': singleDoseUnit,
+      'startDate': startDate,
+      'frequency': normalizedFrequency,
+      if (normalizedFrequency == 'daily') ...{
+        if (numOfDays != null) 'numOfDays': numOfDays,
+        if (clearOppositeScheduleField) 'daysOfWeek': null,
+      },
+      if (normalizedFrequency == 'weekly') ...{
+        if (clearOppositeScheduleField) 'numOfDays': null,
+        'daysOfWeek': daysOfWeek,
+      },
+      'intakeTimes': intakeTimes,
+      'note': (note == null || note.trim().isEmpty) ? null : note.trim(),
+    };
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$userId/medications/$medicationId',
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal memperbarui medication').toString());
+    }
+  }
+
+  Future<void> deleteMedication(String medicationId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.delete<Map<String, dynamic>>(
+      '/users/$userId/medications/$medicationId',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal menghapus medication').toString());
+    }
+  }
+
+  Future<MedicationCalendarResponse> fetchMedicationCalendar({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    String formatDate(DateTime date) {
+      final y = date.year.toString().padLeft(4, '0');
+      final m = date.month.toString().padLeft(2, '0');
+      final d = date.day.toString().padLeft(2, '0');
+      return '$y-$m-$d';
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/medications/calendar',
+      queryParameters: {
+        'from': formatDate(from),
+        'to': formatDate(to),
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons kalender medication tidak valid dari server');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+          (body['message'] ?? 'Gagal mengambil kalender medication').toString());
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return MedicationCalendarResponse.fromJson(data);
+  }
 }
 
 class AuthMeUser {
@@ -539,6 +837,233 @@ class DiaryHistoryPagination {
       limit: (json['limit'] as num?)?.toInt() ?? 20,
       totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
       totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+class MedicationListResponse {
+  final List<MedicationItem> items;
+  final MedicationPagination pagination;
+
+  const MedicationListResponse({
+    required this.items,
+    required this.pagination,
+  });
+
+  factory MedicationListResponse.fromJson(Map<String, dynamic> json) {
+    return MedicationListResponse(
+      items: ((json['items'] as List?) ?? const [])
+          .map((e) => MedicationItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: MedicationPagination.fromJson(
+        (json['pagination'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}
+
+class MedicationItem {
+  final String medicationId;
+  final String userId;
+  final String name;
+  final String? description;
+  final String? conditionTag;
+  final String form;
+  final String color;
+  final num singleDose;
+  final String singleDoseUnit;
+  final DateTime? startDate;
+  final String frequency;
+  final int? numOfDays;
+  final List<int> daysOfWeek;
+  final List<String> intakeTimes;
+  final String? note;
+  final DateTime? createdAt;
+  final List<MedicationReminder> reminders;
+
+  const MedicationItem({
+    required this.medicationId,
+    required this.userId,
+    required this.name,
+    required this.description,
+    required this.conditionTag,
+    required this.form,
+    required this.color,
+    required this.singleDose,
+    required this.singleDoseUnit,
+    required this.startDate,
+    required this.frequency,
+    required this.numOfDays,
+    required this.daysOfWeek,
+    required this.intakeTimes,
+    required this.note,
+    required this.createdAt,
+    required this.reminders,
+  });
+
+  factory MedicationItem.fromJson(Map<String, dynamic> json) {
+    return MedicationItem(
+      medicationId: (json['medicationId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      description: json['description']?.toString(),
+      conditionTag: json['conditionTag']?.toString(),
+      form: (json['form'] ?? '').toString(),
+      color: (json['color'] ?? '').toString(),
+      singleDose: (json['singleDose'] as num?) ?? 0,
+      singleDoseUnit: (json['singleDoseUnit'] ?? '').toString(),
+      startDate: DateTime.tryParse((json['startDate'] ?? '').toString()),
+      frequency: (json['frequency'] ?? '').toString(),
+      numOfDays: (json['numOfDays'] as num?)?.toInt(),
+      daysOfWeek: ((json['daysOfWeek'] as List?) ?? const [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+      intakeTimes: ((json['intakeTimes'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      note: json['note']?.toString(),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+      reminders: ((json['reminders'] as List?) ?? const [])
+          .map((e) => MedicationReminder.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class MedicationReminder {
+  final String reminderId;
+  final String userId;
+  final String medicationId;
+  final String scheduleTime;
+  final int? dayOfWeek;
+  final DateTime? createdAt;
+
+  const MedicationReminder({
+    required this.reminderId,
+    required this.userId,
+    required this.medicationId,
+    required this.scheduleTime,
+    required this.dayOfWeek,
+    required this.createdAt,
+  });
+
+  factory MedicationReminder.fromJson(Map<String, dynamic> json) {
+    return MedicationReminder(
+      reminderId: (json['reminderId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      medicationId: (json['medicationId'] ?? '').toString(),
+      scheduleTime: (json['scheduleTime'] ?? '').toString(),
+      dayOfWeek: (json['dayOfWeek'] as num?)?.toInt(),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+    );
+  }
+}
+
+class MedicationPagination {
+  final int page;
+  final int limit;
+  final int totalItems;
+  final int totalPages;
+
+  const MedicationPagination({
+    required this.page,
+    required this.limit,
+    required this.totalItems,
+    required this.totalPages,
+  });
+
+  factory MedicationPagination.fromJson(Map<String, dynamic> json) {
+    return MedicationPagination(
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      limit: (json['limit'] as num?)?.toInt() ?? 10,
+      totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+class MedicationCalendarResponse {
+  final MedicationCalendarRange range;
+  final int totalItems;
+  final List<MedicationCalendarItem> items;
+
+  const MedicationCalendarResponse({
+    required this.range,
+    required this.totalItems,
+    required this.items,
+  });
+
+  factory MedicationCalendarResponse.fromJson(Map<String, dynamic> json) {
+    return MedicationCalendarResponse(
+      range: MedicationCalendarRange.fromJson(
+        (json['range'] as Map<String, dynamic>?) ?? const {},
+      ),
+      totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
+      items: ((json['items'] as List?) ?? const [])
+          .map((e) => MedicationCalendarItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+class MedicationCalendarRange {
+  final DateTime? from;
+  final DateTime? to;
+
+  const MedicationCalendarRange({
+    required this.from,
+    required this.to,
+  });
+
+  factory MedicationCalendarRange.fromJson(Map<String, dynamic> json) {
+    return MedicationCalendarRange(
+      from: DateTime.tryParse((json['from'] ?? '').toString()),
+      to: DateTime.tryParse((json['to'] ?? '').toString()),
+    );
+  }
+}
+
+class MedicationCalendarItem {
+  final String eventId;
+  final DateTime? scheduledDate;
+  final String scheduledTime;
+  final String reminderId;
+  final String medicationId;
+  final String? medicationLogId;
+  final String name;
+  final String color;
+  final num singleDose;
+  final String singleDoseUnit;
+  final String? status;
+
+  const MedicationCalendarItem({
+    required this.eventId,
+    required this.scheduledDate,
+    required this.scheduledTime,
+    required this.reminderId,
+    required this.medicationId,
+    required this.medicationLogId,
+    required this.name,
+    required this.color,
+    required this.singleDose,
+    required this.singleDoseUnit,
+    required this.status,
+  });
+
+  factory MedicationCalendarItem.fromJson(Map<String, dynamic> json) {
+    return MedicationCalendarItem(
+      eventId: (json['eventId'] ?? '').toString(),
+      scheduledDate:
+          DateTime.tryParse((json['scheduledDate'] ?? '').toString()),
+      scheduledTime: (json['scheduledTime'] ?? '').toString(),
+      reminderId: (json['reminderId'] ?? '').toString(),
+      medicationId: (json['medicationId'] ?? '').toString(),
+      medicationLogId: json['medicationLogId']?.toString(),
+      name: (json['name'] ?? '').toString(),
+      color: (json['color'] ?? '').toString(),
+      singleDose: (json['singleDose'] as num?) ?? 0,
+      singleDoseUnit: (json['singleDoseUnit'] ?? '').toString(),
+      status: json['status']?.toString(),
     );
   }
 }
