@@ -647,7 +647,6 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
             singleDoseUnit: unit,
             startDate: _formatDateOnly(_startDate),
             frequency: _selectedFrequency,
-            clearOppositeScheduleField: _initialFrequency != _selectedFrequency,
             numOfDays: _selectedFrequency == 'daily' ? _dailyEvery : null,
             daysOfWeek: _selectedDaysOfWeek..sort(),
             intakeTimes: intakeTimes,

@@ -45,6 +45,161 @@ class ProfileApi {
 
   ProfileApi(this._dio);
 
+  static const _defaultCloudinaryUploadUrl =
+      'https://api.cloudinary.com/v1_1/drvu0dpry/image/upload';
+
+  Future<void> uploadAvatar({
+    required MultipartFile file,
+  }) async {
+    final signature = await fetchAvatarUploadSignature(
+      folder: dotenv.env['CLOUDINARY_FOLDER'] ?? 'pulsewise/avatars',
+    );
+
+    final uploadResult = await _uploadAvatarToCloudinary(
+      file: file,
+      signature: signature,
+    );
+
+    await saveAvatarMetadata(
+      secureUrl: uploadResult.secureUrl,
+      publicId: uploadResult.publicId,
+      bytes: uploadResult.bytes,
+      width: uploadResult.width,
+      height: uploadResult.height,
+      format: uploadResult.format,
+      resourceType: uploadResult.resourceType,
+    );
+  }
+
+  Future<AvatarUploadSignature> fetchAvatarUploadSignature({
+    required String folder,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/avatar/upload-signature',
+      queryParameters: {'folder': folder},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons signature upload avatar tidak valid');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal mendapatkan signature upload avatar')
+            .toString(),
+      );
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return AvatarUploadSignature.fromJson(data);
+  }
+
+  Future<CloudinaryUploadResult> _uploadAvatarToCloudinary({
+    required MultipartFile file,
+    required AvatarUploadSignature signature,
+  }) async {
+    final uploadUrl =
+        signature.uploadUrl.isEmpty ? _defaultCloudinaryUploadUrl : signature.uploadUrl;
+
+    final formData = FormData.fromMap({
+      'file': file,
+      'api_key': signature.apiKey,
+      'timestamp': signature.timestamp,
+      'folder': signature.folder,
+      'signature': signature.signature,
+      'transformation': signature.transformation,
+      'allowed_formats': signature.allowedFormats,
+    });
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      uploadUrl,
+      data: formData,
+      options: Options(
+        headers: {
+          'Accept': 'application/json',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons upload Cloudinary tidak valid');
+    }
+
+    return CloudinaryUploadResult.fromJson(body);
+  }
+
+  Future<void> saveAvatarMetadata({
+    required String secureUrl,
+    required String publicId,
+    required int bytes,
+    required int width,
+    required int height,
+    required String format,
+    required String resourceType,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$patientId/avatar',
+      data: {
+        'secureUrl': secureUrl,
+        'publicId': publicId,
+        'bytes': bytes,
+        'width': width,
+        'height': height,
+        'format': format,
+        'resourceType': resourceType,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal menyimpan avatar pengguna').toString(),
+      );
+    }
+  }
+
   Future<PatientProfile> fetchProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -593,7 +748,6 @@ class ProfileApi {
     required String singleDoseUnit,
     required String startDate,
     required String frequency,
-    bool clearOppositeScheduleField = false,
     int? numOfDays,
     required List<int> daysOfWeek,
     required List<String> intakeTimes,
@@ -625,17 +779,15 @@ class ProfileApi {
       'frequency': normalizedFrequency,
       if (normalizedFrequency == 'daily') ...{
         if (numOfDays != null) 'numOfDays': numOfDays,
-        if (clearOppositeScheduleField) 'daysOfWeek': null,
       },
       if (normalizedFrequency == 'weekly') ...{
-        if (clearOppositeScheduleField) 'numOfDays': null,
-        'daysOfWeek': daysOfWeek,
+        if (daysOfWeek.isNotEmpty) 'daysOfWeek': daysOfWeek,
       },
       'intakeTimes': intakeTimes,
-      'note': (note == null || note.trim().isEmpty) ? null : note.trim(),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
 
-    final response = await _dio.put<Map<String, dynamic>>(
+    final response = await _dio.patch<Map<String, dynamic>>(
       '/users/$userId/medications/$medicationId',
       data: payload,
       options: Options(
@@ -744,6 +896,7 @@ class AuthMeUser {
   final String email;
   final String firstName;
   final String lastName;
+  final String avatarPhoto;
   final String role;
   final String accountStatus;
   final DateTime? emailVerifiedAt;
@@ -754,6 +907,7 @@ class AuthMeUser {
     required this.email,
     required this.firstName,
     required this.lastName,
+    required this.avatarPhoto,
     required this.role,
     required this.accountStatus,
     required this.emailVerifiedAt,
@@ -766,6 +920,7 @@ class AuthMeUser {
       email: (json['email'] ?? '').toString(),
       firstName: (json['firstName'] ?? '').toString(),
       lastName: (json['lastName'] ?? '').toString(),
+      avatarPhoto: (json['avatarPhoto'] ?? '').toString(),
       role: (json['role'] ?? '').toString(),
       accountStatus: (json['accountStatus'] ?? '').toString(),
       emailVerifiedAt:
@@ -1079,6 +1234,7 @@ class PatientProfile {
   final String sex;
   final String bodyHeightCm;
   final String bloodType;
+  final String  avatarUrl;
 
   const PatientProfile({
     required this.patientId,
@@ -1090,6 +1246,7 @@ class PatientProfile {
     required this.sex,
     required this.bodyHeightCm,
     required this.bloodType,
+    required this.avatarUrl,
   });
 
   String get fullName => '$firstName $lastName'.trim();
@@ -1105,6 +1262,79 @@ class PatientProfile {
       sex: (json['sex'] ?? '').toString(),
       bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
       bloodType: (json['blood_type'] ?? '').toString(),
+      avatarUrl: (json['avatarUrl'] ??
+              json['avatar_url'] ??
+              json['profilePictureUrl'] ??
+              '')
+          .toString(),
+    );
+  }
+}
+
+class AvatarUploadSignature {
+  final String uploadUrl;
+  final String apiKey;
+  final int timestamp;
+  final String folder;
+  final String signature;
+  final String transformation;
+  final String allowedFormats;
+
+  const AvatarUploadSignature({
+    required this.uploadUrl,
+    required this.apiKey,
+    required this.timestamp,
+    required this.folder,
+    required this.signature,
+    required this.transformation,
+    required this.allowedFormats,
+  });
+
+  factory AvatarUploadSignature.fromJson(Map<String, dynamic> json) {
+    return AvatarUploadSignature(
+      uploadUrl: (json['uploadUrl'] ?? json['url'] ?? '').toString(),
+      apiKey: (json['api_key'] ?? json['apiKey'] ?? '').toString(),
+      timestamp: (json['timestamp'] as num?)?.toInt() ?? 0,
+      folder: (json['folder'] ?? '').toString(),
+      signature: (json['signature'] ?? '').toString(),
+      transformation:
+          (json['transformation'] ?? 'c_limit,h_512,w_512,q_auto:good')
+              .toString(),
+      allowedFormats:
+          (json['allowed_formats'] ?? json['allowedFormats'] ?? 'jpg,jpeg,png,webp')
+              .toString(),
+    );
+  }
+}
+
+class CloudinaryUploadResult {
+  final String secureUrl;
+  final String publicId;
+  final int bytes;
+  final int width;
+  final int height;
+  final String format;
+  final String resourceType;
+
+  const CloudinaryUploadResult({
+    required this.secureUrl,
+    required this.publicId,
+    required this.bytes,
+    required this.width,
+    required this.height,
+    required this.format,
+    required this.resourceType,
+  });
+
+  factory CloudinaryUploadResult.fromJson(Map<String, dynamic> json) {
+    return CloudinaryUploadResult(
+      secureUrl: (json['secure_url'] ?? '').toString(),
+      publicId: (json['public_id'] ?? '').toString(),
+      bytes: (json['bytes'] as num?)?.toInt() ?? 0,
+      width: (json['width'] as num?)?.toInt() ?? 0,
+      height: (json['height'] as num?)?.toInt() ?? 0,
+      format: (json['format'] ?? '').toString(),
+      resourceType: (json['resource_type'] ?? '').toString(),
     );
   }
 }

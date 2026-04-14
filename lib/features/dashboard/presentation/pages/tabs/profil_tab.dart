@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/emergency_contacts_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,9 +19,22 @@ class ProfilTab extends ConsumerStatefulWidget {
 }
 
 class _ProfilTabState extends ConsumerState<ProfilTab> {
+  bool _isUploadingAvatar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(emergencyContactsProvider.notifier).fetchInitial();
+    });
+  }
+
   Future<void> _refreshProfile() async {
     ref.invalidate(patientProfileProvider);
+    ref.invalidate(authMeProvider);
     await ref.read(patientProfileProvider.future);
+    await ref.read(authMeProvider.future);
+    await ref.read(emergencyContactsProvider.notifier).fetchInitial();
   }
 
   String _formatDate(DateTime? date) {
@@ -80,9 +96,64 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     AppToast.success(context, 'Token disalin dan dicetak ke debugger.');
   }
 
+  Future<void> _pickAndUploadAvatar() async {
+    if (_isUploadingAvatar) return;
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (picked == null || picked.files.isEmpty) return;
+
+    final selected = picked.files.first;
+    const maxAvatarBytes = 5 * 1024 * 1024;
+    if (selected.size > maxAvatarBytes) {
+      AppToast.warning(context, 'Ukuran avatar maksimal 5 MB.');
+      return;
+    }
+
+    final filename = selected.name.isEmpty ? 'avatar.jpg' : selected.name;
+    MultipartFile file;
+    if (selected.path != null && selected.path!.isNotEmpty) {
+      file = await MultipartFile.fromFile(selected.path!, filename: filename);
+    } else if (selected.bytes != null) {
+      file = MultipartFile.fromBytes(selected.bytes!, filename: filename);
+    } else {
+      AppToast.warning(context, 'File gambar tidak valid.');
+      return;
+    }
+
+    setState(() => _isUploadingAvatar = true);
+    try {
+      await ref.read(profileApiProvider).uploadAvatar(file: file);
+      ref.invalidate(patientProfileProvider);
+      ref.invalidate(authMeProvider);
+      await ref.read(patientProfileProvider.future);
+      await ref.read(authMeProvider.future);
+
+      if (!mounted) return;
+      AppToast.success(context, 'Avatar berhasil diperbarui.');
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.warning(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingAvatar = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(patientProfileProvider);
+    final authMeAsync = ref.watch(authMeProvider);
+    final emergencyState = ref.watch(emergencyContactsProvider);
 
     return RefreshIndicator(
       onRefresh: _refreshProfile,
@@ -153,7 +224,12 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
           data: (profile) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(profile.fullName),
+              _buildHeader(
+                profile.fullName,
+                authMeAsync.asData?.value.avatarPhoto.isNotEmpty == true
+                    ? authMeAsync.asData?.value.avatarPhoto
+                    : profile.avatarUrl,
+              ),
               const SizedBox(height: 18),
               _SectionCard(
                 title: 'Informasi Pribadi',
@@ -199,11 +275,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
               const SizedBox(height: 14),
               _SectionCard(
                 title: 'Kontak Darurat Utama',
-                children: const [
-                  _InfoRow(label: 'Nama', value: 'Siti (Istri)'),
-                  _InfoRow(label: 'Hubungan', value: 'Keluarga'),
-                  _InfoRow(label: 'Nomor Telepon', value: '+62 812-3456-7890'),
-                ],
+                children: _buildEmergencyContactChildren(emergencyState),
               ),
               const SizedBox(height: 14),
               _SectionCard(
@@ -343,7 +415,77 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     );
   }
 
-  Widget _buildHeader([String? fullName]) {
+  List<Widget> _buildEmergencyContactChildren(EmergencyContactsState state) {
+    if (state.isLoadingInitial && state.items.isEmpty) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+
+    if (state.error != null && state.items.isEmpty) {
+      return [
+        Text(
+          state.error!.replaceFirst('Exception: ', ''),
+          style: const TextStyle(
+            color: Color(0xFFB91C1C),
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () => ref.read(emergencyContactsProvider.notifier).fetchInitial(),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFE64060),
+              side: const BorderSide(color: Color(0xFFE64060)),
+              minimumSize: const Size.fromHeight(48),
+            ),
+            icon: const Icon(Icons.refresh, size: 20),
+            label: const Text(
+              'Muat Ulang Kontak',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    if (state.items.isEmpty) {
+      return const [
+        _InfoRow(label: 'Nama', value: '-'),
+        _InfoRow(label: 'Nomor Telepon', value: '-'),
+      ];
+    }
+
+    final prioritized = state.items.where((item) => item.isPrioritas == true);
+    final mainContact =
+        prioritized.isNotEmpty ? prioritized.first : state.items.first;
+
+    return [
+      _InfoRow(
+        label: 'Nama',
+        value: mainContact.contactLabel.isEmpty ? '-' : mainContact.contactLabel,
+      ),
+      _InfoRow(
+        label: 'Nomor Telepon',
+        value:
+            mainContact.contactNumber.isEmpty ? '-' : mainContact.contactNumber,
+      ),
+      _InfoRow(
+        label: 'Status',
+        value: mainContact.isPrioritas == true ? 'Prioritas' : 'Kontak Darurat',
+      ),
+    ];
+  }
+
+  Widget _buildHeader([String? fullName, String? avatarUrl]) {
+    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
@@ -360,18 +502,68 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 78,
-            height: 78,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person,
-              color: Colors.white,
-              size: 42,
-            ),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 78,
+                height: 78,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.25),
+                  shape: BoxShape.circle,
+                ),
+                child: ClipOval(
+                  child: hasAvatar
+                      ? Image.network(
+                          avatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 42,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 42,
+                        ),
+                ),
+              ),
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFE64060)),
+                      ),
+                      child: _isUploadingAvatar
+                          ? const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFE64060),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.camera_alt,
+                              color: Color(0xFFE64060),
+                              size: 16,
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -391,15 +583,25 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                   (fullName != null && fullName.isNotEmpty)
                       ? fullName
                       : 'Kelola data pribadi dan kesehatan Anda',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Ketuk ikon kamera untuk ubah avatar',
+                  style: TextStyle(
+                    color: Color(0xFFFFE4EA),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
-          )
+          ),
+        
         ],
       ),
     );
