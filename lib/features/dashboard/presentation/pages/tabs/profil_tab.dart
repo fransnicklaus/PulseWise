@@ -226,9 +226,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             children: [
               _buildHeader(
                 profile.fullName,
-                authMeAsync.asData?.value.avatarPhoto.isNotEmpty == true
-                    ? authMeAsync.asData?.value.avatarPhoto
-                    : profile.avatarUrl,
+                authMeAsync.asData?.value.avatarPhoto,
               ),
               const SizedBox(height: 18),
               _SectionCard(
@@ -439,7 +437,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => ref.read(emergencyContactsProvider.notifier).fetchInitial(),
+            onPressed: () =>
+                ref.read(emergencyContactsProvider.notifier).fetchInitial(),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFFE64060),
               side: const BorderSide(color: Color(0xFFE64060)),
@@ -469,7 +468,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     return [
       _InfoRow(
         label: 'Nama',
-        value: mainContact.contactLabel.isEmpty ? '-' : mainContact.contactLabel,
+        value:
+            mainContact.contactLabel.isEmpty ? '-' : mainContact.contactLabel,
       ),
       _InfoRow(
         label: 'Nomor Telepon',
@@ -601,7 +601,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
               ],
             ),
           ),
-        
         ],
       ),
     );

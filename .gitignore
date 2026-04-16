@@ -48,3 +48,6 @@ app.*.map.json
 
 # Secret
 client_secret_1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com (1).json
+
+# Generated icon pack source folder
+/LOGO PW-icons/

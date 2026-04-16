@@ -1234,7 +1234,6 @@ class PatientProfile {
   final String sex;
   final String bodyHeightCm;
   final String bloodType;
-  final String  avatarUrl;
 
   const PatientProfile({
     required this.patientId,
@@ -1246,7 +1245,6 @@ class PatientProfile {
     required this.sex,
     required this.bodyHeightCm,
     required this.bloodType,
-    required this.avatarUrl,
   });
 
   String get fullName => '$firstName $lastName'.trim();
@@ -1262,11 +1260,6 @@ class PatientProfile {
       sex: (json['sex'] ?? '').toString(),
       bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
       bloodType: (json['blood_type'] ?? '').toString(),
-      avatarUrl: (json['avatarUrl'] ??
-              json['avatar_url'] ??
-              json['profilePictureUrl'] ??
-              '')
-          .toString(),
     );
   }
 }
