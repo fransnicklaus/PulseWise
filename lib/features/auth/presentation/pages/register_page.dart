@@ -8,10 +8,26 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  final String? googleRegistrationToken;
+  final String? googleEmail;
+  final String? googleIdToken;
+  final String googleRole;
+  final String? googleFirstName;
+  final String? googleLastName;
+  final bool startAtOtp;
+
+  const RegisterPage({
+    super.key,
+    this.googleRegistrationToken,
+    this.googleEmail,
+    this.googleIdToken,
+    this.googleRole = 'patient',
+    this.googleFirstName,
+    this.googleLastName,
+    this.startAtOtp = false,
+  });
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -24,32 +40,47 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-
   final _otpController = TextEditingController();
 
-  final _addressController = TextEditingController();
-  final _heightController = TextEditingController();
-  String? _selectedGender;
-  DateTime? _selectedBirthDate;
-  String? _selectedBloodType;
-
   final _step1Key = GlobalKey<FormState>();
-  final _step3Key = GlobalKey<FormState>();
-  final _step4Key = GlobalKey<FormState>();
+  final _step2Key = GlobalKey<FormState>();
 
   int _currentStep = 0;
   bool _isSubmitting = false;
   bool _isPasswordVisible = false;
   bool _isResendingOtp = false;
-  bool _showProfileValidation = false;
   int _otpResendCooldown = 0;
   Timer? _otpCooldownTimer;
+  bool _googleRegistrationCompleted = false;
 
   String? _registeredPatientId;
-  String? _bearerToken;
+  String _registrationEmail = '';
 
   static const _tokenKey = 'auth_token';
   static const _userIdKey = 'auth_user_id';
+
+  bool get _isGoogleFlow {
+    return (widget.googleEmail ?? '').isNotEmpty &&
+        (widget.googleIdToken ?? '').isNotEmpty;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _firstNameController.text = widget.googleFirstName ?? '';
+    _lastNameController.text = widget.googleLastName ?? '';
+
+    final googleEmail = (widget.googleEmail ?? '').trim();
+    if (googleEmail.isNotEmpty) {
+      _emailController.text = googleEmail;
+      _registrationEmail = googleEmail;
+    }
+
+    _currentStep = widget.startAtOtp ? 1 : 0;
+    if (_isGoogleFlow && widget.startAtOtp) {
+      _googleRegistrationCompleted = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -61,8 +92,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _otpController.dispose();
-    _addressController.dispose();
-    _heightController.dispose();
     super.dispose();
   }
 
@@ -106,6 +135,24 @@ class _RegisterPageState extends State<RegisterPage> {
     return '';
   }
 
+  String _extractTokenFromMap(Map<String, dynamic> map) {
+    const tokenKeys = [
+      'access_token',
+      'token',
+      'jwt',
+      'bearerToken',
+      'bearer_token',
+    ];
+
+    for (final key in tokenKeys) {
+      final value = map[key];
+      if (value is String && value.isNotEmpty) {
+        return value;
+      }
+    }
+    return '';
+  }
+
   Future<String> _registerAndGetPatientId() async {
     final dio = _buildDio();
     final response = await dio.post<Map<String, dynamic>>(
@@ -121,8 +168,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
 
     final body = response.data ?? <String, dynamic>{};
-    final success = body['success'] == true;
-    if (!success) {
+    if (body['success'] != true) {
       throw Exception((body['message'] ?? 'Registrasi gagal').toString());
     }
 
@@ -151,13 +197,11 @@ class _RegisterPageState extends State<RegisterPage> {
     return patientId;
   }
 
-  Future<void> _sendEmailOtp() async {
+  Future<void> _sendEmailOtp({required String email}) async {
     final dio = _buildDio();
     final response = await dio.post<Map<String, dynamic>>(
       '/auth/verifications/email',
-      data: {
-        'email': _emailController.text.trim(),
-      },
+      data: {'email': email},
     );
 
     final body = response.data ?? <String, dynamic>{};
@@ -166,12 +210,12 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<void> _confirmEmailOtp() async {
+  Future<void> _confirmEmailOtp({required String email}) async {
     final dio = _buildDio();
     final response = await dio.post<Map<String, dynamic>>(
       '/auth/verifications/email/confirm',
       data: {
-        'email': _emailController.text.trim(),
+        'email': email,
         'otp': _otpController.text.trim(),
       },
     );
@@ -180,24 +224,6 @@ class _RegisterPageState extends State<RegisterPage> {
     if (body['success'] != true) {
       throw Exception((body['message'] ?? 'Verifikasi OTP gagal').toString());
     }
-  }
-
-  String _extractTokenFromMap(Map<String, dynamic> map) {
-    const tokenKeys = [
-      'access_token',
-      'token',
-      'jwt',
-      'bearerToken',
-      'bearer_token',
-    ];
-
-    for (final key in tokenKeys) {
-      final value = map[key];
-      if (value is String && value.isNotEmpty) {
-        return value;
-      }
-    }
-    return '';
   }
 
   Future<String> _loginAndGetBearerToken() async {
@@ -225,43 +251,100 @@ class _RegisterPageState extends State<RegisterPage> {
     return token;
   }
 
-  Future<void> _updatePatientProfile(String patientId) async {
-    final dio = _buildDio();
-    final date = _selectedBirthDate!;
-    final dateOfBirth =
-        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  Future<void> _completeGoogleRegistrationAndPrepareOtp() async {
+    final registrationToken = (widget.googleRegistrationToken ?? '').trim();
+    if (registrationToken.isEmpty) {
+      throw Exception('registrationToken Google tidak tersedia');
+    }
 
-    final response = await dio.put<Map<String, dynamic>>(
-      '/patients/$patientId/profile',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $_bearerToken',
-        },
-      ),
+    final dio = _buildDio();
+    final response = await dio.post<Map<String, dynamic>>(
+      '/auth/oauth/google/register',
       data: {
-        'dateOfBirth': dateOfBirth,
-        'sex': (_selectedGender ?? '').toLowerCase(),
-        'heightCm': double.parse(_heightController.text.trim()),
-        'isSmoking': false,
-        'isElectricSmoking': false,
-        'bloodType': _selectedBloodType ?? 'O+',
-        'address': _addressController.text.trim(),
+        'registrationToken': registrationToken,
+        'username': _usernameController.text.trim(),
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'role': widget.googleRole,
       },
     );
 
     final body = response.data ?? <String, dynamic>{};
     if (body['success'] != true) {
-      throw Exception((body['message'] ?? 'Update profil gagal').toString());
+      throw Exception(
+        (body['message'] ?? 'Registrasi Google gagal dilanjutkan').toString(),
+      );
     }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    final nextStep = (data['nextStep'] ?? '').toString().toUpperCase().trim();
+    if (nextStep != 'VERIFY_OTP') {
+      throw Exception('Respons Google register tidak valid: $nextStep');
+    }
+
+    final email = (data['email'] ?? widget.googleEmail ?? '').toString().trim();
+    if (email.isEmpty) {
+      throw Exception('Email verifikasi tidak ditemukan');
+    }
+
+    _registrationEmail = email;
+    _googleRegistrationCompleted = true;
   }
 
-  Future<void> _persistSession({
-    required String token,
-    required String userId,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await prefs.setString(_userIdKey, userId);
+  Future<_SessionData> _finalizeGoogleAndGetSession() async {
+    final idToken = (widget.googleIdToken ?? '').trim();
+    if (idToken.isEmpty) {
+      throw Exception('idToken Google tidak tersedia');
+    }
+
+    final dio = _buildDio();
+    final response = await dio.post<Map<String, dynamic>>(
+      '/auth/oauth/google',
+      data: {
+        'idToken': idToken,
+        'role': widget.googleRole,
+      },
+    );
+
+    final body = response.data ?? <String, dynamic>{};
+    if (body['success'] != true) {
+      throw Exception((body['message'] ?? 'Autentikasi Google gagal').toString());
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    final nextStep = (data['nextStep'] ?? '').toString().toUpperCase().trim();
+    if (nextStep != 'HOME') {
+      throw Exception('Akun belum siap masuk. nextStep=$nextStep');
+    }
+
+    var token = _extractTokenFromMap(body);
+    if (token.isEmpty) {
+      token = _extractTokenFromMap(data);
+    }
+    if (token.isEmpty) {
+      throw Exception('Token tidak ditemukan pada respons Google');
+    }
+
+    var userId = _extractIdFromMap(body);
+    if (userId.isEmpty) {
+      userId = _extractIdFromMap(data);
+    }
+
+    final user = data['user'];
+    if (userId.isEmpty && user is Map<String, dynamic>) {
+      userId = _extractIdFromMap(user);
+    }
+
+    final patient = data['patient'];
+    if (userId.isEmpty && patient is Map<String, dynamic>) {
+      userId = _extractIdFromMap(patient);
+    }
+
+    if (userId.isEmpty) {
+      throw Exception('userId/patientId tidak ditemukan pada respons Google');
+    }
+
+    return _SessionData(token: token, userId: userId);
   }
 
   void _startOtpCooldown() {
@@ -285,9 +368,17 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _resendOtp() async {
     if (_otpResendCooldown > 0 || _isResendingOtp || _isSubmitting) return;
 
+    final email = _registrationEmail.isNotEmpty
+        ? _registrationEmail
+        : _emailController.text.trim();
+    if (email.isEmpty) {
+      AppToast.warning(context, 'Email belum tersedia untuk kirim OTP');
+      return;
+    }
+
     setState(() => _isResendingOtp = true);
     try {
-      await _sendEmailOtp();
+      await _sendEmailOtp(email: email);
       if (!mounted) return;
       AppToast.success(context, 'OTP baru berhasil dikirim');
       _startOtpCooldown();
@@ -301,48 +392,35 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year - 20, now.month, now.day),
-      firstDate: DateTime(1900),
-      lastDate: now,
-    );
-
-    if (picked != null) {
-      setState(() {
-        _selectedBirthDate = picked;
-        _showProfileValidation = false;
-      });
-    }
-  }
-
   Future<void> _nextStep() async {
     final canProceed = switch (_currentStep) {
       0 => _step1Key.currentState?.validate() ?? false,
-      1 => true,
-      2 => _step3Key.currentState?.validate() ?? false,
-      3 => _step4Key.currentState?.validate() ?? false,
+      1 => _step2Key.currentState?.validate() ?? false,
       _ => false,
     };
 
     if (!canProceed || _isSubmitting) return;
 
-    if (_currentStep == 3 && _selectedBirthDate == null) {
-      setState(() => _showProfileValidation = true);
-      AppToast.warning(context, 'Tanggal lahir wajib dipilih');
-      return;
-    }
-
     setState(() => _isSubmitting = true);
 
     try {
       if (_currentStep == 0) {
-        final patientId = await _registerAndGetPatientId();
-        if (!mounted) return;
-        _registeredPatientId = patientId;
-        AppToast.success(context, 'Registrasi akun berhasil');
+        if (_isGoogleFlow) {
+          if (!_googleRegistrationCompleted) {
+            await _completeGoogleRegistrationAndPrepareOtp();
+          }
+          if (!mounted) return;
+          AppToast.success(context, 'Registrasi Google selesai, OTP sudah dikirim');
+        } else {
+          final patientId = await _registerAndGetPatientId();
+          _registeredPatientId = patientId;
+          _registrationEmail = _emailController.text.trim();
+          await _sendEmailOtp(email: _registrationEmail);
+          if (!mounted) return;
+          AppToast.success(context, 'Registrasi berhasil, OTP sudah dikirim');
+        }
+
+        _startOtpCooldown();
         setState(() {
           _currentStep = 1;
           _isSubmitting = false;
@@ -351,50 +429,37 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
       if (_currentStep == 1) {
-        await _sendEmailOtp();
-        if (!mounted) return;
-        AppToast.success(context, 'OTP berhasil dikirim ke email');
-        _startOtpCooldown();
-        setState(() {
-          _currentStep = 2;
-          _isSubmitting = false;
-        });
-        return;
-      }
-
-      if (_currentStep == 2) {
-        await _confirmEmailOtp();
-        final token = await _loginAndGetBearerToken();
-        if (!mounted) return;
-        _bearerToken = token;
-        setState(() {
-          _currentStep = 3;
-          _showProfileValidation = false;
-          _isSubmitting = false;
-        });
-        return;
-      }
-
-      final patientId = _registeredPatientId;
-      if (patientId == null || patientId.isEmpty) {
-        throw Exception('Data akun belum terdaftar. Ulangi langkah 1.');
-      }
-      if ((_bearerToken ?? '').isEmpty) {
-        throw Exception(
-            'Token autentikasi belum tersedia. Ulangi langkah autentikasi.');
-      }
-
-      await _updatePatientProfile(patientId);
-      if (!mounted) return;
-      await _persistSession(
-        token: _bearerToken!,
-        userId: patientId,
-      );
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          context.go('/home');
+        final email = _registrationEmail.isNotEmpty
+            ? _registrationEmail
+            : _emailController.text.trim();
+        if (email.isEmpty) {
+          throw Exception('Email verifikasi tidak tersedia');
         }
-      });
+
+        await _confirmEmailOtp(email: email);
+
+        late final _SessionData session;
+        if (_isGoogleFlow) {
+          session = await _finalizeGoogleAndGetSession();
+        } else {
+          final token = await _loginAndGetBearerToken();
+          final patientId = _registeredPatientId;
+          if (patientId == null || patientId.isEmpty) {
+            throw Exception('Data akun belum terdaftar. Ulangi registrasi.');
+          }
+          session = _SessionData(token: token, userId: patientId);
+        }
+
+        if (!mounted) return;
+        setState(() => _isSubmitting = false);
+        context.push(
+          '/login/register/profile-setup',
+          extra: {
+            _tokenKey: session.token,
+            _userIdKey: session.userId,
+          },
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       AppToast.error(context, _extractApiError(e));
@@ -414,43 +479,16 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   String _stepTitle() {
-    return switch (_currentStep) {
-      0 => 'Langkah 1: Registrasi Akun',
-      1 => 'Langkah 2: Kirim OTP',
-      2 => 'Langkah 3: Verifikasi OTP',
-      _ => 'Langkah 4: Lengkapi Profil',
-    };
+    if (_currentStep == 0) {
+      return _isGoogleFlow
+          ? 'Langkah 1: Lengkapi Registrasi'
+          : 'Langkah 1: Registrasi Akun';
+    }
+    return 'Langkah 2: Verifikasi OTP';
   }
 
   String _nextButtonLabel() {
-    return switch (_currentStep) {
-      1 => 'KIRIM OTP',
-      2 => 'VERIFIKASI OTP',
-      3 => 'SELESAI',
-      _ => 'LANJUT',
-    };
-  }
-
-  String _birthDateLabel() {
-    final date = _selectedBirthDate;
-    if (date == null) return 'Pilih tanggal lahir';
-
-    const months = [
-      'Januari',
-      'Februari',
-      'Maret',
-      'April',
-      'Mei',
-      'Juni',
-      'Juli',
-      'Agustus',
-      'September',
-      'Oktober',
-      'November',
-      'Desember',
-    ];
-
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return _currentStep == 1 ? 'VERIFIKASI OTP' : 'LANJUT';
   }
 
   InputDecoration _inputDecoration({
@@ -461,12 +499,14 @@ class _RegisterPageState extends State<RegisterPage> {
       hintText: hint,
       hintStyle: const TextStyle(
         color: Color(0xFF64748B),
-        fontSize: 15,
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
       ),
-      prefixIcon: Icon(icon, color: const Color(0xFF536278)),
+      prefixIcon: Icon(icon, color: const Color(0xFF536278), size: 26),
       filled: true,
       fillColor: const Color(0xFFF9FBFD),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      errorStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(15),
         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -490,6 +530,7 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               TextFormField(
                 controller: _usernameController,
+                style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                 decoration: _inputDecoration(
                   hint: 'Username',
                   icon: FluentIcons.person_accounts_24_regular,
@@ -501,6 +542,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _firstNameController,
+                style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                 decoration: _inputDecoration(
                   hint: 'First Name',
                   icon: FluentIcons.person_24_regular,
@@ -512,6 +554,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _lastNameController,
+                style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                 decoration: _inputDecoration(
                   hint: 'Last Name',
                   icon: FluentIcons.person_24_regular,
@@ -520,102 +563,124 @@ class _RegisterPageState extends State<RegisterPage> {
                     ? 'Last name wajib diisi'
                     : null,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: _inputDecoration(
-                  hint: 'Masukkan email',
-                  icon: FluentIcons.mail_24_regular,
-                ),
-                validator: (value) {
-                  final email = (value ?? '').trim();
-                  if (email.isEmpty) return 'Email wajib diisi';
-                  if (!email.contains('@')) return 'Format email tidak valid';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: !_isPasswordVisible,
-                decoration: _inputDecoration(
-                  hint: 'Password',
-                  icon: FluentIcons.lock_closed_24_regular,
-                ).copyWith(
-                  suffixIcon: IconButton(
-                    onPressed: () {
-                      setState(() => _isPasswordVisible = !_isPasswordVisible);
-                    },
-                    icon: Icon(
-                      _isPasswordVisible
-                          ? FluentIcons.eye_24_regular
-                          : FluentIcons.eye_off_24_regular,
-                      color: const Color(0xFF536278),
-                    ),
+              if (_isGoogleFlow) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FBFD),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        FluentIcons.mail_24_regular,
+                        color: Color(0xFF536278),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Email Google',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _registrationEmail,
+                              style: const TextStyle(
+                                color: Color(0xFF1F2937),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                validator: (value) {
-                  final password = (value ?? '').trim();
-                  if (password.isEmpty) return 'Password wajib diisi';
-                  if (password.length < 6) return 'Password minimal 6 karakter';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: !_isPasswordVisible,
-                decoration: _inputDecoration(
-                  hint: 'Confirm Password',
-                  icon: FluentIcons.lock_closed_24_regular,
+              ] else ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  decoration: _inputDecoration(
+                    hint: 'Masukkan email',
+                    icon: FluentIcons.mail_24_regular,
+                  ),
+                  validator: (value) {
+                    final email = (value ?? '').trim();
+                    if (email.isEmpty) return 'Email wajib diisi';
+                    if (!email.contains('@')) return 'Format email tidak valid';
+                    return null;
+                  },
                 ),
-                validator: (value) {
-                  final confirmPassword = (value ?? '').trim();
-                  if (confirmPassword.isEmpty) {
-                    return 'Confirm password wajib diisi';
-                  }
-                  if (confirmPassword != _passwordController.text.trim()) {
-                    return 'Confirm password tidak sama';
-                  }
-                  return null;
-                },
-              ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: !_isPasswordVisible,
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  decoration: _inputDecoration(
+                    hint: 'Password',
+                    icon: FluentIcons.lock_closed_24_regular,
+                  ).copyWith(
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() => _isPasswordVisible = !_isPasswordVisible);
+                      },
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? FluentIcons.eye_24_regular
+                            : FluentIcons.eye_off_24_regular,
+                        color: const Color(0xFF536278),
+                        size: 26,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    final password = (value ?? '').trim();
+                    if (password.isEmpty) return 'Password wajib diisi';
+                    if (password.length < 6) return 'Password minimal 6 karakter';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: !_isPasswordVisible,
+                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  decoration: _inputDecoration(
+                    hint: 'Confirm Password',
+                    icon: FluentIcons.lock_closed_24_regular,
+                  ),
+                  validator: (value) {
+                    final confirmPassword = (value ?? '').trim();
+                    if (confirmPassword.isEmpty) {
+                      return 'Confirm password wajib diisi';
+                    }
+                    if (confirmPassword != _passwordController.text.trim()) {
+                      return 'Confirm password tidak sama';
+                    }
+                    return null;
+                  },
+                ),
+              ],
             ],
           ),
         ),
-      1 => Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FBFD),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Kirim OTP ke Email',
-                style: TextStyle(
-                  color: Color(0xFF334155),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Tekan KIRIM OTP untuk mengirim OTP ke ${_emailController.text.trim()}.',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-        ),
-      2 => Form(
-          key: _step3Key,
+      1 => Form(
+          key: _step2Key,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -623,6 +688,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 controller: _otpController,
                 keyboardType: TextInputType.number,
                 maxLength: 6,
+                style: const TextStyle(fontSize: 20, letterSpacing: 1.2),
                 decoration: _inputDecoration(
                   hint: 'Masukkan 6 digit OTP',
                   icon: FluentIcons.password_24_regular,
@@ -631,20 +697,19 @@ class _RegisterPageState extends State<RegisterPage> {
                   final otp = (value ?? '').trim();
                   if (otp.isEmpty) return 'OTP wajib diisi';
                   if (otp.length != 6) return 'OTP harus 6 digit';
-                  if (int.tryParse(otp) == null)
-                    return 'OTP harus berupa angka';
+                  if (int.tryParse(otp) == null) return 'OTP harus berupa angka';
                   return null;
                 },
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'Masukkan kode OTP yang sudah dikirim ke email Anda.',
-                style: TextStyle(
+              const SizedBox(height: 12),
+              Text(
+                'Masukkan kode OTP yang dikirim ke ${_registrationEmail.isNotEmpty ? _registrationEmail : _emailController.text.trim()}.',
+                style: const TextStyle(
                   color: Color(0xFF64748B),
-                  fontSize: 13,
+                  fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
@@ -653,141 +718,22 @@ class _RegisterPageState extends State<RegisterPage> {
                       : _resendOtp,
                   child: _isResendingOtp
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Text(
                           _otpResendCooldown > 0
                               ? 'Kirim Ulang OTP (${_otpResendCooldown}s)'
                               : 'Kirim Ulang OTP',
+                          style: const TextStyle(fontSize: 17),
                         ),
                 ),
               ),
             ],
           ),
         ),
-      _ => Form(
-          key: _step4Key,
-          child: Column(
-            children: [
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                items: const [
-                  DropdownMenuItem(value: 'Male', child: Text('Male')),
-                  DropdownMenuItem(value: 'Female', child: Text('Female')),
-                ],
-                decoration: _inputDecoration(
-                  hint: 'Jenis Kelamin',
-                  icon: FluentIcons.person_feedback_24_regular,
-                ),
-                onChanged: (value) => setState(() => _selectedGender = value),
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Jenis kelamin wajib dipilih'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              InkWell(
-                borderRadius: BorderRadius.circular(15),
-                onTap: _pickBirthDate,
-                child: Ink(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FBFD),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        FluentIcons.calendar_24_regular,
-                        color: Color(0xFF536278),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _birthDateLabel(),
-                          style: TextStyle(
-                            color: _selectedBirthDate == null
-                                ? const Color(0xFF64748B)
-                                : const Color(0xFF1F2937),
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (_selectedBirthDate == null && _showProfileValidation)
-                const Padding(
-                  padding: EdgeInsets.only(top: 6, left: 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Tanggal lahir wajib dipilih',
-                      style: TextStyle(
-                        color: Color(0xFFB91C1C),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _addressController,
-                maxLines: 2,
-                decoration: _inputDecoration(
-                  hint: 'Alamat',
-                  icon: FluentIcons.location_24_regular,
-                ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Alamat wajib diisi' : null,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _selectedBloodType,
-                items: const [
-                  DropdownMenuItem(value: 'A+', child: Text('A+')),
-                  DropdownMenuItem(value: 'A-', child: Text('A-')),
-                  DropdownMenuItem(value: 'B+', child: Text('B+')),
-                  DropdownMenuItem(value: 'B-', child: Text('B-')),
-                  DropdownMenuItem(value: 'AB+', child: Text('AB+')),
-                  DropdownMenuItem(value: 'AB-', child: Text('AB-')),
-                  DropdownMenuItem(value: 'O+', child: Text('O+')),
-                  DropdownMenuItem(value: 'O-', child: Text('O-')),
-                ],
-                decoration: _inputDecoration(
-                  hint: 'Golongan Darah',
-                  icon: FluentIcons.heart_pulse_24_regular,
-                ),
-                onChanged: (value) =>
-                    setState(() => _selectedBloodType = value),
-                validator: (value) => (value == null || value.isEmpty)
-                    ? 'Golongan darah wajib dipilih'
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _heightController,
-                keyboardType: TextInputType.number,
-                decoration: _inputDecoration(
-                  hint: 'Tinggi Badan (cm)',
-                  icon: FluentIcons.ruler_24_regular,
-                ),
-                validator: (value) {
-                  final text = (value ?? '').trim();
-                  if (text.isEmpty) return 'Tinggi badan wajib diisi';
-                  if (double.tryParse(text) == null) {
-                    return 'Tinggi badan harus angka';
-                  }
-                  return null;
-                },
-              ),
-            ],
-          ),
-        ),
+      _ => const SizedBox.shrink(),
     };
   }
 
@@ -868,16 +814,16 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 72, 24, 32),
+                          padding: const EdgeInsets.fromLTRB(24, 72, 24, 36),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Center(
+                              Center(
                                 child: Text(
-                                  'Buat Akun',
-                                  style: TextStyle(
+                                  _isGoogleFlow ? 'Lanjutkan Akun Google' : 'Buat Akun',
+                                  style: const TextStyle(
                                     color: Color(0xFF536278),
-                                    fontSize: 30,
+                                    fontSize: 36,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Product Sans',
                                   ),
@@ -890,7 +836,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 _stepTitle(),
                                 style: const TextStyle(
                                   color: Color(0xFF525252),
-                                  fontSize: 18,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -909,18 +855,20 @@ class _RegisterPageState extends State<RegisterPage> {
                                           _isSubmitting ? null : _previousStep,
                                       style: OutlinedButton.styleFrom(
                                         side: const BorderSide(
-                                            color: Color(0xFFE2E8F0)),
+                                          color: Color(0xFFE2E8F0),
+                                        ),
                                         padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
+                                          vertical: 18,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(14),
                                         ),
                                       ),
                                       child: Text(
                                         _currentStep == 0 ? 'BATAL' : 'KEMBALI',
                                         style: const TextStyle(
                                           color: Color(0xFF536278),
+                                          fontSize: 18,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -935,10 +883,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                         backgroundColor:
                                             const Color(0xFFE64060),
                                         padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
+                                          vertical: 18,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(14),
+                                          borderRadius: BorderRadius.circular(14),
                                         ),
                                         elevation: 0,
                                       ),
@@ -955,6 +903,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                               _nextButtonLabel(),
                                               style: const TextStyle(
                                                 color: Colors.white,
+                                                fontSize: 18,
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
@@ -962,22 +911,23 @@ class _RegisterPageState extends State<RegisterPage> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 16),
-                              Center(
-                                child: GestureDetector(
-                                  onTap: () => context.pop(),
-                                  child: const Text(
-                                    'Sudah punya akun? Masuk',
-                                    style: TextStyle(
-                                      color: Color(0xFFE64060),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      decoration: TextDecoration.underline,
-                                      decorationColor: Color(0xFFE64060),
+                              const SizedBox(height: 18),
+                              if (!_isGoogleFlow)
+                                Center(
+                                  child: GestureDetector(
+                                    onTap: () => context.pop(),
+                                    child: const Text(
+                                      'Sudah punya akun? Masuk',
+                                      style: TextStyle(
+                                        color: Color(0xFFE64060),
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: Color(0xFFE64060),
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
@@ -989,8 +939,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         child: Center(
                           child: SvgPicture.asset(
                             'assets/svgs/pulsewise_logo.svg',
-                            width: 112,
-                            height: 112,
+                            width: 122,
+                            height: 122,
                           ),
                         ),
                       ),
@@ -1014,12 +964,13 @@ class _StepIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: List.generate(4, (index) {
+      children: List.generate(2, (index) {
         final isActive = index <= currentStep;
         return Expanded(
           child: Container(
-            margin: EdgeInsets.only(right: index == 3 ? 0 : 8),
+            margin: EdgeInsets.only(right: index == 1 ? 0 : 8),
             height: 8,
+            constraints: const BoxConstraints(minHeight: 10),
             decoration: BoxDecoration(
               color:
                   isActive ? const Color(0xFFE64060) : const Color(0xFFE2E8F0),
@@ -1030,4 +981,11 @@ class _StepIndicator extends StatelessWidget {
       }),
     );
   }
+}
+
+class _SessionData {
+  final String token;
+  final String userId;
+
+  const _SessionData({required this.token, required this.userId});
 }

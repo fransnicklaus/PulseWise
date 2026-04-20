@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
+import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/contacts_page.dart';
@@ -24,7 +25,99 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
         routes: [
           GoRoute(
             path: 'register',
-            builder: (context, state) => const RegisterPage(),
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is! Map<String, dynamic> || extra['flow'] != 'google') {
+                return const RegisterPage();
+              }
+
+              return RegisterPage(
+                googleRegistrationToken:
+                    (extra['registrationToken'] ?? '').toString(),
+                googleEmail: (extra['email'] ?? '').toString(),
+                googleIdToken: (extra['idToken'] ?? '').toString(),
+                googleRole: (extra['role'] ?? 'patient').toString(),
+                googleFirstName: (extra['firstName'] ?? '').toString(),
+                googleLastName: (extra['lastName'] ?? '').toString(),
+                startAtOtp: extra['startAtOtp'] == true,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'profile-setup',
+                builder: (context, state) {
+                  final extra = state.extra;
+                  if (extra is! Map<String, dynamic>) {
+                    return const LoginPage();
+                  }
+
+                  final token = (extra['auth_token'] ?? '').toString();
+                  final patientId = (extra['auth_user_id'] ?? '').toString();
+
+                  if (token.isEmpty || patientId.isEmpty) {
+                    return const LoginPage();
+                  }
+
+                  return ProfileSetupPage(
+                    token: token,
+                    patientId: patientId,
+                  );
+                },
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'google-complete-registration',
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is! Map<String, dynamic>) {
+                return const LoginPage();
+              }
+
+              final registrationToken =
+                  (extra['registrationToken'] ?? '').toString();
+              final email = (extra['email'] ?? '').toString();
+              final role = (extra['role'] ?? 'patient').toString();
+              final idToken = (extra['idToken'] ?? '').toString();
+
+              if (registrationToken.isEmpty || email.isEmpty || idToken.isEmpty) {
+                return const LoginPage();
+              }
+
+              return RegisterPage(
+                googleRegistrationToken: registrationToken,
+                googleEmail: email,
+                googleIdToken: idToken,
+                googleRole: role,
+                googleFirstName: (extra['firstName'] ?? '').toString(),
+                googleLastName: (extra['lastName'] ?? '').toString(),
+                startAtOtp: false,
+              );
+            },
+          ),
+          GoRoute(
+            path: 'google-verify-otp',
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is! Map<String, dynamic>) {
+                return const LoginPage();
+              }
+
+              final email = (extra['email'] ?? '').toString();
+              final role = (extra['role'] ?? 'patient').toString();
+              final idToken = (extra['idToken'] ?? '').toString();
+
+              if (email.isEmpty || idToken.isEmpty) {
+                return const LoginPage();
+              }
+
+              return RegisterPage(
+                googleEmail: email,
+                googleIdToken: idToken,
+                googleRole: role,
+                startAtOtp: true,
+              );
+            },
           ),
         ],
       ),

@@ -49,6 +49,17 @@
 		<string>Camera is used to scan QR codes for user identification.</string>
 		<key>NSContactsUsageDescription</key>
 		<string>Kontak digunakan untuk memilih nomor darurat dengan lebih cepat.</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1</string>
+				</array>
+			</dict>
+		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

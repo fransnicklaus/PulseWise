@@ -1,12 +1,60 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
+
+enum GoogleAuthNextStep {
+  home,
+  completeRegistration,
+  verifyOtp,
+  unknown,
+}
+
+class GoogleAuthFlowResult {
+  final bool success;
+  final String? message;
+  final GoogleAuthNextStep nextStep;
+  final String? token;
+  final String? userId;
+  final String? email;
+  final String? registrationToken;
+  final String role;
+  final String? idToken;
+  final String? firstName;
+  final String? lastName;
+  final String? avatarPhoto;
+
+  const GoogleAuthFlowResult({
+    required this.success,
+    required this.nextStep,
+    this.message,
+    this.token,
+    this.userId,
+    this.email,
+    this.registrationToken,
+    this.role = 'patient',
+    this.idToken,
+    this.firstName,
+    this.lastName,
+    this.avatarPhoto,
+  });
+
+  factory GoogleAuthFlowResult.error(String message) {
+    return GoogleAuthFlowResult(
+      success: false,
+      nextStep: GoogleAuthNextStep.unknown,
+      message: message,
+    );
+  }
+}
 
 class AuthState {
   final bool isLoading;
@@ -45,6 +93,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   static const _tokenKey = 'auth_token';
   static const _userIdKey = 'auth_user_id';
+  static const _fallbackGoogleClientId =
+      '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com';
+  static const _androidApplicationId = 'com.rdib.pulsewise';
+  static const _debugSha1 =
+      '4B:C9:64:28:E0:0A:1F:90:6E:94:20:D9:F5:5B:2C:F2:18:09:FE:35';
+
+  void _logGoogle(String message) {
+    if (!kDebugMode) return;
+    debugPrint('[Auth][Google] $message');
+  }
+
+  String _maskToken(String value) {
+    if (value.length <= 12) {
+      return '${value.substring(0, value.length > 4 ? 4 : value.length)}...';
+    }
+    return '${value.substring(0, 6)}...${value.substring(value.length - 4)}';
+  }
 
   Future<void> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -55,15 +120,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         throw Exception('API_BASE_URL belum diatur di file .env');
       }
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 20),
-          receiveTimeout: const Duration(seconds: 20),
-          headers: const {'Accept': 'application/json'},
-        ),
-      );
-      ApiLogger.attach(dio);
+      final dio = _buildDio(baseUrl);
 
       final response = await dio.post<Map<String, dynamic>>(
         '/auth/login',
@@ -109,15 +166,363 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> loginWithGoogle() async {
+  Future<GoogleAuthFlowResult> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true, error: null);
+    _logGoogle('Login flow started');
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final envWebClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+      final envServerClientId = dotenv.env['GOOGLE_SERVER_CLIENT_ID'];
+      final envClientId = dotenv.env['GOOGLE_CLIENT_ID'];
+      final serverClientId = envWebClientId ??
+          envServerClientId ??
+          envClientId ??
+          _fallbackGoogleClientId;
+      final fromEnv = (envWebClientId ?? '').isNotEmpty ||
+          (envServerClientId ?? '').isNotEmpty ||
+          (envClientId ?? '').isNotEmpty;
+      _logGoogle(
+        'Using serverClientId source=${fromEnv ? 'env' : 'fallback'} value=${_maskToken(serverClientId)}',
+      );
+      _logGoogle('Resolved Google client id (full)=$serverClientId');
+
+      final googleSignIn = GoogleSignIn(
+        serverClientId: serverClientId,
+        scopes: const ['email', 'profile'],
+      );
+
+      // Force account chooser so user can switch account every login attempt.
+      try {
+        await googleSignIn.disconnect();
+        _logGoogle('Disconnected previous Google session');
+      } catch (_) {
+        await googleSignIn.signOut();
+        _logGoogle('No prior grant to disconnect, fallback signOut done');
+      }
+
+      _logGoogle('Trying interactive signIn with account chooser');
+      final googleUser = await googleSignIn.signIn();
+      _logGoogle('Interactive signIn result user=${googleUser?.email ?? 'null'}');
+
+      if (googleUser == null) {
+        _logGoogle('Login cancelled by user');
+        throw Exception('Login Google dibatalkan');
+      }
+
+      _logGoogle('Fetching Google authentication tokens');
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      _logGoogle('idToken available=${idToken != null && idToken.isNotEmpty}');
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception(
+          'idToken Google tidak tersedia. Pastikan OAuth client sudah dikonfigurasi.',
+        );
+      }
+
+      final flowResult = await _resolveGoogleNextStep(
+        idToken: idToken,
+        role: 'patient',
+      );
+
+      state = state.copyWith(
+        isLoading: false,
+        error: flowResult.success ? null : flowResult.message,
+        token: flowResult.token,
+        userId: flowResult.userId,
+        isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
+      );
+
+      return flowResult;
+    } on PlatformException catch (e, st) {
+      _logGoogle('PlatformException code=${e.code} message=${e.message}');
+      _logGoogle('StackTrace: $st');
+      final isApi10 = e.code == 'sign_in_failed' &&
+          (e.message ?? '').contains('ApiException: 10');
+      final errorMessage = isApi10
+          ? 'Google Sign-In gagal (ApiException 10). Cek konfigurasi OAuth Android: applicationId=$_androidApplicationId, SHA1 debug=$_debugSha1, dan pastikan OAuth Android client + Web client ID sudah benar di Google Cloud Console.'
+          : e.message ?? e.toString();
+      state = state.copyWith(
+        isLoading: false,
+        error: errorMessage,
+        isAuthenticated: false,
+      );
+      return GoogleAuthFlowResult.error(errorMessage);
+    } on DioException catch (e, st) {
+      _logGoogle(
+        'DioException status=${e.response?.statusCode} message=${e.message} data=${e.response?.data}',
+      );
+      _logGoogle('StackTrace: $st');
+      final message = _extractErrorMessage(e);
+      state = state.copyWith(
+        isLoading: false,
+        error: message,
+        isAuthenticated: false,
+      );
+      return GoogleAuthFlowResult.error(message);
+    } catch (e, st) {
+      _logGoogle('Exception: $e');
+      _logGoogle('StackTrace: $st');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+        isLoading: false,
+        error: message,
+        isAuthenticated: false,
+      );
+      return GoogleAuthFlowResult.error(message);
+    }
+  }
+
+  Future<GoogleAuthFlowResult> completeGoogleRegistration({
+    required String registrationToken,
+    required String username,
+    String? firstName,
+    String? lastName,
+    String role = 'patient',
+    required String idToken,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      // Mock google login delay
-      await Future.delayed(const Duration(seconds: 2));
-      state = state.copyWith(isLoading: false);
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/oauth/google/register',
+        data: {
+          'registrationToken': registrationToken,
+          'username': username,
+          'firstName': firstName,
+          'lastName': lastName,
+          'role': role,
+        },
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Registrasi Google gagal dilanjutkan').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      final nextStep = _parseGoogleNextStep((data['nextStep'] ?? '').toString());
+      final email = (data['email'] ?? '').toString();
+
+      if (nextStep != GoogleAuthNextStep.verifyOtp) {
+        throw Exception(
+          'Respons registrasi Google tidak valid. nextStep=${data['nextStep']}',
+        );
+      }
+
+      state = state.copyWith(isLoading: false, error: null, isAuthenticated: false);
+      return GoogleAuthFlowResult(
+        success: true,
+        nextStep: GoogleAuthNextStep.verifyOtp,
+        message: (body['message'] ?? '').toString(),
+        email: email,
+        role: role,
+        idToken: idToken,
+      );
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      return GoogleAuthFlowResult.error(message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      return GoogleAuthFlowResult.error(message);
     }
+  }
+
+  Future<GoogleAuthFlowResult> verifyGoogleOtpAndFinalize({
+    required String email,
+    required String otp,
+    required String idToken,
+    String role = 'patient',
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+      final verifyResponse = await dio.post<Map<String, dynamic>>(
+        '/auth/verifications/email/confirm',
+        data: {
+          'email': email,
+          'otp': otp,
+        },
+      );
+
+      final verifyBody = verifyResponse.data ?? <String, dynamic>{};
+      if (verifyBody['success'] != true) {
+        throw Exception((verifyBody['message'] ?? 'Verifikasi OTP gagal').toString());
+      }
+
+      final flowResult = await _resolveGoogleNextStep(idToken: idToken, role: role);
+      state = state.copyWith(
+        isLoading: false,
+        error: flowResult.success ? null : flowResult.message,
+        token: flowResult.token,
+        userId: flowResult.userId,
+        isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
+      );
+
+      return flowResult;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      return GoogleAuthFlowResult.error(message);
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      return GoogleAuthFlowResult.error(message);
+    }
+  }
+
+  Future<void> resendEmailVerificationOtp(String email) async {
+    final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+    if (baseUrl.isEmpty) {
+      throw Exception('API_BASE_URL belum diatur di file .env');
+    }
+
+    final dio = _buildDio(baseUrl);
+    final response = await dio.post<Map<String, dynamic>>(
+      '/auth/verifications/email',
+      data: {'email': email},
+    );
+
+    final body = response.data ?? <String, dynamic>{};
+    if (body['success'] != true) {
+      throw Exception((body['message'] ?? 'Gagal mengirim ulang OTP').toString());
+    }
+  }
+
+  Future<GoogleAuthFlowResult> _resolveGoogleNextStep({
+    required String idToken,
+    required String role,
+  }) async {
+    final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+    if (baseUrl.isEmpty) {
+      throw Exception('API_BASE_URL belum diatur di file .env');
+    }
+
+    final dio = _buildDio(baseUrl);
+    _logGoogle('Calling backend /auth/oauth/google');
+    final response = await dio.post<Map<String, dynamic>>(
+      '/auth/oauth/google',
+      data: {
+        'idToken': idToken,
+        'role': role,
+      },
+    );
+    _logGoogle('Backend response status=${response.statusCode}');
+
+    final body = response.data ?? <String, dynamic>{};
+    final success = body['success'] == true;
+    if (!success) {
+      throw Exception((body['message'] ?? 'Autentikasi Google gagal').toString());
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    final nextStep = _parseGoogleNextStep((data['nextStep'] ?? '').toString());
+    final message = (body['message'] ?? '').toString();
+
+    if (nextStep == GoogleAuthNextStep.home) {
+      final token = _extractToken(body) ?? _extractToken(data);
+      if (token == null || token.isEmpty) {
+        throw Exception('Token tidak ditemukan pada respons login Google');
+      }
+
+      final userId = _extractUserId(body) ?? _extractUserId(data);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenKey, token);
+      if (userId != null && userId.isNotEmpty) {
+        await prefs.setString(_userIdKey, userId);
+      }
+
+      _logGoogle('Session saved, auth success');
+      return GoogleAuthFlowResult(
+        success: true,
+        nextStep: GoogleAuthNextStep.home,
+        message: message,
+        token: token,
+        userId: userId,
+        role: role,
+        idToken: idToken,
+      );
+    }
+
+    if (nextStep == GoogleAuthNextStep.completeRegistration) {
+      final registrationToken = (data['registrationToken'] ?? '').toString();
+      if (registrationToken.isEmpty) {
+        throw Exception('registrationToken tidak ditemukan pada respons Google');
+      }
+
+      final googleProfile =
+          (data['googleProfile'] as Map<String, dynamic>?) ?? const {};
+
+      return GoogleAuthFlowResult(
+        success: true,
+        nextStep: GoogleAuthNextStep.completeRegistration,
+        message: message,
+        registrationToken: registrationToken,
+        email: (googleProfile['email'] ?? data['email'] ?? '').toString(),
+        firstName: (googleProfile['firstName'] ?? '').toString(),
+        lastName: (googleProfile['lastName'] ?? '').toString(),
+        avatarPhoto: (googleProfile['avatarPhoto'] ?? '').toString(),
+        role: (data['role'] ?? role).toString(),
+        idToken: idToken,
+      );
+    }
+
+    if (nextStep == GoogleAuthNextStep.verifyOtp) {
+      return GoogleAuthFlowResult(
+        success: true,
+        nextStep: GoogleAuthNextStep.verifyOtp,
+        message: message,
+        email: (data['email'] ?? '').toString(),
+        role: (data['role'] ?? role).toString(),
+        idToken: idToken,
+      );
+    }
+
+    throw Exception('nextStep Google tidak dikenali: ${data['nextStep']}');
+  }
+
+  GoogleAuthNextStep _parseGoogleNextStep(String raw) {
+    switch (raw.toUpperCase().trim()) {
+      case 'HOME':
+        return GoogleAuthNextStep.home;
+      case 'COMPLETE_REGISTRATION':
+        return GoogleAuthNextStep.completeRegistration;
+      case 'VERIFY_OTP':
+        return GoogleAuthNextStep.verifyOtp;
+      default:
+        return GoogleAuthNextStep.unknown;
+    }
+  }
+
+  Dio _buildDio(String baseUrl) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+        headers: const {'Accept': 'application/json'},
+      ),
+    );
+    ApiLogger.attach(dio);
+    return dio;
   }
 
   Future<void> logout() async {

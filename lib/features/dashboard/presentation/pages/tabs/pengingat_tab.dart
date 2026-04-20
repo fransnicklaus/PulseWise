@@ -46,8 +46,10 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
 
     return SafeArea(
       child: calendarAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFE64060)),
+        loading: () => const SizedBox.expand(
+          child: Center(
+            child: CircularProgressIndicator(color: Color(0xFFE64060)),
+          ),
         ),
         error: (error, _) => _ErrorView(
           message: error.toString().replaceFirst('Exception: ', ''),

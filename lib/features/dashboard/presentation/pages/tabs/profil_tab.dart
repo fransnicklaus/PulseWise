@@ -20,6 +20,7 @@ class ProfilTab extends ConsumerStatefulWidget {
 
 class _ProfilTabState extends ConsumerState<ProfilTab> {
   bool _isUploadingAvatar = false;
+  bool _didAutoRetryAuthFetch = false;
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     await ref.read(patientProfileProvider.future);
     await ref.read(authMeProvider.future);
     await ref.read(emergencyContactsProvider.notifier).fetchInitial();
+    _didAutoRetryAuthFetch = false;
   }
 
   String _formatDate(DateTime? date) {
@@ -163,64 +165,140 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
         child: profileAsync.when(
           loading: () => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              SizedBox(height: 140),
-              Center(child: CircularProgressIndicator()),
-            ],
-          ),
-          error: (error, _) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
-              const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    border: Border.all(color: const Color(0xFFFECACA)),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Gagal memuat profil',
-                        style: TextStyle(
-                          color: Color(0xFF991B1B),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        error.toString(),
-                        style: const TextStyle(
-                          color: Color(0xFF7F1D1D),
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () =>
-                              ref.invalidate(patientProfileProvider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFDC2626),
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Coba Lagi'),
-                        ),
-                      ),
-                    ],
-                  ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.72,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE64060)),
                 ),
               ),
             ],
           ),
+          error: (error, _) {
+            final message = error.toString();
+            final isMissingToken =
+                message.toLowerCase().contains('bearer token tidak ditemukan');
+
+            if (isMissingToken && !_didAutoRetryAuthFetch) {
+              _didAutoRetryAuthFetch = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                ref.invalidate(patientProfileProvider);
+                ref.invalidate(authMeProvider);
+              });
+
+              return const SizedBox(
+                height: 320,
+                child: Center(
+                  child: CircularProgressIndicator(color: Color(0xFFE64060)),
+                ),
+              );
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 22),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF1F2),
+                      border: Border.all(color: const Color(0xFFFECACA)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Gagal memuat profil',
+                          style: TextStyle(
+                            color: Color(0xFF991B1B),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          message,
+                          style: const TextStyle(
+                            color: Color(0xFF7F1D1D),
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _didAutoRetryAuthFetch = false;
+                              ref.invalidate(patientProfileProvider);
+                              ref.invalidate(authMeProvider);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDC2626),
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _copyAndPrintAuthToken,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF7C3AED),
+                        side: const BorderSide(color: Color(0xFFC4B5FD)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.key_outlined, size: 22),
+                      label: const Text(
+                        'Copy Auth Token',
+                        style:
+                            TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _onLogout,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFE64060),
+                        side: const BorderSide(color: Color(0xFFE64060)),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.logout, size: 22),
+                      label: const Text(
+                        'Keluar',
+                        style:
+                            TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
           data: (profile) => Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

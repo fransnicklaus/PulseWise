@@ -19,6 +19,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  void _logGoogleUi(String message) {
+    debugPrint('[LoginPage][Google] $message');
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -46,8 +50,70 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  void _onGoogleLogin() {
-    ref.read(authProvider.notifier).loginWithGoogle();
+  Future<void> _onGoogleLogin() async {
+    _logGoogleUi('Button tapped, dismissing keyboard');
+    FocusScope.of(context).unfocus();
+    _logGoogleUi('Calling authProvider.loginWithGoogle');
+    final result = await ref.read(authProvider.notifier).loginWithGoogle();
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    _logGoogleUi(
+      'Provider result isAuthenticated=${authState.isAuthenticated} error=${authState.error}',
+    );
+
+    if (!result.success) {
+      final message = result.message ?? authState.error ?? 'Login Google gagal';
+      _logGoogleUi('Showing error toast');
+      AppToast.error(context, message);
+      return;
+    }
+
+    if (result.nextStep == GoogleAuthNextStep.home && authState.isAuthenticated) {
+      ref.read(previousNavIndexProvider.notifier).state = 0;
+      ref.read(dashboardNavIndexProvider.notifier).state = 0;
+      _logGoogleUi('Navigation to /home');
+      context.go('/home');
+      return;
+    }
+
+    if (result.nextStep == GoogleAuthNextStep.completeRegistration) {
+      _logGoogleUi('Navigation to /login/register (google flow)');
+      context.push(
+        '/login/register',
+        extra: {
+          'flow': 'google',
+          'registrationToken': result.registrationToken,
+          'email': result.email,
+          'role': result.role,
+          'idToken': result.idToken,
+          'firstName': result.firstName,
+          'lastName': result.lastName,
+          'startAtOtp': false,
+        },
+      );
+      return;
+    }
+
+    if (result.nextStep == GoogleAuthNextStep.verifyOtp) {
+      _logGoogleUi('Navigation to /login/register (google otp step)');
+      context.push(
+        '/login/register',
+        extra: {
+          'flow': 'google',
+          'email': result.email,
+          'role': result.role,
+          'idToken': result.idToken,
+          'startAtOtp': true,
+        },
+      );
+      return;
+    }
+
+    AppToast.error(
+      context,
+      'Alur Google tidak dikenali. Silakan coba lagi.',
+    );
   }
 
   @override

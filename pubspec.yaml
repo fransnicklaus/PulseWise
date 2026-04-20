@@ -98,6 +98,7 @@ dependencies:
   flutter_health_connect: ^1.2.3
   skeletonizer: ^1.4.3
   flutter_contacts: ^1.1.9+2
+  google_sign_in: ^6.2.1
 
 dev_dependencies:
   flutter_test:
