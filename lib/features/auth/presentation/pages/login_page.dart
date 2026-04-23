@@ -69,7 +69,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    if (result.nextStep == GoogleAuthNextStep.home && authState.isAuthenticated) {
+    if (result.nextStep == GoogleAuthNextStep.home &&
+        authState.isAuthenticated) {
       ref.read(previousNavIndexProvider.notifier).state = 0;
       ref.read(dashboardNavIndexProvider.notifier).state = 0;
       _logGoogleUi('Navigation to /home');

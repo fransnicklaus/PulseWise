@@ -14,6 +14,7 @@ import 'package:pulsewise/features/dashboard/presentation/pages/manage_pengingat
 import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/update_profile_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
   return GoRouter(
@@ -80,7 +81,9 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               final role = (extra['role'] ?? 'patient').toString();
               final idToken = (extra['idToken'] ?? '').toString();
 
-              if (registrationToken.isEmpty || email.isEmpty || idToken.isEmpty) {
+              if (registrationToken.isEmpty ||
+                  email.isEmpty ||
+                  idToken.isEmpty) {
                 return const LoginPage();
               }
 
@@ -125,6 +128,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
         path: '/home',
         builder: (context, state) => const HomePage(),
         routes: [
+          GoRoute(
+            path: 'update-profile',
+            builder: (context, state) => const UpdateProfilePage(),
+          ),
           GoRoute(
             path: 'contacts',
             builder: (context, state) => const ContactsPage(),

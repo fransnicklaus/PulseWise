@@ -150,6 +150,86 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     }
   }
 
+  Future<void> updateEmergencyContactPriority({
+    required String emergencyContactId,
+    required String contactLabel,
+    required bool isPriority,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$patientId/emergency-contacts/$emergencyContactId',
+      data: {
+        'contactLabel': contactLabel,
+        'isPriority': isPriority,
+      },
+      options: Options(
+        headers: {'Authorization': 'Bearer $token'},
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal memperbarui prioritas kontak').toString(),
+      );
+    }
+  }
+
+  Future<void> switchPrimaryEmergencyContact(String newPrimaryId) async {
+    final newPrimary = state.items
+        .where((item) => item.emergencyContactId == newPrimaryId)
+        .cast<EmergencyContact?>()
+        .firstWhere(
+          (item) => item != null,
+          orElse: () => null,
+        );
+
+    if (newPrimary == null) {
+      throw Exception('Kontak darurat yang dipilih tidak ditemukan.');
+    }
+
+    final currentPrimary = state.items
+        .where((item) => item.isPrioritas == true)
+        .cast<EmergencyContact?>()
+        .firstWhere(
+          (item) => item != null,
+          orElse: () => null,
+        );
+
+    if (currentPrimary != null &&
+        currentPrimary.emergencyContactId != newPrimary.emergencyContactId) {
+      await updateEmergencyContactPriority(
+        emergencyContactId: currentPrimary.emergencyContactId,
+        contactLabel: currentPrimary.contactLabel,
+        isPriority: false,
+      );
+    }
+
+    if (newPrimary.isPrioritas != true) {
+      await updateEmergencyContactPriority(
+        emergencyContactId: newPrimary.emergencyContactId,
+        contactLabel: newPrimary.contactLabel,
+        isPriority: true,
+      );
+    }
+
+    await fetchInitial();
+  }
+
   Future<void> deleteEmergencyContact(String emergencyContactId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??

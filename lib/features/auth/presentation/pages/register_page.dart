@@ -308,7 +308,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
     final body = response.data ?? <String, dynamic>{};
     if (body['success'] != true) {
-      throw Exception((body['message'] ?? 'Autentikasi Google gagal').toString());
+      throw Exception(
+          (body['message'] ?? 'Autentikasi Google gagal').toString());
     }
 
     final data = (body['data'] as Map<String, dynamic>?) ?? const {};
@@ -410,7 +411,8 @@ class _RegisterPageState extends State<RegisterPage> {
             await _completeGoogleRegistrationAndPrepareOtp();
           }
           if (!mounted) return;
-          AppToast.success(context, 'Registrasi Google selesai, OTP sudah dikirim');
+          AppToast.success(
+              context, 'Registrasi Google selesai, OTP sudah dikirim');
         } else {
           final patientId = await _registerAndGetPatientId();
           _registeredPatientId = patientId;
@@ -614,7 +616,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  style:
+                      const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                   decoration: _inputDecoration(
                     hint: 'Masukkan email',
                     icon: FluentIcons.mail_24_regular,
@@ -630,14 +633,16 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
-                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  style:
+                      const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                   decoration: _inputDecoration(
                     hint: 'Password',
                     icon: FluentIcons.lock_closed_24_regular,
                   ).copyWith(
                     suffixIcon: IconButton(
                       onPressed: () {
-                        setState(() => _isPasswordVisible = !_isPasswordVisible);
+                        setState(
+                            () => _isPasswordVisible = !_isPasswordVisible);
                       },
                       icon: Icon(
                         _isPasswordVisible
@@ -651,7 +656,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   validator: (value) {
                     final password = (value ?? '').trim();
                     if (password.isEmpty) return 'Password wajib diisi';
-                    if (password.length < 6) return 'Password minimal 6 karakter';
+                    if (password.length < 6)
+                      return 'Password minimal 6 karakter';
                     return null;
                   },
                 ),
@@ -659,7 +665,8 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: !_isPasswordVisible,
-                  style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
+                  style:
+                      const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                   decoration: _inputDecoration(
                     hint: 'Confirm Password',
                     icon: FluentIcons.lock_closed_24_regular,
@@ -697,7 +704,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   final otp = (value ?? '').trim();
                   if (otp.isEmpty) return 'OTP wajib diisi';
                   if (otp.length != 6) return 'OTP harus 6 digit';
-                  if (int.tryParse(otp) == null) return 'OTP harus berupa angka';
+                  if (int.tryParse(otp) == null)
+                    return 'OTP harus berupa angka';
                   return null;
                 },
               ),
@@ -820,7 +828,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             children: [
                               Center(
                                 child: Text(
-                                  _isGoogleFlow ? 'Lanjutkan Akun Google' : 'Buat Akun',
+                                  _isGoogleFlow
+                                      ? 'Lanjutkan Akun Google'
+                                      : 'Buat Akun',
                                   style: const TextStyle(
                                     color: Color(0xFF536278),
                                     fontSize: 36,
@@ -861,7 +871,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                           vertical: 18,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                         ),
                                       ),
                                       child: Text(
@@ -886,7 +897,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                           vertical: 18,
                                         ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
+                                          borderRadius:
+                                              BorderRadius.circular(14),
                                         ),
                                         elevation: 0,
                                       ),

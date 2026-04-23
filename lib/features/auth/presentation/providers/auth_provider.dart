@@ -206,7 +206,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       _logGoogle('Trying interactive signIn with account chooser');
       final googleUser = await googleSignIn.signIn();
-      _logGoogle('Interactive signIn result user=${googleUser?.email ?? 'null'}');
+      _logGoogle(
+          'Interactive signIn result user=${googleUser?.email ?? 'null'}');
 
       if (googleUser == null) {
         _logGoogle('Login cancelled by user');
@@ -311,7 +312,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-      final nextStep = _parseGoogleNextStep((data['nextStep'] ?? '').toString());
+      final nextStep =
+          _parseGoogleNextStep((data['nextStep'] ?? '').toString());
       final email = (data['email'] ?? '').toString();
 
       if (nextStep != GoogleAuthNextStep.verifyOtp) {
@@ -320,7 +322,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
 
-      state = state.copyWith(isLoading: false, error: null, isAuthenticated: false);
+      state =
+          state.copyWith(isLoading: false, error: null, isAuthenticated: false);
       return GoogleAuthFlowResult(
         success: true,
         nextStep: GoogleAuthNextStep.verifyOtp,
@@ -331,11 +334,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
-      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      state = state.copyWith(
+          isLoading: false, error: message, isAuthenticated: false);
       return GoogleAuthFlowResult.error(message);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      state = state.copyWith(
+          isLoading: false, error: message, isAuthenticated: false);
       return GoogleAuthFlowResult.error(message);
     }
   }
@@ -364,10 +369,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final verifyBody = verifyResponse.data ?? <String, dynamic>{};
       if (verifyBody['success'] != true) {
-        throw Exception((verifyBody['message'] ?? 'Verifikasi OTP gagal').toString());
+        throw Exception(
+            (verifyBody['message'] ?? 'Verifikasi OTP gagal').toString());
       }
 
-      final flowResult = await _resolveGoogleNextStep(idToken: idToken, role: role);
+      final flowResult =
+          await _resolveGoogleNextStep(idToken: idToken, role: role);
       state = state.copyWith(
         isLoading: false,
         error: flowResult.success ? null : flowResult.message,
@@ -379,11 +386,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return flowResult;
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
-      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      state = state.copyWith(
+          isLoading: false, error: message, isAuthenticated: false);
       return GoogleAuthFlowResult.error(message);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
-      state = state.copyWith(isLoading: false, error: message, isAuthenticated: false);
+      state = state.copyWith(
+          isLoading: false, error: message, isAuthenticated: false);
       return GoogleAuthFlowResult.error(message);
     }
   }
@@ -402,7 +411,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     final body = response.data ?? <String, dynamic>{};
     if (body['success'] != true) {
-      throw Exception((body['message'] ?? 'Gagal mengirim ulang OTP').toString());
+      throw Exception(
+          (body['message'] ?? 'Gagal mengirim ulang OTP').toString());
     }
   }
 
@@ -429,7 +439,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final body = response.data ?? <String, dynamic>{};
     final success = body['success'] == true;
     if (!success) {
-      throw Exception((body['message'] ?? 'Autentikasi Google gagal').toString());
+      throw Exception(
+          (body['message'] ?? 'Autentikasi Google gagal').toString());
     }
 
     final data = (body['data'] as Map<String, dynamic>?) ?? const {};
@@ -465,7 +476,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (nextStep == GoogleAuthNextStep.completeRegistration) {
       final registrationToken = (data['registrationToken'] ?? '').toString();
       if (registrationToken.isEmpty) {
-        throw Exception('registrationToken tidak ditemukan pada respons Google');
+        throw Exception(
+            'registrationToken tidak ditemukan pada respons Google');
       }
 
       final googleProfile =

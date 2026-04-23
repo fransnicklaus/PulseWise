@@ -119,8 +119,9 @@ class ProfileApi {
     required MultipartFile file,
     required AvatarUploadSignature signature,
   }) async {
-    final uploadUrl =
-        signature.uploadUrl.isEmpty ? _defaultCloudinaryUploadUrl : signature.uploadUrl;
+    final uploadUrl = signature.uploadUrl.isEmpty
+        ? _defaultCloudinaryUploadUrl
+        : signature.uploadUrl;
 
     final formData = FormData.fromMap({
       'file': file,
@@ -233,6 +234,55 @@ class ProfileApi {
     }
 
     return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
+  Future<void> updatePatientProfile({
+    required String dateOfBirth,
+    required String sex,
+    required double heightCm,
+    required bool isSmoking,
+    required bool isElectricSmoking,
+    required String bloodType,
+    required String address,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/patients/$patientId/profile',
+      data: {
+        'dateOfBirth': dateOfBirth,
+        'sex': sex,
+        'heightCm': heightCm,
+        'isSmoking': isSmoking,
+        'isElectricSmoking': isElectricSmoking,
+        'bloodType': bloodType,
+        'address': address,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+          (body?['message'] ?? 'Gagal memperbarui profil').toString());
+    }
   }
 
   Future<AuthMeUser> fetchAuthMe() async {
@@ -1293,9 +1343,10 @@ class AvatarUploadSignature {
       transformation:
           (json['transformation'] ?? 'c_limit,h_512,w_512,q_auto:good')
               .toString(),
-      allowedFormats:
-          (json['allowed_formats'] ?? json['allowedFormats'] ?? 'jpg,jpeg,png,webp')
-              .toString(),
+      allowedFormats: (json['allowed_formats'] ??
+              json['allowedFormats'] ??
+              'jpg,jpeg,png,webp')
+          .toString(),
     );
   }
 }

@@ -56,14 +56,15 @@ class _GoogleCompleteRegistrationPageState
     if (!isValid || _isSubmitting) return;
 
     setState(() => _isSubmitting = true);
-    final result = await ref.read(authProvider.notifier).completeGoogleRegistration(
-          registrationToken: widget.registrationToken,
-          username: _usernameController.text.trim(),
-          firstName: _firstNameController.text.trim(),
-          lastName: _lastNameController.text.trim(),
-          role: widget.role,
-          idToken: widget.idToken,
-        );
+    final result =
+        await ref.read(authProvider.notifier).completeGoogleRegistration(
+              registrationToken: widget.registrationToken,
+              username: _usernameController.text.trim(),
+              firstName: _firstNameController.text.trim(),
+              lastName: _lastNameController.text.trim(),
+              role: widget.role,
+              idToken: widget.idToken,
+            );
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);

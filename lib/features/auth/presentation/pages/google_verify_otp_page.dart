@@ -20,7 +20,8 @@ class GoogleVerifyOtpPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<GoogleVerifyOtpPage> createState() => _GoogleVerifyOtpPageState();
+  ConsumerState<GoogleVerifyOtpPage> createState() =>
+      _GoogleVerifyOtpPageState();
 }
 
 class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
@@ -58,7 +59,9 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
     if (_isResending || _cooldown > 0) return;
     setState(() => _isResending = true);
     try {
-      await ref.read(authProvider.notifier).resendEmailVerificationOtp(widget.email);
+      await ref
+          .read(authProvider.notifier)
+          .resendEmailVerificationOtp(widget.email);
       if (!mounted) return;
       _startCooldown();
       AppToast.success(context, 'OTP berhasil dikirim ulang');
@@ -79,12 +82,13 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
     }
 
     setState(() => _isSubmitting = true);
-    final result = await ref.read(authProvider.notifier).verifyGoogleOtpAndFinalize(
-          email: widget.email,
-          otp: otp,
-          idToken: widget.idToken,
-          role: widget.role,
-        );
+    final result =
+        await ref.read(authProvider.notifier).verifyGoogleOtpAndFinalize(
+              email: widget.email,
+              otp: otp,
+              idToken: widget.idToken,
+              role: widget.role,
+            );
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -162,14 +166,16 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFFE64060), width: 1.2),
+                    borderSide:
+                        const BorderSide(color: Color(0xFFE64060), width: 1.2),
                   ),
                 ),
               ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: (_isResending || _cooldown > 0) ? null : _resendOtp,
+                  onPressed:
+                      (_isResending || _cooldown > 0) ? null : _resendOtp,
                   child: _isResending
                       ? const SizedBox(
                           width: 16,
@@ -207,7 +213,8 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
                         )
                       : const Text(
                           'VERIFIKASI OTP',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                 ),
               ),

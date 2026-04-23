@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
@@ -84,9 +88,10 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token') ?? '';
 
+    if (!mounted) return;
+
     if (token.isEmpty) {
       debugPrint('[AUTH_TOKEN] <empty>');
-      if (!mounted) return;
       AppToast.warning(context, 'Token tidak ditemukan. Silakan login ulang.');
       return;
     }
@@ -113,28 +118,66 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     final selected = picked.files.first;
     const maxAvatarBytes = 5 * 1024 * 1024;
     if (selected.size > maxAvatarBytes) {
+      if (!mounted) return;
       AppToast.warning(context, 'Ukuran avatar maksimal 5 MB.');
       return;
     }
 
     final filename = selected.name.isEmpty ? 'avatar.jpg' : selected.name;
-    MultipartFile file;
-    if (selected.path != null && selected.path!.isNotEmpty) {
-      file = await MultipartFile.fromFile(selected.path!, filename: filename);
-    } else if (selected.bytes != null) {
-      file = MultipartFile.fromBytes(selected.bytes!, filename: filename);
-    } else {
+
+    String? sourcePath = selected.path;
+    if ((sourcePath == null || sourcePath.isEmpty) && selected.bytes != null) {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File(
+        '${tempDir.path}${Platform.pathSeparator}avatar_pick_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      );
+      await tempFile.writeAsBytes(selected.bytes!, flush: true);
+      sourcePath = tempFile.path;
+    }
+
+    if (sourcePath == null || sourcePath.isEmpty) {
+      if (!mounted) return;
       AppToast.warning(context, 'File gambar tidak valid.');
       return;
     }
 
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: sourcePath,
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 85,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Sesuaikan Avatar',
+          toolbarColor: const Color(0xFFE64060),
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true,
+          cropStyle: CropStyle.circle,
+        ),
+        IOSUiSettings(
+          title: 'Sesuaikan Avatar',
+          cropStyle: CropStyle.circle,
+          aspectRatioLockEnabled: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+    if (!mounted) return;
+
+    final file =
+        await MultipartFile.fromFile(croppedFile.path, filename: filename);
+    if (!mounted) return;
+
     setState(() => _isUploadingAvatar = true);
     try {
+      if (!mounted) return;
       await ref.read(profileApiProvider).uploadAvatar(file: file);
+      if (!mounted) return;
+
       ref.invalidate(patientProfileProvider);
       ref.invalidate(authMeProvider);
-      await ref.read(patientProfileProvider.future);
-      await ref.read(authMeProvider.future);
 
       if (!mounted) return;
       AppToast.success(context, 'Avatar berhasil diperbarui.');
@@ -164,8 +207,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
         padding: const EdgeInsets.only(bottom: 120),
         child: profileAsync.when(
           loading: () => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              _buildTopBar(),
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.72,
                 child: const Center(
@@ -195,9 +239,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             }
 
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildHeader(),
+                _buildTopBar(),
                 const SizedBox(height: 22),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -266,8 +310,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                       icon: const Icon(Icons.key_outlined, size: 22),
                       label: const Text(
                         'Copy Auth Token',
-                        style:
-                            TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -290,8 +334,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                       icon: const Icon(Icons.logout, size: 22),
                       label: const Text(
                         'Keluar',
-                        style:
-                            TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w700),
                       ),
                     ),
                   ),
@@ -300,24 +344,18 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             );
           },
           data: (profile) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildHeader(
+              _buildTopBar(),
+              _buildAvatarSection(
                 profile.fullName,
+                profile.email,
                 authMeAsync.asData?.value.avatarPhoto,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 8),
               _SectionCard(
                 title: 'Informasi Pribadi',
                 children: [
-                  _InfoRow(
-                    label: 'Nama Lengkap',
-                    value: profile.fullName.isEmpty ? '-' : profile.fullName,
-                  ),
-                  _InfoRow(
-                    label: 'Email',
-                    value: profile.email.isEmpty ? '-' : profile.email,
-                  ),
                   _InfoRow(
                     label: 'Jenis Kelamin',
                     value: _formatSex(profile.sex),
@@ -354,9 +392,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                 children: _buildEmergencyContactChildren(emergencyState),
               ),
               const SizedBox(height: 14),
-              _SectionCard(
+              const _SectionCard(
                 title: 'Pengaturan Akun',
-                children: const [
+                children: [
                   _ActionRow(label: 'Ubah Kata Sandi'),
                   _ActionRow(label: 'Privasi & Izin Data'),
                   _ActionRow(label: 'Bahasa Aplikasi'),
@@ -441,7 +479,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => context.push('/home/update-profile'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE64060),
                       foregroundColor: Colors.white,
@@ -561,12 +599,10 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     ];
   }
 
-  Widget _buildHeader([String? fullName, String? avatarUrl]) {
-    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
-
+  Widget _buildTopBar() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 28),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFE64060), Color(0xFFFF7A93)],
@@ -578,64 +614,109 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
           bottomRight: Radius.circular(28),
         ),
       ),
-      child: Row(
+      child: const Text(
+        'Profil Saya',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarSection(
+      [String? fullName, String? email, String? avatarUrl]) {
+    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 78,
-                height: 78,
+                width: 104,
+                height: 104,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.25),
                   shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFE64060), Color(0xFFFF7A93)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFE64060).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: ClipOval(
-                  child: hasAvatar
-                      ? Image.network(
-                          avatarUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
+                padding: const EdgeInsets.all(4), // gradient border width
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: hasAvatar
+                        ? Image.network(
+                            avatarUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person,
+                              color: Color(0xFFE64060),
+                              size: 56,
+                            ),
+                          )
+                        : const Icon(
                             Icons.person,
-                            color: Colors.white,
-                            size: 42,
+                            color: Color(0xFFE64060),
+                            size: 56,
                           ),
-                        )
-                      : const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 42,
-                        ),
+                  ),
                 ),
               ),
               Positioned(
-                right: -2,
-                bottom: -2,
+                right: 0,
+                bottom: 0,
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
                     borderRadius: BorderRadius.circular(999),
                     child: Container(
-                      width: 30,
-                      height: 30,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: const Color(0xFFE64060),
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0xFFE64060)),
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: _isUploadingAvatar
                           ? const Padding(
-                              padding: EdgeInsets.all(6),
+                              padding: EdgeInsets.all(8),
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Color(0xFFE64060),
+                                color: Colors.white,
                               ),
                             )
                           : const Icon(
                               Icons.camera_alt,
-                              color: Color(0xFFE64060),
-                              size: 16,
+                              color: Colors.white,
+                              size: 18,
                             ),
                     ),
                   ),
@@ -643,40 +724,39 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Profil Saya',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                  ),
+          const SizedBox(height: 20),
+          Text(
+            (fullName != null && fullName.isNotEmpty)
+                ? fullName
+                : 'Nama Belum Diatur',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (email != null && email.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              child: Text(
+                email,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  (fullName != null && fullName.isNotEmpty)
-                      ? fullName
-                      : 'Kelola data pribadi dan kesehatan Anda',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Ketuk ikon kamera untuk ubah avatar',
-                  style: TextStyle(
-                    color: Color(0xFFFFE4EA),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+              ),
+            ),
+          if (email == null || email.isEmpty) const SizedBox(height: 6),
+          const Text(
+            'Ketuk ikon kamera untuk ubah avatar',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
