@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class DiaryQrPage extends StatefulWidget {
@@ -18,60 +19,81 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: 'QR User ID',
+        // subtitle: 'Tambahkan kontak darurat baru',
+        showBackButton: true,
+        onBackPressed: () => context.pop(),
+        action: IconButton(
+          onPressed: () async {
+            final scanned = await context.push<String>('/home/diary-qr/scan');
+            if (!mounted || scanned == null || scanned.isEmpty) return;
+            setState(() => _lastScannedCode = scanned);
+          },
+          style: IconButton.styleFrom(
+            backgroundColor: const Color(0xFFFFE5EA),
+          ),
+          icon: const Icon(
+            Icons.qr_code_scanner,
+            color: Color(0xFFE64060),
+          ),
+          tooltip: 'Scan QR',
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  bottom: BorderSide(color: Color(0xFFE2E8F0)),
-                ),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => context.pop(),
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFF1F5F9),
-                    ),
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'QR User ID',
-                    style: TextStyle(
-                      color: Color(0xFF334155),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () async {
-                      final scanned =
-                          await context.push<String>('/home/diary-qr/scan');
-                      if (!mounted || scanned == null || scanned.isEmpty)
-                        return;
-                      setState(() => _lastScannedCode = scanned);
-                    },
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFE5EA),
-                    ),
-                    icon: const Icon(
-                      Icons.qr_code_scanner,
-                      color: Color(0xFFE64060),
-                    ),
-                    tooltip: 'Scan QR',
-                  ),
-                ],
-              ),
-            ),
+            // Container(
+            //   width: double.infinity,
+            //   padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            //   decoration: const BoxDecoration(
+            //     color: Colors.white,
+            //     border: Border(
+            //       bottom: BorderSide(color: Color(0xFFE2E8F0)),
+            //     ),
+            //   ),
+            //   child: Row(
+            //     children: [
+            //       IconButton(
+            //         onPressed: () => context.pop(),
+            //         style: IconButton.styleFrom(
+            //           backgroundColor: const Color(0xFFF1F5F9),
+            //         ),
+            //         icon: const Icon(
+            //           Icons.arrow_back,
+            //           color: Color(0xFF475569),
+            //         ),
+            //       ),
+            //       const SizedBox(width: 10),
+            //       const Text(
+            //         'QR User ID',
+            //         style: TextStyle(
+            //           color: Color(0xFF334155),
+            //           fontSize: 20,
+            //           fontWeight: FontWeight.w700,
+            //         ),
+            //       ),
+            //       const Spacer(),
+            //       IconButton(
+            //         onPressed: () async {
+            //           final scanned =
+            //               await context.push<String>('/home/diary-qr/scan');
+            //           if (!mounted || scanned == null || scanned.isEmpty)
+            //             return;
+            //           setState(() => _lastScannedCode = scanned);
+            //         },
+            //         style: IconButton.styleFrom(
+            //           backgroundColor: const Color(0xFFFFE5EA),
+            //         ),
+            //         icon: const Icon(
+            //           Icons.qr_code_scanner,
+            //           color: Color(0xFFE64060),
+            //         ),
+            //         tooltip: 'Scan QR',
+            //       ),
+            //     ],
+            //   ),
+            // ),
             Expanded(
               child: Center(
                 child: Padding(

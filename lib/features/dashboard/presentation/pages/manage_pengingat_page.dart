@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_history_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
@@ -112,6 +113,23 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+          title: 'Pengingat',
+          subtitle: 'Kelola pengingat obat Anda',
+          showBackButton: true,
+          onBackPressed: () => context.pop(),
+          action: GestureDetector(
+            onTap: () => _openAddMedication(context),
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.add, color: Colors.white, size: 24),
+            ),
+          )),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _onRefresh,
@@ -209,59 +227,63 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE64060), Color(0xFFFF6C86)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
-      child: Row(
-        children: [
-          _HeaderIcon(
-            icon: Icons.arrow_back,
-            onTap: () => context.pop(),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pengingat',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Medication list',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _HeaderIcon(
-            icon: Icons.add,
-            onTap: () => _openAddMedication(context),
-          ),
-        ],
-      ),
-    );
+    return SizedBox();
   }
+
+  // Widget _buildHeader(BuildContext context) {
+  //   return Container(
+  //     width: double.infinity,
+  //     padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+  //     decoration: const BoxDecoration(
+  //       gradient: LinearGradient(
+  //         colors: [Color(0xFFE64060), Color(0xFFFF6C86)],
+  //         begin: Alignment.topLeft,
+  //         end: Alignment.bottomRight,
+  //       ),
+  //       borderRadius: BorderRadius.only(
+  //         bottomLeft: Radius.circular(28),
+  //         bottomRight: Radius.circular(28),
+  //       ),
+  //     ),
+  //     child: Row(
+  //       children: [
+  //         _HeaderIcon(
+  //           icon: Icons.arrow_back,
+  //           onTap: () => context.pop(),
+  //         ),
+  //         const SizedBox(width: 10),
+  //         const Expanded(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             children: [
+  //               Text(
+  //                 'Pengingat',
+  //                 style: TextStyle(
+  //                   color: Colors.white,
+  //                   fontSize: 36,
+  //                   fontWeight: FontWeight.w700,
+  //                 ),
+  //               ),
+  //               SizedBox(height: 2),
+  //               Text(
+  //                 'Medication list',
+  //                 style: TextStyle(
+  //                   color: Colors.white,
+  //                   fontSize: 18,
+  //                   fontWeight: FontWeight.w500,
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //         _HeaderIcon(
+  //           icon: Icons.add,
+  //           onTap: () => _openAddMedication(context),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }
 
 class _HeaderIcon extends StatelessWidget {

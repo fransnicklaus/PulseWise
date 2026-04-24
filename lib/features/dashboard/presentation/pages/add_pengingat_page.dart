@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
@@ -108,22 +109,28 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: _isSubmitting ? null : () => context.pop(),
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4F5F7B)),
-        ),
-        title: const Text(
-          'Tambah Pengingat',
-          style: TextStyle(
-            color: Color(0xFF4F5F7B),
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+      appBar: CustomAppBar(
+        title: 'Tambah Pengingat',
+        // subtitle: 'Tambahkan kontak darurat baru',
+        showBackButton: true,
+        onBackPressed: () => context.pop(),
       ),
+      // appBar: AppBar(
+      //   backgroundColor: Colors.white,
+      //   elevation: 0,
+      //   leading: IconButton(
+      //     onPressed: _isSubmitting ? null : () => context.pop(),
+      //     icon: const Icon(Icons.arrow_back, color: Color(0xFF4F5F7B)),
+      //   ),
+      //   title: const Text(
+      //     'Tambah Pengingat',
+      //     style: TextStyle(
+      //       color: Color(0xFF4F5F7B),
+      //       fontSize: 20,
+      //       fontWeight: FontWeight.w700,
+      //     ),
+      //   ),
+      // ),
       body: AbsorbPointer(
         absorbing: _isSubmitting,
         child: SafeArea(
@@ -181,7 +188,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
             'Langkah ${_currentStep + 1} dari 4: ${labels[_currentStep]}',
             style: const TextStyle(
               color: Color(0xFF64748B),
-              fontSize: 13,
+              fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -438,7 +445,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                     const Text(
                       'Setiap berapa hari',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF475569),
                       ),
@@ -516,7 +523,10 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                         itemBuilder: (_, index) {
                           final selected = _selectedWeekdays.contains(index);
                           return ChoiceChip(
-                            label: Text(_weekdays[index]),
+                            label: Text(
+                              _weekdays[index],
+                              style: TextStyle(fontSize: 15),
+                            ),
                             selected: selected,
                             onSelected: (_) {
                               setState(() {
@@ -562,7 +572,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                 children: [
                   Text(
                     '${_startDate.day}/${_startDate.month}/${_startDate.year}',
-                    style: const TextStyle(fontSize: 15),
+                    style: const TextStyle(fontSize: 17),
                   ),
                   const Icon(Icons.calendar_today, size: 18),
                 ],
@@ -714,7 +724,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       ),
       child: Text(
         label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
       ),
     );
   }
@@ -761,7 +771,9 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                   side: const BorderSide(color: Color(0xFFE2E8F0)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Kembali'),
+                child: const Text('Kembali',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
               ),
             ),
           if (_currentStep > 0) const SizedBox(width: 10),
@@ -784,7 +796,11 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                         color: Colors.white,
                       ),
                     )
-                  : Text(isLast ? 'Simpan Pengingat' : 'Lanjut'),
+                  : Text(
+                      isLast ? 'Simpan Pengingat' : 'Lanjut',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                    ),
             ),
           ),
         ],
@@ -808,7 +824,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
             title,
             style: const TextStyle(
               color: Color(0xFF334155),
-              fontSize: 14,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           ),

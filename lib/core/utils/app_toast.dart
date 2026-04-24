@@ -55,7 +55,7 @@ class AppToast {
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w700,
-          fontSize: 14,
+          fontSize: 17,
         ),
       ),
       messageText: Text(
@@ -63,10 +63,10 @@ class AppToast {
         style: const TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.w500,
-          fontSize: 13,
+          fontSize: 16,
         ),
       ),
-      icon: Icon(icon, color: Colors.white, size: 24),
+      icon: Icon(icon, color: Colors.white, size: 30),
       duration: const Duration(seconds: 3),
       flushbarPosition: FlushbarPosition.TOP,
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),

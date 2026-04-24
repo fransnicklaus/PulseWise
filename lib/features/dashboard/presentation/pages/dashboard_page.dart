@@ -27,12 +27,11 @@ class DashboardPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
-      body: SafeArea(
-        child: SizedBox.expand(
-          child: IndexedStack(
-            index: navIndex,
-            children: tabs,
-          ),
+      extendBodyBehindAppBar: true,
+      body: SizedBox.expand(
+        child: IndexedStack(
+          index: navIndex,
+          children: tabs,
         ),
       ),
 
@@ -58,9 +57,9 @@ class DashboardPage extends ConsumerWidget {
             unselectedItemColor: const Color(0xFF62748E),
             showSelectedLabels: true,
             showUnselectedLabels: true,
-            unselectedLabelStyle: const TextStyle(fontSize: 12),
+            unselectedLabelStyle: const TextStyle(fontSize: 14),
             selectedLabelStyle:
-                const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             elevation: 0,
             items: const [
               BottomNavigationBarItem(

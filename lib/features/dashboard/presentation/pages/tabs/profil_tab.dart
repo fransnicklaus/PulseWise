@@ -89,6 +89,89 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     context.go('/login');
   }
 
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Konfirmasi Keluar',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Apakah Anda yakin ingin keluar dari akun ini?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Ya, Keluar',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF334155),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      await _onLogout();
+    }
+  }
+
   Future<void> _copyAndPrintAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token') ?? '';
@@ -236,7 +319,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                   child: Container(
                     color: const Color(0xFFFFFFFF),
                     child: const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFE64060)),
+                      child:
+                          CircularProgressIndicator(color: Color(0xFFE64060)),
                     ),
                   ),
                 ),
@@ -328,7 +412,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         icon: const Icon(Icons.key_outlined, size: 22),
                         label: const Text(
                           'Copy Auth Token',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -339,7 +424,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     child: SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: _onLogout,
+                        onPressed: _confirmLogout,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFE64060),
                           side: const BorderSide(color: Color(0xFFE64060)),
@@ -351,7 +436,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         icon: const Icon(Icons.logout, size: 22),
                         label: const Text(
                           'Keluar',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                              fontSize: 17, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -407,191 +493,214 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             : 'pengguna@pulsewise.app',
                         authMeAsync.asData?.value.avatarPhoto,
                       ),
-                  const SizedBox(height: 8),
-                  _SectionCard(
-                    title: 'Informasi Pribadi',
-                    children: [
-                      _InfoRow(
-                        label: 'Jenis Kelamin',
-                        value: profile == null ? 'Laki-laki' : _formatSex(profile.sex),
-                      ),
-                      _InfoRow(
-                        label: 'Tanggal Lahir',
-                        value: profile == null
-                            ? '01 Januari 1960'
-                            : _formatDate(profile.dateOfBirth),
-                      ),
-                      _InfoRow(
-                        label: 'Alamat',
-                        value: profile == null
-                            ? 'Jl. Contoh Alamat No. 123'
-                            : (profile.address.isEmpty ? '-' : profile.address),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'Data Kesehatan',
-                    children: [
-                      _InfoRow(
-                        label: 'Golongan Darah',
-                        value: profile == null
-                            ? 'A+'
-                            : (profile.bloodType.isEmpty ? '-' : profile.bloodType),
-                      ),
-                      _InfoRow(
-                        label: 'Tinggi',
-                        value: profile == null
-                            ? '170 cm'
-                            : (profile.bodyHeightCm.isEmpty
+                      const SizedBox(height: 8),
+                      _SectionCard(
+                        title: 'Informasi Pribadi',
+                        children: [
+                          _InfoRow(
+                            label: 'Jenis Kelamin',
+                            value:
+                                profile == null ? '-' : _formatSex(profile.sex),
+                          ),
+                          _InfoRow(
+                            label: 'Tanggal Lahir',
+                            value: profile == null
                                 ? '-'
-                                : '${profile.bodyHeightCm} cm'),
+                                : _formatDate(profile.dateOfBirth),
+                          ),
+                          _InfoRow(
+                            label: 'Alamat',
+                            value: profile == null
+                                ? '-'
+                                : (profile.address.isEmpty
+                                    ? '-'
+                                    : profile.address),
+                          ),
+                          _InfoRow(
+                            label: 'Merokok',
+                            value: profile == null
+                                ? '-'
+                                : (profile.isSmoking ? 'Ya' : 'Tidak'),
+                          ),
+                          _InfoRow(
+                            label: 'Merokok Elektrik',
+                            value: profile == null
+                                ? '-'
+                                : (profile.isElectricSmoking ? 'Ya' : 'Tidak'),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _SectionCard(
-                    title: 'Kontak Darurat Utama',
-                    children: isSkeleton
-                        ? const [
-                            _InfoRow(label: 'Nama', value: 'Kontak Darurat'),
-                            _InfoRow(label: 'Nomor Telepon', value: '0812-3456-7890'),
-                            _InfoRow(label: 'Status', value: 'Prioritas'),
-                          ]
-                        : _buildEmergencyContactChildren(emergencyState),
-                  ),
-                  const SizedBox(height: 14),
-                  const _SectionCard(
-                    title: 'Pengaturan Akun',
-                    children: [
-                      _ActionRow(label: 'Ubah Kata Sandi'),
-                      _ActionRow(label: 'Privasi & Izin Data'),
-                      _ActionRow(label: 'Bahasa Aplikasi'),
-                      _ActionRow(label: 'Notifikasi'),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showToastDebugSheet(context),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF2563EB),
-                          side: const BorderSide(color: Color(0xFF93C5FD)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 14),
+                      _SectionCard(
+                        title: 'Data Kesehatan',
+                        children: [
+                          _InfoRow(
+                            label: 'Golongan Darah',
+                            value: profile == null
+                                ? 'A+'
+                                : (profile.bloodType.isEmpty
+                                    ? '-'
+                                    : profile.bloodType),
+                          ),
+                          _InfoRow(
+                            label: 'Tinggi',
+                            value: profile == null
+                                ? '170 cm'
+                                : (profile.bodyHeightCm.isEmpty
+                                    ? '-'
+                                    : '${profile.bodyHeightCm} cm'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _SectionCard(
+                        title: 'Kontak Darurat Utama',
+                        children: isSkeleton
+                            ? const [
+                                _InfoRow(
+                                    label: 'Nama', value: 'Kontak Darurat'),
+                                _InfoRow(
+                                    label: 'Nomor Telepon',
+                                    value: '0812-3456-7890'),
+                                _InfoRow(label: 'Status', value: 'Prioritas'),
+                              ]
+                            : _buildEmergencyContactChildren(emergencyState),
+                      ),
+                      const SizedBox(height: 14),
+                      const _SectionCard(
+                        title: 'Pengaturan Akun',
+                        children: [
+                          _ActionRow(label: 'Ubah Kata Sandi'),
+                          _ActionRow(label: 'Privasi & Izin Data'),
+                          _ActionRow(label: 'Bahasa Aplikasi'),
+                          _ActionRow(label: 'Notifikasi'),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showToastDebugSheet(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF2563EB),
+                              side: const BorderSide(color: Color(0xFF93C5FD)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon:
+                                const Icon(Icons.bug_report_outlined, size: 22),
+                            label: const Text(
+                              'Debug Toast Tester',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.bug_report_outlined, size: 22),
-                        label: const Text(
-                          'Debug Toast Tester',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _copyAndPrintAuthToken,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF7C3AED),
-                          side: const BorderSide(color: Color(0xFFC4B5FD)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _copyAndPrintAuthToken,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF7C3AED),
+                              side: const BorderSide(color: Color(0xFFC4B5FD)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.key_outlined, size: 22),
+                            label: const Text(
+                              'Copy Auth Token',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.key_outlined, size: 22),
-                        label: const Text(
-                          'Copy Auth Token',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => context.push('/home/health-connect'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF16A34A),
-                          side: const BorderSide(color: Color(0xFF86EFAC)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                context.push('/home/health-connect'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF16A34A),
+                              side: const BorderSide(color: Color(0xFF86EFAC)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.monitor_heart_outlined,
+                                size: 22),
+                            label: const Text(
+                              'Test Health Connect',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
-                        icon:
-                            const Icon(Icons.monitor_heart_outlined, size: 22),
-                        label: const Text(
-                          'Test Health Connect',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => context.push('/home/update-profile'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE64060),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 18),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () =>
+                                context.push('/home/update-profile'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE64060),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 22),
+                            label: const Text(
+                              'Edit Profil',
+                              style: TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.edit_outlined, size: 22),
-                        label: const Text(
-                          'Edit Profil',
-                          style: TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _onLogout,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFE64060),
-                          side: const BorderSide(color: Color(0xFFE64060)),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _confirmLogout,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFE64060),
+                              side: const BorderSide(color: Color(0xFFE64060)),
+                              padding: const EdgeInsets.symmetric(vertical: 18),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.logout, size: 22),
+                            label: const Text(
+                              'Keluar',
+                              style: TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.logout, size: 22),
-                        label: const Text(
-                          'Keluar',
-                          style: TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
                       ),
-                    ),
-                  ),
                     ],
                   ),
                 ],
@@ -1000,7 +1109,7 @@ class _InfoRow extends StatelessWidget {
               label,
               style: const TextStyle(
                 color: Color(0xFF64748B),
-                fontSize: 16,
+                fontSize: 18,
               ),
             ),
           ),
@@ -1012,7 +1121,7 @@ class _InfoRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: const TextStyle(
                 color: Color(0xFF0F172A),
-                fontSize: 17,
+                fontSize: 19 ,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class UpdateProfilePage extends ConsumerStatefulWidget {
@@ -167,19 +168,11 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'Edit Profil',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF0F172A), size: 28),
+      appBar: CustomAppBar(
+        title: 'Edit Profil',
+        // subtitle: 'Kelola pengingat obat Anda',
+        showBackButton: true,
+        onBackPressed: () => context.pop(),
       ),
       body: profileAsync.when(
         data: (profile) {

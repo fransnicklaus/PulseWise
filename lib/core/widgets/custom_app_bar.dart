@@ -8,17 +8,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color backgroundColor;
   final Color? titleColor;
   final Color? subtitleColor;
+  final Widget? action;
 
-  const CustomAppBar({
-    super.key,
-    required this.title,
-    this.subtitle,
-    this.onBackPressed,
-    this.showBackButton = true,
-    this.backgroundColor = const Color(0xFFE64060),
-    this.titleColor = Colors.white,
-    this.subtitleColor,
-  });
+  const CustomAppBar(
+      {super.key,
+      required this.title,
+      this.subtitle,
+      this.onBackPressed,
+      this.showBackButton = true,
+      this.backgroundColor = const Color(0xFFE64060),
+      this.titleColor = Colors.white,
+      this.subtitleColor,
+      this.action});
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +37,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: SizedBox(
             height: toolbarHeight,
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (showBackButton)
                   Padding(
@@ -70,7 +73,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           title,
                           style: TextStyle(
                             color: titleColor,
-                            fontSize: 18,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -79,8 +82,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           Text(
                             subtitle!,
                             style: TextStyle(
-                              color: subtitleColor ?? Colors.white70,
-                              fontSize: 12,
+                              color: subtitleColor ?? Colors.white,
+                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -88,6 +91,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
+                if (action != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: action!,
+                  ),
+                ],
               ],
             ),
           ),

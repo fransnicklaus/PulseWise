@@ -206,6 +206,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      extendBody: true,
       appBar: CustomAppBar(
         title: 'Riwayat Diari',
         subtitle: 'Semua catatan kesehatan Anda',
@@ -214,265 +215,283 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
       ),
       body: RefreshIndicator(
         onRefresh: _refreshHistory,
+        color: const Color(0xFFE64060),
+        backgroundColor: Colors.white,
         child: SingleChildScrollView(
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.event_available, size: 18),
-                            label: Text(startLabel),
-                            onPressed: state.isLoading ? null : _pickStartDate,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              side: const BorderSide(color: Color(0xFFD9E2EC)),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '-',
-                          style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.event, size: 18),
-                            label: Text(endLabel),
-                            onPressed: state.isLoading ? null : _pickEndDate,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              side: const BorderSide(color: Color(0xFFD9E2EC)),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          '${state.totalItems} item',
-                          style: const TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        // if (state.isLoading) ...[
-                        //   const SizedBox(width: 10),
-                        //   const SizedBox(
-                        //     width: 16,
-                        //     height: 16,
-                        //     child: CircularProgressIndicator(
-                        //       strokeWidth: 2.2,
-                        //       color: Color(0xFFE64060),
-                        //     ),
-                        //   ),
-                        //   const SizedBox(width: 6),
-                        //   const Text(
-                        //     'Memuat filter...',
-                        //     style: TextStyle(
-                        //       color: Color(0xFF64748B),
-                        //       fontSize: 12,
-                        //       fontWeight: FontWeight.w500,
-                        //     ),
-                        //   ),
-                        // ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (state.isLoading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 40),
-                  child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFFE64060)),
-                  ),
-                )
-              else if (state.items.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
-                  child: Center(
-                    child: Text(
-                      'Belum ada riwayat diari pada periode ini',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ...state.items.map((item) {
-                  final isExpanded = _expandedDiaryId == item.diaryId;
-                  final isDetailLoading =
-                      state.loadingDetailDiaryIds.contains(item.diaryId);
-                  final detail = state.detailsByDiaryId[item.diaryId];
-                  final detailError = state.detailErrorsByDiaryId[item.diaryId];
-
-                  _itemKeys[item.diaryId] ??= GlobalKey();
-
-                  return Padding(
-                    key: _itemKeys[item.diaryId],
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 7,
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => _toggleEntry(item),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _formatDate(item.diaryDate),
-                                        style: const TextStyle(
-                                          color: Color(0xFF1E293B),
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        'Dibuat ${_formatTime(item.createdAt)}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                AnimatedRotation(
-                                  turns: isExpanded ? 0.25 : 0,
-                                  duration: const Duration(milliseconds: 220),
-                                  child: const Icon(
-                                    Icons.chevron_right,
-                                    color: Color(0xFF94A3B8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            ClipRect(
-                              child: AnimatedSize(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeInOutCubic,
-                                alignment: Alignment.topCenter,
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 180),
-                                  switchInCurve: Curves.easeOut,
-                                  switchOutCurve: Curves.easeIn,
-                                  transitionBuilder: (child, animation) {
-                                    return FadeTransition(
-                                      opacity: animation,
-                                      child: child,
-                                    );
-                                  },
-                                  child: isExpanded
-                                      ? Padding(
-                                          key: ValueKey<String>(
-                                            'expanded-${item.diaryId}',
-                                          ),
-                                          padding:
-                                              const EdgeInsets.only(top: 12),
-                                          child: _ExpandedArea(
-                                            isLoading: isDetailLoading,
-                                            error: detailError,
-                                            detail: detail,
-                                            onRetry: () => ref
-                                                .read(diaryHistoryProvider
-                                                    .notifier)
-                                                .loadDiaryDetail(item.diaryId),
-                                            formatTime: _formatTime,
-                                          ),
-                                        )
-                                      : const SizedBox(
-                                          key: ValueKey<String>('collapsed'),
-                                        ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              if (state.error != null && state.items.isEmpty)
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              // Ensures the scrollable area is at least as tall as the screen
+              minHeight: MediaQuery.of(context).size.height,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Text(
-                    state.error!,
-                    style: const TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontSize: 13,
-                    ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.event_available, size: 18),
+                              label: Text(
+                                startLabel,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 16),
+                              ),
+                              onPressed:
+                                  state.isLoading ? null : _pickStartDate,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF475569),
+                                side:
+                                    const BorderSide(color: Color(0xFFD9E2EC)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '-',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.event, size: 18),
+                              label: Text(endLabel),
+                              onPressed: state.isLoading ? null : _pickEndDate,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF475569),
+                                side:
+                                    const BorderSide(color: Color(0xFFD9E2EC)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            '${state.totalItems} item',
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          // if (state.isLoading) ...[
+                          //   const SizedBox(width: 10),
+                          //   const SizedBox(
+                          //     width: 16,
+                          //     height: 16,
+                          //     child: CircularProgressIndicator(
+                          //       strokeWidth: 2.2,
+                          //       color: Color(0xFFE64060),
+                          //     ),
+                          //   ),
+                          //   const SizedBox(width: 6),
+                          //   const Text(
+                          //     'Memuat filter...',
+                          //     style: TextStyle(
+                          //       color: Color(0xFF64748B),
+                          //       fontSize: 12,
+                          //       fontWeight: FontWeight.w500,
+                          //     ),
+                          //   ),
+                          // ],
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              if (state.isLoadingMore)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8, bottom: 18),
-                  child: Center(
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.3,
-                        color: Color(0xFFE64060),
+                const SizedBox(height: 14),
+                if (state.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 40),
+                    child: Center(
+                      child:
+                          CircularProgressIndicator(color: Color(0xFFE64060)),
+                    ),
+                  )
+                else if (state.items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+                    child: Center(
+                      child: Text(
+                        'Belum ada riwayat diari pada periode ini',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...state.items.map((item) {
+                    final isExpanded = _expandedDiaryId == item.diaryId;
+                    final isDetailLoading =
+                        state.loadingDetailDiaryIds.contains(item.diaryId);
+                    final detail = state.detailsByDiaryId[item.diaryId];
+                    final detailError =
+                        state.detailErrorsByDiaryId[item.diaryId];
+
+                    _itemKeys[item.diaryId] ??= GlobalKey();
+
+                    return Padding(
+                      key: _itemKeys[item.diaryId],
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 7,
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => _toggleEntry(item),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _formatDate(item.diaryDate),
+                                          style: const TextStyle(
+                                            color: Color(0xFF1E293B),
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          'Dibuat ${_formatTime(item.createdAt)}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  AnimatedRotation(
+                                    turns: isExpanded ? 0.25 : 0,
+                                    duration: const Duration(milliseconds: 220),
+                                    child: const Icon(
+                                      Icons.chevron_right,
+                                      color: Color(0xFF94A3B8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ClipRect(
+                                child: AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeInOutCubic,
+                                  alignment: Alignment.topCenter,
+                                  child: AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 180),
+                                    switchInCurve: Curves.easeOut,
+                                    switchOutCurve: Curves.easeIn,
+                                    transitionBuilder: (child, animation) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      );
+                                    },
+                                    child: isExpanded
+                                        ? Padding(
+                                            key: ValueKey<String>(
+                                              'expanded-${item.diaryId}',
+                                            ),
+                                            padding:
+                                                const EdgeInsets.only(top: 12),
+                                            child: _ExpandedArea(
+                                              isLoading: isDetailLoading,
+                                              error: detailError,
+                                              detail: detail,
+                                              onRetry: () => ref
+                                                  .read(diaryHistoryProvider
+                                                      .notifier)
+                                                  .loadDiaryDetail(
+                                                      item.diaryId),
+                                              formatTime: _formatTime,
+                                            ),
+                                          )
+                                        : const SizedBox(
+                                            key: ValueKey<String>('collapsed'),
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                if (state.error != null && state.items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Text(
+                      state.error!,
+                      style: const TextStyle(
+                        color: Color(0xFFB91C1C),
+                        fontSize: 13,
                       ),
                     ),
                   ),
-                ),
-              const SizedBox(height: 18),
-            ],
+                if (state.isLoadingMore)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 18),
+                    child: Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.3,
+                          color: Color(0xFFE64060),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 18),
+              ],
+            ),
           ),
         ),
       ),

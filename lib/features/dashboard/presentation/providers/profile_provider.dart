@@ -1284,6 +1284,8 @@ class PatientProfile {
   final String sex;
   final String bodyHeightCm;
   final String bloodType;
+  final bool isSmoking;
+  final bool isElectricSmoking;
 
   const PatientProfile({
     required this.patientId,
@@ -1295,6 +1297,8 @@ class PatientProfile {
     required this.sex,
     required this.bodyHeightCm,
     required this.bloodType,
+    required this.isSmoking,
+    required this.isElectricSmoking,
   });
 
   String get fullName => '$firstName $lastName'.trim();
@@ -1310,6 +1314,8 @@ class PatientProfile {
       sex: (json['sex'] ?? '').toString(),
       bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
       bloodType: (json['blood_type'] ?? '').toString(),
+      isSmoking: (json['is_smoking'] as bool?) ?? false,
+      isElectricSmoking: (json['is_electric_smoking'] as bool?) ?? false
     );
   }
 }

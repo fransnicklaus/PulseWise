@@ -417,6 +417,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   const Icon(Icons.favorite,
                                       color: Color(0xFFE64060), size: 24),
@@ -732,6 +733,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     const Icon(Icons.info_outline,
                                         color: Color(0xFFE08B3D), size: 24),
@@ -813,6 +815,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     const Icon(Icons.directions_run,
                                         color: Color(0xFF285DBE), size: 24),
@@ -894,6 +897,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
                                     const Icon(Icons.restaurant,
                                         color: Color(0xFF2D9744), size: 24),
@@ -1011,16 +1015,22 @@ class _SectionAddButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        width: 38,
+        width: 85,
         height: 38,
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFE7EE),
-          borderRadius: BorderRadius.circular(19),
-        ),
-        child: const Icon(
-          Icons.add,
-          color: Color(0xFFE64060),
-          size: 22,
+        // decoration: BoxDecoration(
+        //   color: const Color(0xFFFFE7EE),
+        //   borderRadius: BorderRadius.circular(19),
+        // ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.add,
+              color: Color(0xFFE64060),
+              size: 22,
+            ),
+            const Text("Tambah",
+                style: TextStyle(fontSize: 14, color: Color(0xFFE64060))),
+          ],
         ),
       ),
     );

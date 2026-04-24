@@ -75,6 +75,14 @@ class _QrScannerPageState extends State<QrScannerPage> {
                         ),
                         icon: const Icon(Icons.flash_on, color: Colors.white),
                       ),
+                      IconButton(
+                        onPressed: () => _controller.switchCamera(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.35),
+                        ),
+                        icon: const Icon(Icons.cameraswitch_rounded,
+                            color: Colors.white),
+                      ),
                     ],
                   ),
                   const Spacer(),
@@ -91,7 +99,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

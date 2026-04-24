@@ -102,6 +102,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
       ),
       body: RefreshIndicator(
         onRefresh: _refresh,
+        color: const Color(0xFFE64060),
+        backgroundColor: Colors.white,
         child: ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -289,16 +291,16 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                     Text(
                       'Ambulans Darurat',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
+                        color: Color(0xFFFFF4B8),
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       'Layanan 24 Jam',
                       style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 15,
+                        color: Colors.white,
+                        fontSize: 16,
                       ),
                     ),
                   ],
@@ -378,11 +380,12 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                       const SizedBox(height: 14),
                       Container(
                         width: double.infinity,
+                        color: Colors.white,
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: surfaceSoft,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        // decoration: BoxDecoration(
+                        //   color: surfaceSoft,
+                        //   borderRadius: BorderRadius.circular(12),
+                        // ),
                         child: const Row(
                           children: [
                             Icon(Icons.edit, color: brand, size: 20),
@@ -421,8 +424,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: InputDecoration(
-                          filled: true,
-                          fillColor: surfaceSoft,
+                          filled: false,
+                          // fillColor: Colors.white,
                           hintText: 'Masukkan nama',
                           hintStyle: const TextStyle(
                             color: textMuted,
@@ -471,8 +474,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: InputDecoration(
-                          filled: true,
-                          fillColor: surfaceSoft,
+                          filled: false,
+                          // fillColor: Colors.white,
                           hintText: '08xx-xxxx-xxxx',
                           hintStyle: const TextStyle(
                             color: textMuted,
@@ -633,7 +636,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
   Future<void> _deleteContact(EmergencyContact contact) async {
     final confirm = await showModalBottomSheet<bool>(
       context: context,
-      isDismissible: false,
+      isDismissible: true,
       enableDrag: false,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
@@ -686,11 +689,14 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                               ? null
                               : () => Navigator.of(sheetContext).pop(false),
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: Color(0xFFE64060),
+                            side: const BorderSide(color: Color(0xFFE64060)),
                             minimumSize: const Size.fromHeight(54),
                             textStyle: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
+                            backgroundColor: Colors.white,
                           ),
                           child: const Text('Batal'),
                         ),
@@ -722,7 +728,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFDC2626),
+                            backgroundColor: const Color(0xFFE64060),
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(54),
                             textStyle: const TextStyle(
@@ -849,10 +855,10 @@ class _EmergencyContactCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: const Text(
-                      'Prioritas',
+                      'Kontak Utama',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1271,7 +1277,10 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
           );
 
       if (!mounted) return;
-      context.pop(true);
+      // context.pop(true);
+      context.pop();
+      AppToast.success(context, 'Kontak darurat berhasil ditambahkan');
+      await ref.read(emergencyContactsProvider.notifier).fetchInitial();
     } catch (e) {
       if (!mounted) return;
       _showMessage(e.toString().replaceFirst('Exception: ', ''));

@@ -5,10 +5,12 @@ class EdukasiTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    double topPadding = MediaQuery.of(context).padding.top;
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 120),
       child: Column(
         children: [
+          SizedBox(height: topPadding),
           // Header with title and bookmark
           Padding(
             padding:

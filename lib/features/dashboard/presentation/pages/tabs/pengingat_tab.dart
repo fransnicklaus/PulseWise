@@ -75,6 +75,8 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
               ref.invalidate(medicationCalendarRangeProvider(query));
               await ref.read(medicationCalendarRangeProvider(query).future);
             },
+            color: const Color(0xFFE64060),
+            backgroundColor: Colors.white,
             child: ListView(
               padding: const EdgeInsets.only(bottom: 120),
               children: [
