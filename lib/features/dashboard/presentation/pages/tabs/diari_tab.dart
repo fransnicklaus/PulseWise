@@ -264,6 +264,8 @@ class _DiariTabState extends ConsumerState<DiariTab> {
         child: SafeArea(
           child: RefreshIndicator(
             onRefresh: _refreshDiary,
+            color: const Color(0xFFE64060),
+            backgroundColor: Colors.white,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.only(bottom: 130),
@@ -288,30 +290,31 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                         ),
                       ),
                     // Red gradient background header
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 120,
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(35),
-                          bottomRight: Radius.circular(35),
-                        ),
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0xFFE75480),
-                                Color(0xFFE64060),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    // Positioned(
+                    //   top: 0,
+                    //   left: 0,
+                    //   right: 0,
+                    //   height: 120,
+                    //   child: ClipRRect(
+                    //     borderRadius: const BorderRadius.only(
+                    //       bottomLeft: Radius.circular(35),
+                    //       bottomRight: Radius.circular(35),
+                    //     ),
+                    //     child: Container(
+                    //       decoration: const BoxDecoration(
+                    //         color: Color(0xFFE64060),
+                    //         // gradient: LinearGradient(
+                    //         //   begin: Alignment.topCenter,
+                    //         //   end: Alignment.bottomCenter,
+                    //         //   colors: [
+                    //         //     Color(0xFFE75480),
+                    //         //     Color(0xFFE64060),
+                    //         //   ],
+                    //         // ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
 
                     // Content
                     Column(
@@ -329,17 +332,17 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   const Text(
                                     'Diari Kesehatan',
                                     style: TextStyle(
-                                      fontSize: 28,
+                                      fontSize: 25,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.white,
+                                      color: Color(0xFF525252),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
                                     _todayLabel(),
                                     style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.white,
+                                      fontSize: 14,
+                                      color: Color(0xFF525252),
                                     ),
                                   ),
                                 ],
@@ -354,12 +357,15 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                         height: 48,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.2),
+                                          border: Border.all(
+                                              color:
+                                                  Colors.grey.withOpacity(0.2)),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
                                         child: const Icon(
                                           Icons.history,
-                                          color: Colors.white,
+                                          color: Color(0xFFE64060),
                                           size: 24,
                                         ),
                                       ),
@@ -373,12 +379,15 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                         height: 48,
                                         decoration: BoxDecoration(
                                           color: Colors.white.withOpacity(0.2),
+                                          border: Border.all(
+                                              color:
+                                                  Colors.grey.withOpacity(0.2)),
                                           borderRadius:
                                               BorderRadius.circular(10),
                                         ),
                                         child: const Icon(
                                           Icons.qr_code_scanner,
-                                          color: Colors.white,
+                                          color: Color(0xFFE64060),
                                           size: 24,
                                         ),
                                       ),

@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
@@ -163,7 +164,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
               top: 0,
               left: 0,
               right: 0,
-              height: 264,
+              height: 150,
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(35),
@@ -172,11 +173,11 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 child: Container(
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
+                      begin: Alignment(0.2, -2.5),
+                      end: Alignment(0.8, 0.5),
                       colors: [
-                        Color(0xFFFFADB5),
                         Color(0xFFE64060),
+                        Color(0xFFFFADB5),
                       ],
                     ),
                   ),
@@ -243,15 +244,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 22, vertical: 10),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFE64060),
-                          Color(0xFFFF7E93),
-                          Color(0xFFE64060)
-                        ],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
+                      // gradient: const LinearGradient(
+                      //   colors: [
+                      //     Color(0xFFE64060),
+                      //     Color(0xFFFF7E93),
+                      //     Color(0xFFE64060)
+                      //   ],
+                      //   begin: Alignment.centerLeft,
+                      //   end: Alignment.centerRight,
+                      // ),
+                      color: const Color(0xFFE64060),
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: const [
                         BoxShadow(
@@ -264,16 +266,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                     child: Row(
                       children: [
                         Container(
-                          width: 59,
-                          height: 59,
+                          width: 65,
+                          height: 65,
                           decoration: BoxDecoration(
                             color: const Color.fromRGBO(255, 244, 184, 0.22),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             Icons.call,
-                            color: Color(0xFFFFF4B8),
-                            size: 30,
+                            color: Color(0xFFFFFFFF),
+                            size: 35,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -285,7 +287,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                 'Kontak Darurat',
                                 style: TextStyle(
                                   color: Color(0xFFFFF4B8),
-                                  fontSize: 20,
+                                  fontSize: 25,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -293,7 +295,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                 'Tekan untuk menghubungi',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: 16,
                                 ),
                               ),
                             ],
@@ -564,54 +566,59 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 ),
 
                 // Diari Kesehatan Full Width Button
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE7E7),
-                    border: Border.all(color: const Color(0xFFE64060)),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 59,
-                        height: 59,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE64060),
-                          borderRadius: BorderRadius.circular(12),
+                GestureDetector(
+                  onTap: () {
+                    // context.push('/home/diary');
+                    ref.read(dashboardNavIndexProvider.notifier).state = 2;
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE7E7),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 59,
+                          height: 59,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE64060),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.favorite_border,
+                            color: Colors.white,
+                            size: 30,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.favorite_border,
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'DIARI KESEHATAN',
-                              style: TextStyle(
-                                color: Color(0xFF525252),
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'DIARI KESEHATAN',
+                                style: TextStyle(
+                                  color: Color(0xFF525252),
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '⭐ Catat semua kondisi harian Anda',
-                              style: TextStyle(
-                                color: Color(0xFFCD3754),
-                                fontSize: 14,
+                              Text(
+                                'Catat semua kondisi harian Anda',
+                                style: TextStyle(
+                                  color: Color(0xFFCD3754),
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -623,45 +630,52 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                     children: [
                       // Edukasi Card
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 59,
-                                height: 59,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF9F3FF),
-                                  borderRadius: BorderRadius.circular(12),
+                        child: GestureDetector(
+                          onTap: () {
+                            ref.read(dashboardNavIndexProvider.notifier).state =
+                                1;
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 59,
+                                  height: 59,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9F3FF),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    FluentIcons.book_open_24_regular,
+                                    color: Color(0xFF6C2BD9),
+                                    size: 30,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  FluentIcons.book_open_24_regular,
-                                  color: Color(0xFF6C2BD9),
-                                  size: 30,
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'Edukasi',
+                                  style: TextStyle(
+                                    color: Color(0xFF525252),
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 48),
-                              const Text(
-                                'Edukasi',
-                                style: TextStyle(
-                                  color: Color(0xFF525252),
-                                  fontSize: 18,
+                                const Text(
+                                  'Artikel Kesehatan',
+                                  style: TextStyle(
+                                    color: Color(0xFF62748E),
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                              const Text(
-                                'Artikel Kesehatan',
-                                style: TextStyle(
-                                  color: Color(0xFF62748E),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -669,45 +683,52 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
 
                       // Pengingat Card
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 59,
-                                height: 59,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF3E4),
-                                  borderRadius: BorderRadius.circular(12),
+                        child: GestureDetector(
+                          onTap: () {
+                            ref.read(dashboardNavIndexProvider.notifier).state =
+                                3;
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 59,
+                                  height: 59,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF3E4),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    FluentIcons.alert_24_regular,
+                                    color: Color(0xFFE08B3D),
+                                    size: 30,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  FluentIcons.alert_24_regular,
-                                  color: Color(0xFFE08B3D),
-                                  size: 30,
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'Pengingat',
+                                  style: TextStyle(
+                                    color: Color(0xFF525252),
+                                    fontSize: 18,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 48),
-                              const Text(
-                                'Pengingat',
-                                style: TextStyle(
-                                  color: Color(0xFF525252),
-                                  fontSize: 18,
+                                const Text(
+                                  'Obat & Jadwal',
+                                  style: TextStyle(
+                                    color: Color(0xFF62748E),
+                                    fontSize: 14,
+                                  ),
                                 ),
-                              ),
-                              const Text(
-                                'Obat & Jadwal',
-                                style: TextStyle(
-                                  color: Color(0xFF62748E),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),

@@ -174,17 +174,17 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFE64060), Color(0xFFFF6C86)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
+      // decoration: const BoxDecoration(
+      //   gradient: LinearGradient(
+      //     colors: [Color(0xFFE64060), Color(0xFFFF6C86)],
+      //     begin: Alignment.topLeft,
+      //     end: Alignment.bottomRight,
+      //   ),
+      //   borderRadius: BorderRadius.only(
+      //     bottomLeft: Radius.circular(28),
+      //     bottomRight: Radius.circular(28),
+      //   ),
+      // ),
       child: Row(
         children: [
           const Expanded(
@@ -194,18 +194,18 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
                 Text(
                   'Pengingat',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF525252),
                     fontSize: 36,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'Kalender Obat',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF525252),
                     fontSize: 18,
-                    fontWeight: FontWeight.w500,
+                    // fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -360,9 +360,10 @@ class _HeaderAction extends StatelessWidget {
         height: 48,
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.2),
+          border: Border.all(color: Colors.grey.withOpacity(0.2)),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Icon(icon, color: Colors.white, size: 24),
+        child: Icon(icon, color: Color(0xFFE64060), size: 24),
       ),
     );
   }

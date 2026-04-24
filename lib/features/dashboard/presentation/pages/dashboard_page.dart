@@ -26,7 +26,7 @@ class DashboardPage extends ConsumerWidget {
     ];
 
     return Scaffold(
-      // backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: SizedBox.expand(
           child: IndexedStack(
