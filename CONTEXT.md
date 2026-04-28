@@ -84,3 +84,70 @@ lib/
 4. **Repository Implementation (Data)** decides whether to fetch data from the **Remote Data Source** (API) or **Local Data Source** (Hive/Cache).
 5. **Data Source** returns a **Model** (JSON mapping), which the Repository maps to a Domain **Entity**.
 6. The Provider updates its state with the new Entity or Error, and the UI reacts immediately.
+
+---
+
+## 📌 App-Specific Implementation Notes (Current)
+
+These notes describe real, current behavior in this repository and should be treated as the default reference for future agent changes.
+
+### Authentication Session Keys
+- SharedPreferences keys used across features:
+	- `auth_token`
+	- `auth_user_id`
+- App start decides initial route from those keys in `main.dart` (`/login` vs `/home`) and checks token expiration.
+
+### Routing Details (go_router)
+- Main route tree is in `lib/core/config/routes.dart`.
+- Important auth flow paths:
+	- `/login/register/profile-setup`
+	- `/login/register/ml-questionnaire`
+- `profile-setup` and `ml-questionnaire` expect `state.extra` map with:
+	- `auth_token`
+	- `auth_user_id`
+	If either is missing, route falls back to `LoginPage`.
+
+### ML Questionnaire (Dynamic + Editable)
+- Core mapping source: `lib/core/data/ml_mapping.dart`.
+- Form fields are rendered dynamically from `MlMapping.form_mapping`.
+- Field key format is composite: `<group>_<codeId>` (example: `demog1_riagendr`).
+- `MlMapping` includes helpers for parsing and validation:
+	- `getGroupFromFieldKey`
+	- `getCodeIdFromFieldKey`
+	- `isValidFieldKey`
+	- `getOptions`
+- `codeMaps` contains alias `demog1` for demographic keys used by ML form.
+
+### ML Profile API Integration
+- Provider/API location: `lib/features/dashboard/presentation/providers/profile_provider.dart`.
+- Existing APIs in use:
+	- `fetchMlProfile(token, patientId)` → `GET /patients/{patientId}/ml-profile`
+	- `submitMlProfile(token, patientId, payload)` → `PUT /patients/{patientId}/ml-profile`
+- `fetchMlProfile` returns empty map on 404 so first-time users can still fill the form.
+
+### ML Questionnaire Screen Behavior
+- Screen file: `lib/features/auth/presentation/pages/ml_questionnaire_page.dart`.
+- On open:
+	1. Calls `fetchMlProfile`.
+	2. Prefills dropdown answers from API data when valid.
+	3. Shows full loading screen while initial fetch is in progress.
+- On submit:
+	- Validates all dynamic fields are answered.
+	- Sends payload with dynamic keys from `MlMapping.form_mapping`.
+
+### Navigation Safety Pattern (Important)
+- To avoid navigator lifecycle assertion errors during modal/route transitions, some flows defer navigation using `WidgetsBinding.instance.addPostFrameCallback` (for example in profile/logout and post-submit flows).
+- When adjusting modal + navigation logic, keep this safety pattern.
+
+### Profile Area Notes
+- Profile tab file: `lib/features/dashboard/presentation/pages/tabs/profil_tab.dart`.
+- Includes:
+	- Pull-to-refresh for profile and emergency contacts.
+	- Avatar upload with `file_picker` + `image_cropper` (circle crop).
+	- Logout confirmation bottom sheet.
+	- Shortcut button to ML questionnaire.
+
+### Practical Agent Guidance For This Repo
+- Prefer reusing Riverpod providers/APIs from feature providers before adding local `Dio` instances in UI pages.
+- Keep existing Indonesian UI copy tone and current red-pink color direction unless explicitly asked to redesign.
+- Before changing ML fields/options, update `MlMapping.form_mapping` and verify group/code keys exist in `codeMaps`.

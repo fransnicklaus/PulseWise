@@ -312,6 +312,90 @@ class ProfileApi {
     return AuthMeUser.fromJson(body['data'] as Map<String, dynamic>);
   }
 
+  Future<void> submitMlProfile({
+    required String token,
+    required String patientId,
+    required Map<String, dynamic> payload,
+  }) async {
+    if (token.trim().isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+    if (patientId.trim().isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/patients/$patientId/ml-profile',
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+      data: payload,
+    );
+
+    final body = response.data ?? <String, dynamic>{};
+    if (body['success'] != true) {
+      throw Exception(
+          (body['message'] ?? 'Gagal menyimpan kuisioner ML').toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchMlProfile({
+    required String token,
+    required String patientId,
+  }) async {
+    if (token.trim().isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+    if (patientId.trim().isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/patients/$patientId/ml-profile',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+            (body['message'] ?? 'Gagal mengambil kuisioner ML').toString());
+      }
+
+      final data = body['data'];
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      if (data is Map) {
+        return data.map((key, value) => MapEntry(key.toString(), value));
+      }
+      return <String, dynamic>{};
+    } on DioException catch (e) {
+      // If profile has not been created yet, allow empty form for first fill.
+      if (e.response?.statusCode == 404) {
+        return <String, dynamic>{};
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil kuisioner ML.');
+    }
+  }
+
   Future<DiaryDetail> fetchDiaryDetail(String diaryId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -453,6 +537,11 @@ class ProfileApi {
   Future<void> addDiarySymptomByDate({
     required String diaryDate,
     required String symptomName,
+    required String symptomCode,
+    required String bodyArea,
+    required bool isChestPain,
+    int? painFrequencyCode,
+    int? painLocationCode,
     required int intensity,
     required String time,
     required String note,
@@ -477,6 +566,11 @@ class ProfileApi {
       data: {
         'diaryDate': diaryDate,
         'symptomName': symptomName,
+        'symptomCode': symptomCode,
+        'bodyArea': bodyArea,
+        'isChestPain': isChestPain,
+        'painFrequencyCode': painFrequencyCode,
+        'painLocationCode': painLocationCode,
         'intensity': intensity,
         'time': time,
         'note': note,
@@ -545,9 +639,14 @@ class ProfileApi {
   Future<void> addDiaryActivityByDate({
     required String diaryDate,
     required String name,
+    required String activityCategory,
+    String? intensityLevel,
+    String? transportMode,
+    int? outdoorMinutes,
     required int duration,
-    required int heartRate,
-    required String userFeeling,
+    int? heartRate,
+    String? userFeeling,
+    String? note,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -569,9 +668,14 @@ class ProfileApi {
       data: {
         'diaryDate': diaryDate,
         'name': name,
+        'activityCategory': activityCategory,
+        if (intensityLevel != null) 'intensityLevel': intensityLevel,
+        if (transportMode != null) 'transportMode': transportMode,
+        if (outdoorMinutes != null) 'outdoorMinutes': outdoorMinutes,
         'duration': duration,
-        'heartRate': heartRate,
-        'userFeeling': userFeeling,
+        if (heartRate != null) 'heartRate': heartRate,
+        if (userFeeling != null) 'userFeeling': userFeeling,
+        if (note != null) 'note': note,
       },
       options: Options(
         headers: {
@@ -1305,18 +1409,18 @@ class PatientProfile {
 
   factory PatientProfile.fromJson(Map<String, dynamic> json) {
     return PatientProfile(
-      patientId: (json['patient_id'] ?? '').toString(),
-      firstName: (json['first_name'] ?? '').toString(),
-      lastName: (json['last_name'] ?? '').toString(),
-      email: (json['email'] ?? '').toString(),
-      address: (json['address'] ?? '').toString(),
-      dateOfBirth: DateTime.tryParse((json['date_of_birth'] ?? '').toString()),
-      sex: (json['sex'] ?? '').toString(),
-      bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
-      bloodType: (json['blood_type'] ?? '').toString(),
-      isSmoking: (json['is_smoking'] as bool?) ?? false,
-      isElectricSmoking: (json['is_electric_smoking'] as bool?) ?? false
-    );
+        patientId: (json['patient_id'] ?? '').toString(),
+        firstName: (json['first_name'] ?? '').toString(),
+        lastName: (json['last_name'] ?? '').toString(),
+        email: (json['email'] ?? '').toString(),
+        address: (json['address'] ?? '').toString(),
+        dateOfBirth:
+            DateTime.tryParse((json['date_of_birth'] ?? '').toString()),
+        sex: (json['sex'] ?? '').toString(),
+        bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
+        bloodType: (json['blood_type'] ?? '').toString(),
+        isSmoking: (json['is_smoking'] as bool?) ?? false,
+        isElectricSmoking: (json['is_electric_smoking'] as bool?) ?? false);
   }
 }
 

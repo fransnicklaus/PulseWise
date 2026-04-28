@@ -119,24 +119,25 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     'Yoga',
   ];
 
-  final List<String> _symptomOptions = const [
-    'Sulit Bernafas',
-    'Kaki Bengkak',
-    'Lemas',
-    'Sulit Tidur',
-    'Perut Bengkak',
-    'Sering Lupa',
-    'Batuk',
-    'Tidak Nafsu Makan',
-    'Sering Kencing',
-    'Kembung',
-    'Bingung',
-    'Vena Leher Bengkak',
-    'Nyeri Dada',
-    'Jantung Berdebar',
-    'Mual',
-    'Muntah',
-    'Lain-lainnya',
+  final List<Map<String, dynamic>> _symptomOptions = const [
+    {'name': 'Sulit Bernafas', 'code': 'shortness_of_breath', 'area': 'chest'},
+    {'name': 'Kaki Bengkak', 'code': 'swelling', 'area': 'leg'},
+    {'name': 'Lemas', 'code': 'fatigue', 'area': 'general'},
+    {'name': 'Sulit Tidur', 'code': 'other', 'area': 'head'},
+    {'name': 'Perut Bengkak', 'code': 'swelling', 'area': 'upper_abdomen'},
+    {'name': 'Sering Lupa', 'code': 'other', 'area': 'head'},
+    {'name': 'Batuk', 'code': 'cough', 'area': 'chest'},
+    {'name': 'Tidak Nafsu Makan', 'code': 'other', 'area': 'general'},
+    {'name': 'Sering Kencing', 'code': 'other', 'area': 'general'},
+    {'name': 'Kembung', 'code': 'other', 'area': 'upper_abdomen'},
+    {'name': 'Bingung', 'code': 'dizziness', 'area': 'head'},
+    {'name': 'Vena Leher Bengkak', 'code': 'swelling', 'area': 'neck'},
+    {'name': 'Nyeri Dada', 'code': 'chest_pain', 'area': 'chest'},
+    {'name': 'Jantung Berdebar', 'code': 'palpitations', 'area': 'chest'},
+    {'name': 'Mual', 'code': 'nausea', 'area': 'upper_abdomen'},
+    {'name': 'Muntah', 'code': 'other', 'area': 'upper_abdomen'},
+    {'name': 'Sakit Kepala', 'code': 'headache', 'area': 'head'},
+    {'name': 'Lain-lainnya', 'code': 'other', 'area': 'general'},
   ];
   final List<String> _moods = const [
     'Senang',
@@ -169,16 +170,28 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   String? _aktivitasTimeError;
   String? _aktivitasHeartRateError;
   String? _aktivitasFeelingError;
+  String? _aktivitasOutdoorError;
   String? _aktivitasSubmitError;
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _selectedMood = 'Biasa Saja';
-  int _symptomIntensity = 1;
+  int _symptomIntensity = 5;
+  int? _painFrequencyCode;
+  int? _painLocationCode;
   final Set<String> _selectedSymptoms = {};
   String _symptomSearchQuery = '';
   String _activitySearchQuery = '';
   String? _selectedConsumptionTypeLabel;
   String? _selectedActivity;
   String? _selectedActivityFeeling;
+
+  // NEW ML ACTIVITY FIELDS
+  String _activityCategory = 'recreation';
+  String? _intensityLevel;
+  String? _transportMode;
+  final TextEditingController _outdoorMinutesController =
+      TextEditingController();
+  final TextEditingController _activityNoteController = TextEditingController();
+
   TimeOfDay _activityStartTime = TimeOfDay.now();
   TimeOfDay _activityEndTime = TimeOfDay(
     hour: (TimeOfDay.now().hour + 1) % 24,
@@ -236,6 +249,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     _mealNameController.dispose();
     _mealPortionController.dispose();
     _mealDescriptionController.dispose();
+    _outdoorMinutesController.dispose();
+    _activityNoteController.dispose();
     super.dispose();
   }
 
@@ -415,15 +430,22 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   Future<void> _saveGejala() async {
     final needsOther = _selectedSymptoms.contains('Lain-lainnya');
     final hasNoSymptoms = _selectedSymptoms.isEmpty;
+    final isChestPain = _selectedSymptoms.contains('Nyeri Dada');
     final missingOther =
         needsOther && _symptomOtherController.text.trim().isEmpty;
+    final missingChestPainDetails = isChestPain &&
+        (_painFrequencyCode == null || _painLocationCode == null);
 
-    if (hasNoSymptoms || missingOther) {
+    if (hasNoSymptoms || missingOther || missingChestPainDetails) {
       setState(() {
         _gejalaSubmitError = null;
         _gejalaListError = hasNoSymptoms ? 'Pilih minimal satu gejala.' : null;
         _gejalaOtherError =
             missingOther ? 'Tulis gejala lainnya sebelum menyimpan.' : null;
+        if (missingChestPainDetails) {
+          _gejalaListError =
+              'Lengkapi detail lama sakit dan area untuk Nyeri Dada.';
+        }
       });
       return;
     }
@@ -441,10 +463,32 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       return otherText.isEmpty ? 'Lain-lainnya' : otherText;
     }).toList();
 
+    final symptomsMapped = selectedResolved.map((symptomName) {
+      final originalName = symptomName == _symptomOtherController.text.trim() &&
+              symptomName.isNotEmpty
+          ? 'Lain-lainnya'
+          : symptomName;
+      final meta = _symptomOptions.firstWhere(
+        (e) => e['name'] == originalName,
+        orElse: () => {'name': symptomName, 'code': 'other', 'area': 'general'},
+      );
+      final isThisChestPain = meta['code'] == 'chest_pain';
+
+      return {
+        'symptomName': symptomName,
+        'symptomCode': meta['code'],
+        'bodyArea': meta['area'],
+        'isChestPain': isThisChestPain,
+        'painFrequencyCode': isThisChestPain ? _painFrequencyCode : null,
+        'painLocationCode': isThisChestPain ? _painLocationCode : null,
+      };
+    }).toList();
+
     final payload = {
       'section': widget.title,
       'symptoms': selectedResolved,
       'symptomsRaw': selectedRaw,
+      'symptomsMapped': symptomsMapped,
       'intensity': _symptomIntensity,
       'description': _symptomDescriptionController.text.trim(),
       'time': _formatTime(_selectedTime),
@@ -479,32 +523,34 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
 
   Future<void> _saveAktivitas() async {
     final activityName = _selectedActivity?.trim() ?? '';
-    final hasInvalidTime =
-        _toMinutes(_activityEndTime) <= _toMinutes(_activityStartTime);
-    final durationMinutes =
+    var durationMinutes =
         _toMinutes(_activityEndTime) - _toMinutes(_activityStartTime);
-    final heartRate = int.tryParse(_activityHeartRateController.text.trim());
+    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+
+    final hasInvalidTime = durationMinutes <= 0;
+
+    final heartRateText = _activityHeartRateController.text.trim();
+    final heartRate =
+        heartRateText.isNotEmpty ? int.tryParse(heartRateText) : null;
+
     final feeling = (_selectedActivityFeeling ?? '').trim();
 
+    final outdoorMinsText = _outdoorMinutesController.text.trim();
+    final outdoorMinutes =
+        outdoorMinsText.isNotEmpty ? int.tryParse(outdoorMinsText) : null;
+
     final missingActivity = activityName.isEmpty;
-    final missingHeartRate =
-        _activityHeartRateController.text.trim().isEmpty || heartRate == null;
-    final missingFeeling = feeling.isEmpty;
-    if (missingActivity ||
-        hasInvalidTime ||
-        missingHeartRate ||
-        missingFeeling) {
+    final missingOutdoor = outdoorMinsText.isEmpty || outdoorMinutes == null;
+
+    if (missingActivity || hasInvalidTime || missingOutdoor) {
       setState(() {
         _aktivitasSubmitError = null;
         _aktivitasSelectionError =
             missingActivity ? 'Pilih satu jenis aktivitas.' : null;
         _aktivitasTimeError =
-            hasInvalidTime ? 'Waktu selesai harus setelah waktu mulai.' : null;
-        _aktivitasHeartRateError = missingHeartRate
-            ? 'Masukkan detak jantung rata-rata (angka).'
-            : null;
-        _aktivitasFeelingError =
-            missingFeeling ? 'Pilih perasaan setelah aktivitas.' : null;
+            hasInvalidTime ? 'Waktu selesai tidak valid.' : null;
+        _aktivitasOutdoorError =
+            missingOutdoor ? 'Masukkan durasi di luar ruangan (angka)' : null;
       });
       return;
     }
@@ -512,6 +558,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     setState(() {
       _aktivitasSelectionError = null;
       _aktivitasTimeError = null;
+      _aktivitasOutdoorError = null;
       _aktivitasHeartRateError = null;
       _aktivitasFeelingError = null;
       _aktivitasSubmitError = null;
@@ -520,14 +567,18 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     final payload = {
       'section': widget.title,
       'name': activityName,
-      'activity': activityName,
+      'activityCategory': _activityCategory,
+      'intensityLevel': _intensityLevel,
+      'transportMode': _activityCategory == 'transport' ? _transportMode : null,
+      'outdoorMinutes': outdoorMinutes,
       'duration': durationMinutes,
       'heartRate': heartRate,
-      'avgHeartRate': heartRate,
       'userFeeling': feeling,
-      'feeling': feeling,
-      'startTime': _formatTime(_activityStartTime),
-      'endTime': _formatTime(_activityEndTime),
+      'note': _activityNoteController.text.trim(),
+      'startTime':
+          '${_activityStartTime.hour.toString().padLeft(2, '0')}:${_activityStartTime.minute.toString().padLeft(2, '0')}',
+      'endTime':
+          '${_activityEndTime.hour.toString().padLeft(2, '0')}:${_activityEndTime.minute.toString().padLeft(2, '0')}',
     };
 
     final submitAktivitas = widget.onSubmitAktivitas;
@@ -1133,9 +1184,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
 
   Widget _buildGejalaContent() {
     final isOtherSymptom = _selectedSymptoms.contains('Lain-lainnya');
+    final isChestPain = _selectedSymptoms.contains('Nyeri Dada');
     final filteredSymptoms = _symptomOptions
         .where(
-          (item) => item
+          (item) => (item['name'] as String)
               .toLowerCase()
               .contains(_symptomSearchQuery.trim().toLowerCase()),
         )
@@ -1211,45 +1263,55 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             ),
             const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding:
+                  const EdgeInsets.only(top: 10, bottom: 2, left: 0, right: 0),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    onPressed: _symptomIntensity > 1
-                        ? () => setState(() => _symptomIntensity--)
-                        : null,
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFE2E8F0),
-                    ),
-                    icon: const Icon(Icons.remove, color: Color(0xFF334155)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '$_symptomIntensity',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF0F172A),
-                      ),
+                  Text(
+                    '$_symptomIntensity ${_symptomIntensity <= 3 ? '(Ringan)' : _symptomIntensity <= 6 ? '(Sedang)' : '(Berat)'}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0F172A),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  IconButton(
-                    onPressed: _symptomIntensity < 10
-                        ? () => setState(() => _symptomIntensity++)
-                        : null,
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFE2E8F0),
-                    ),
-                    icon: const Icon(Icons.add, color: Color(0xFF334155)),
+                  Slider(
+                    value: _symptomIntensity.toDouble(),
+                    min: 1,
+                    max: 10,
+                    divisions: 9,
+                    label: _symptomIntensity.toString(),
+                    activeColor: const Color(0xFFE64060),
+                    inactiveColor: const Color(0xFFFDECEF),
+                    onChanged: (value) {
+                      setState(() {
+                        _symptomIntensity = value.toInt();
+                      });
+                    },
                   ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('1',
+                            style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w600)),
+                        Text('10',
+                            style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -1328,7 +1390,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                       ),
                       itemBuilder: (_, index) {
                         final item = filteredSymptoms[index];
-                        final isSelected = _selectedSymptoms.contains(item);
+                        final itemName = item['name'] as String;
+                        final isSelected = _selectedSymptoms.contains(itemName);
                         return CheckboxListTile(
                           value: isSelected,
                           dense: false,
@@ -1339,7 +1402,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                           controlAffinity: ListTileControlAffinity.leading,
                           activeColor: const Color(0xFFE64060),
                           title: Text(
-                            item,
+                            itemName,
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -1351,9 +1414,9 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                           onChanged: (value) {
                             setState(() {
                               if (value ?? false) {
-                                _selectedSymptoms.add(item);
+                                _selectedSymptoms.add(itemName);
                               } else {
-                                _selectedSymptoms.remove(item);
+                                _selectedSymptoms.remove(itemName);
                               }
                               _gejalaListError = null;
                               if (!_selectedSymptoms.contains('Lain-lainnya')) {
@@ -1381,7 +1444,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             const Text(
               'Gejala Dipilih',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF334155),
               ),
@@ -1391,7 +1454,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                 ? const Text(
                     'Belum ada gejala dipilih',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 16,
                       color: Color(0xFF64748B),
                     ),
                   )
@@ -1404,7 +1467,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                             label: Text(
                               symptom,
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1418,6 +1481,96 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                         )
                         .toList(),
                   ),
+            if (isChestPain) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Berapa lama nyeri dada?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    dropdownColor: Colors.white,
+                    value: _painFrequencyCode,
+                    hint: const Text(
+                      'Pilih durasi nyeri',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 0, child: Text('Tidak tahu / tidak yakin')),
+                      DropdownMenuItem(
+                          value: 1, child: Text('Kurang dari 30 menit')),
+                      DropdownMenuItem(
+                          value: 2, child: Text('30 menit atau lebih')),
+                    ],
+                    onChanged: (value) => setState(() {
+                      _painFrequencyCode = value;
+                      _gejalaListError = null;
+                    }),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Di area mana nyeri terasa dominan?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF334155),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    dropdownColor: Colors.white,
+                    value: _painLocationCode,
+                    hint: const Text('Pilih lokasi nyeri'),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                          value: 0, child: Text('Tidak tahu / tidak yakin')),
+                      DropdownMenuItem(value: 1, child: Text('Lengan kanan')),
+                      DropdownMenuItem(value: 2, child: Text('Dada kanan')),
+                      DropdownMenuItem(value: 3, child: Text('Leher')),
+                      DropdownMenuItem(
+                          value: 4,
+                          child: Text('Dada atas / tulang dada atas')),
+                      DropdownMenuItem(
+                          value: 5,
+                          child: Text('Dada bawah / tulang dada bawah')),
+                      DropdownMenuItem(value: 6, child: Text('Dada kiri')),
+                      DropdownMenuItem(value: 7, child: Text('Lengan kiri')),
+                      DropdownMenuItem(
+                          value: 8, child: Text('Ulu hati / perut atas')),
+                    ],
+                    onChanged: (value) => setState(() {
+                      _painLocationCode = value;
+                      _gejalaListError = null;
+                    }),
+                  ),
+                ),
+              ),
+            ],
             if (isOtherSymptom) ...[
               const SizedBox(height: 12),
               TextField(
@@ -1561,8 +1714,9 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               .contains(_activitySearchQuery.trim().toLowerCase()),
         )
         .toList();
-    final durationMinutes =
+    var durationMinutes =
         _toMinutes(_activityEndTime) - _toMinutes(_activityStartTime);
+    if (durationMinutes < 0) durationMinutes += 24 * 60;
 
     return AbsorbPointer(
       absorbing: _isSavingAktivitas,
@@ -1571,92 +1725,123 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Waktu Aktivitas',
+            'Kategori Aktivitas',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.bold,
               color: Color(0xFF334155),
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickActivityTime(isStart: true),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.schedule),
-                  label: Text(
-                    'Mulai ${_formatTime(_activityStartTime)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _pickActivityTime(isStart: false),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  icon: const Icon(Icons.schedule_outlined),
-                  label: Text(
-                    'Selesai ${_formatTime(_activityEndTime)}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            dropdownColor: Colors.white,
+            value: _activityCategory,
+            decoration: InputDecoration(
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            items: const [
+              DropdownMenuItem(value: 'work', child: Text('Pekerjaan (Work)')),
+              DropdownMenuItem(
+                  value: 'transport', child: Text('Transportasi (Transport)')),
+              DropdownMenuItem(
+                  value: 'recreation',
+                  child: Text('Rekreasi / Olahraga (Recreation)')),
+              DropdownMenuItem(
+                  value: 'other', child: Text('Lain-lain (Other)')),
             ],
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _activityCategory = val;
+                  if (val != 'work' && val != 'recreation') {
+                    _intensityLevel = null;
+                  }
+                  if (val != 'transport') {
+                    _transportMode = null;
+                  }
+                });
+              }
+            },
           ),
-          if (_aktivitasTimeError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _aktivitasTimeError!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFFE64060),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 8),
-            Text(
-              durationMinutes > 0
-                  ? 'Durasi otomatis: $durationMinutes menit'
-                  : 'Durasi harus lebih dari 0 menit',
+          const SizedBox(height: 16),
+          if (_activityCategory == 'work' ||
+              _activityCategory == 'recreation') ...[
+            const Text(
+              'Intensitas Aktivitas',
               style: TextStyle(
-                fontSize: 13,
-                color: durationMinutes > 0
-                    ? const Color(0xFF2D9744)
-                    : const Color(0xFFE64060),
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF334155),
               ),
             ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              dropdownColor: Colors.white,
+              value: _intensityLevel,
+              hint: const Text('Pilih Intensitas'),
+              decoration: InputDecoration(
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'light', child: Text('Ringan (Light)')),
+                DropdownMenuItem(
+                    value: 'moderate', child: Text('Sedang (Moderate)')),
+                DropdownMenuItem(
+                    value: 'vigorous', child: Text('Berat/Kuat (Vigorous)')),
+                DropdownMenuItem(
+                    value: 'unknown', child: Text('Tidak Yakin / Lainnya')),
+              ],
+              onChanged: (val) => setState(() => _intensityLevel = val),
+            ),
+            const SizedBox(height: 16),
           ],
-          const SizedBox(height: 18),
+          if (_activityCategory == 'transport') ...[
+            const Text(
+              'Mode Transportasi',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF334155),
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              dropdownColor: Colors.white,
+              value: _transportMode,
+              hint: const Text('Pilih Mode'),
+              decoration: InputDecoration(
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+              items: const [
+                DropdownMenuItem(
+                    value: 'walk', child: Text('Berjalan Kaki (Walk)')),
+                DropdownMenuItem(
+                    value: 'bicycle', child: Text('Bersepeda (Bicycle)')),
+                DropdownMenuItem(
+                    value: 'other', child: Text('Kendaraan / Lainnya')),
+              ],
+              onChanged: (val) => setState(() => _transportMode = val),
+            ),
+            const SizedBox(height: 16),
+          ],
           const Text(
-            'Jenis Aktivitas',
+            'Nama Aktivitas',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.bold,
               color: Color(0xFF334155),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           TextField(
             controller: _activitySearchController,
             onChanged: (value) => setState(() => _activitySearchQuery = value),
@@ -1760,7 +1945,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
           const Text(
             'Aktivitas Dipilih',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Color(0xFF334155),
             ),
@@ -1789,6 +1974,267 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                   backgroundColor: const Color(0xFFFDECEF),
                   side: const BorderSide(color: Color(0xFFF8C7D2)),
                 ),
+          const SizedBox(height: 18),
+          const Text(
+            'Waktu Aktivitas',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickActivityTime(isStart: true),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.schedule),
+                  label: Text(
+                    'Mulai ${_formatTime(_activityStartTime)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickActivityTime(isStart: false),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.schedule_outlined),
+                  label: Text(
+                    'Selesai ${_formatTime(_activityEndTime)}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_aktivitasTimeError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _aktivitasTimeError!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFE64060),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Text(
+              durationMinutes > 0
+                  ? 'Durasi otomatis: $durationMinutes menit'
+                  : 'Durasi harus lebih dari 0 menit',
+              style: TextStyle(
+                fontSize: 13,
+                color: durationMinutes > 0
+                    ? const Color(0xFF2D9744)
+                    : const Color(0xFFE64060),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          const Text(
+            'Durasi di Luar Ruangan (Menit)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _outdoorMinutesController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) {
+              if (_aktivitasOutdoorError == null &&
+                  _aktivitasSubmitError == null) {
+                return;
+              }
+              setState(() {
+                _aktivitasOutdoorError = null;
+                _aktivitasSubmitError = null;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Dalam menit (misal: 15)',
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE64060))),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              errorText: _aktivitasOutdoorError,
+            ),
+          ),
+          // const SizedBox(height: 18),
+          // const Text(
+          //   'Detak Jantung Rata-rata (BPM)',
+          //   style: TextStyle(
+          //     fontSize: 16,
+          //     fontWeight: FontWeight.w600,
+          //     color: Color(0xFF334155),
+          //   ),
+          // ),
+          // const SizedBox(height: 10),
+          // TextField(
+          //   controller: _activitySearchController,
+          //   onChanged: (value) => setState(() => _activitySearchQuery = value),
+          //   style: const TextStyle(
+          //     fontSize: 16,
+          //     color: Color(0xFF0F172A),
+          //   ),
+          //   decoration: InputDecoration(
+          //     hintText: 'Cari aktivitas...',
+          //     prefixIcon: const Icon(Icons.search),
+          //     filled: true,
+          //     fillColor: const Color(0xFFF8FAFC),
+          //     contentPadding:
+          //         const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          //     border: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(14),
+          //       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          //     ),
+          //     enabledBorder: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(14),
+          //       borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          //     ),
+          //     focusedBorder: OutlineInputBorder(
+          //       borderRadius: BorderRadius.circular(14),
+          //       borderSide: const BorderSide(color: Color(0xFFE64060)),
+          //     ),
+          //   ),
+          // ),
+          // const SizedBox(height: 10),
+          // Container(
+          //   constraints: const BoxConstraints(maxHeight: 260),
+          //   decoration: BoxDecoration(
+          //     color: const Color(0xFFF8FAFC),
+          //     borderRadius: BorderRadius.circular(14),
+          //     border: Border.all(color: const Color(0xFFE2E8F0)),
+          //   ),
+          //   child: filteredActivities.isEmpty
+          //       ? const Center(
+          //           child: Padding(
+          //             padding: EdgeInsets.symmetric(vertical: 20),
+          //             child: Text(
+          //               'Aktivitas tidak ditemukan',
+          //               style: TextStyle(
+          //                 fontSize: 16,
+          //                 color: Color(0xFF64748B),
+          //               ),
+          //             ),
+          //           ),
+          //         )
+          //       : ListView.separated(
+          //           shrinkWrap: true,
+          //           padding: const EdgeInsets.symmetric(vertical: 4),
+          //           itemCount: filteredActivities.length,
+          //           separatorBuilder: (_, __) => const Divider(
+          //             height: 1,
+          //             color: Color(0xFFE2E8F0),
+          //           ),
+          //           itemBuilder: (_, index) {
+          //             final item = filteredActivities[index];
+          //             return RadioListTile<String>(
+          //               value: item,
+          //               groupValue: _selectedActivity,
+          //               activeColor: const Color(0xFFE64060),
+          //               contentPadding: const EdgeInsets.symmetric(
+          //                 horizontal: 8,
+          //                 vertical: 0,
+          //               ),
+          //               title: Text(
+          //                 item,
+          //                 style: TextStyle(
+          //                   fontSize: 16,
+          //                   fontWeight: FontWeight.w600,
+          //                   color: _selectedActivity == item
+          //                       ? const Color(0xFFE64060)
+          //                       : const Color(0xFF0F172A),
+          //                 ),
+          //               ),
+          //               onChanged: (value) {
+          //                 setState(() {
+          //                   _selectedActivity = value;
+          //                   _aktivitasSelectionError = null;
+          //                   _aktivitasSubmitError = null;
+          //                 });
+          //               },
+          //             );
+          //           },
+          //         ),
+          // ),
+          // if (_aktivitasSelectionError != null) ...[
+          //   const SizedBox(height: 8),
+          //   Text(
+          //     _aktivitasSelectionError!,
+          //     style: const TextStyle(
+          //       fontSize: 13,
+          //       color: Color(0xFFE64060),
+          //       fontWeight: FontWeight.w600,
+          //     ),
+          //   ),
+          // ],
+          // const SizedBox(height: 12),
+          // const Text(
+          //   'Aktivitas Dipilih',
+          //   style: TextStyle(
+          //     fontSize: 16,
+          //     fontWeight: FontWeight.w700,
+          //     color: Color(0xFF334155),
+          //   ),
+          // ),
+          // const SizedBox(height: 8),
+          // _selectedActivity == null
+          //     ? const Text(
+          //         'Belum ada aktivitas dipilih',
+          //         style: TextStyle(
+          //           fontSize: 14,
+          //           color: Color(0xFF64748B),
+          //         ),
+          //       )
+          //     : InputChip(
+          //         label: Text(
+          //           _selectedActivity!,
+          //           style: const TextStyle(
+          //             fontSize: 14,
+          //             fontWeight: FontWeight.w600,
+          //           ),
+          //         ),
+          //         onDeleted: () {
+          //           setState(() => _selectedActivity = null);
+          //         },
+          //         deleteIconColor: const Color(0xFFE64060),
+          //         backgroundColor: const Color(0xFFFDECEF),
+          //         side: const BorderSide(color: Color(0xFFF8C7D2)),
+          //       ),
           const SizedBox(height: 18),
           const Text(
             'Detak Jantung Rata-rata (BPM)',
@@ -1846,7 +2292,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             'Perasaan Setelah Aktivitas',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.bold,
               color: Color(0xFF334155),
             ),
           ),
@@ -1860,7 +2306,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                     label: Text(
                       item,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: _selectedActivityFeeling == item
                             ? Colors.white
@@ -1909,6 +2355,33 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               ),
             ),
           ],
+          const SizedBox(height: 18),
+          const Text(
+            'Catatan Tambahan (opsional)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _activityNoteController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Tuliskan detail lainnya...',
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,

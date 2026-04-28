@@ -39,6 +39,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   static const _tokenKey = 'auth_token';
   static const _userIdKey = 'auth_user_id';
 
+  void _goSafely(String location, {Object? extra}) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(location, extra: extra);
+    });
+  }
+
   @override
   void dispose() {
     _addressController.dispose();
@@ -264,13 +272,106 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       final body = response.data ?? <String, dynamic>{};
       if (body['success'] != true) {
         throw Exception((body['message'] ?? 'Update profil gagal').toString());
+
+
+        
       }
 
       await _persistSession(token: widget.token, userId: widget.patientId);
       if (!mounted) return;
 
       AppToast.success(context, 'Profil berhasil dilengkapi');
-      context.go('/home');
+      final wantsMlQuestionnaire = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetContext) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Kuisioner Prediksi ML',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Apakah anda ingin mengisi kuisioner untuk kebutuhan prediksi machine learning?',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF475569),
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE64060),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Ya, Isi Kuisioner',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF334155),
+                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Tidak, Lanjut ke Beranda',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (!mounted) return;
+
+      if (wantsMlQuestionnaire == true) {
+        _goSafely(
+          '/login/register/ml-questionnaire',
+          extra: {
+            'auth_token': widget.token,
+            'auth_user_id': widget.patientId,
+          },
+        );
+      } else {
+        _goSafely('/home');
+      }
     } catch (e) {
       if (!mounted) return;
       AppToast.error(context, _extractApiError(e));
@@ -373,17 +474,17 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              const Center(
-                                child: Text(
-                                  'Langkah akhir setelah verifikasi OTP',
-                                  style: TextStyle(
-                                    color: Color(0xFF64748B),
-                                    fontSize: 16,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
+                              // const SizedBox(height: 12),
+                              // const Center(
+                              //   child: Text(
+                              //     'Langkah akhir setelah verifikasi OTP',
+                              //     style: TextStyle(
+                              //       color: Color(0xFF64748B),
+                              //       fontSize: 16,
+                              //     ),
+                              //     textAlign: TextAlign.center,
+                              //   ),
+                              // ),
                               const SizedBox(height: 16),
                               Expanded(
                                 child: SingleChildScrollView(
@@ -392,6 +493,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                     child: Column(
                                       children: [
                                         DropdownButtonFormField<String>(
+                                          dropdownColor: Colors.white,
                                           value: _selectedGender,
                                           isExpanded: true,
                                           itemHeight: _fieldMinHeight,
@@ -463,6 +565,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                         ),
                                         const SizedBox(height: 12),
                                         DropdownButtonFormField<String>(
+                                          dropdownColor: Colors.white,
                                           value: _selectedBloodType,
                                           isExpanded: true,
                                           itemHeight: _fieldMinHeight,

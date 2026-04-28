@@ -311,235 +311,311 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 ),
               ),
 
-              // Health Status Carousel Placeholders
+              // Health Status Overview Button
               const SizedBox(height: 24),
-              GestureDetector(
-                onHorizontalDragEnd: _onHorizontalDragEnd,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.03),
-                        offset: Offset(0, 7),
-                        blurRadius: 33.3,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Carousel Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        const Color.fromRGBO(240, 70, 102, 0.1),
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  child: const Icon(
-                                    Icons.favorite,
-                                    color: Color(0xFFE64060),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Status Kesehatan',
-                                        style: TextStyle(
-                                          color: Color(0xFF525252),
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      // Text(
-                                      //   _healthStatusTabs[_healthStatusIndex]
-                                      //       ['title'],
-                                      //   style: const TextStyle(
-                                      //     color: Color(0xFF62748E),
-                                      //     fontSize: 14,
-                                      //   ),
-                                      // ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24), 
+                child: GestureDetector(
+                  onTap: () {
+                    context.push('/home/patient-dashboard');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color.fromRGBO(0, 0, 0, 0.03),
+                          offset: Offset(0, 7),
+                          blurRadius: 33.3,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color.fromRGBO(240, 70, 102, 0.1),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          Row(
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Color(0xFFE64060),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              GestureDetector(
-                                onTap: _healthStatusIndex == 0
-                                    ? null
-                                    : _previousTab,
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: _healthStatusIndex == 0
-                                        ? const Color(0xFFE8EAED)
-                                        : const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(Icons.arrow_back,
-                                      color: _healthStatusIndex == 0
-                                          ? const Color(0xFFBFBFBF)
-                                          : const Color(0xFF525252),
-                                      size: 20),
+                              Text(
+                                'Status Kesehatan',
+                                style: TextStyle(
+                                  color: Color(0xFF1A202C),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap:
-                                    _healthStatusIndex == _healthStatusCount - 1
-                                        ? null
-                                        : _nextTab,
-                                child: Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(
-                                    color: _healthStatusIndex ==
-                                            _healthStatusCount - 1
-                                        ? const Color(0xFFE8EAED)
-                                        : const Color(0xFFF1F5F9),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(Icons.arrow_forward,
-                                      color: _healthStatusIndex ==
-                                              _healthStatusCount - 1
-                                          ? const Color(0xFFBFBFBF)
-                                          : const Color(0xFF525252),
-                                      size: 20),
+                              SizedBox(height: 4),
+                              Text(
+                                'Lihat dashboard metrik',
+                                style: TextStyle(
+                                  color: Color(0xFF62748E),
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Animated Health Metrics
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.3, 0),
-                                end: Offset.zero,
-                              ).animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutCubic,
-                                ),
-                              ),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Column(
-                          key: ValueKey(_healthStatusIndex),
-                          children: [
-                            for (final metric
-                                in _healthStatusTabs[_healthStatusIndex]
-                                    ['metrics'] as List)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: metric['backgroundColor'] as Color,
-                                    border: Border.all(
-                                        color: metric['borderColor'] as Color),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(metric['icon'] as IconData,
-                                          color: metric['iconColor'] as Color),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              '${metric['value']} ${metric['unit']}',
-                                              style: const TextStyle(
-                                                  color: Color(0xFF525252),
-                                                  fontSize: 18),
-                                            ),
-                                            Text(metric['label'] as String,
-                                                style: const TextStyle(
-                                                    color: Color(0xFF62748E),
-                                                    fontSize: 14)),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              (metric['statusColor'] as Color)
-                                                  .withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                        child: Text(metric['status'] as String,
-                                            style: TextStyle(
-                                                color: metric['statusColor']
-                                                    as Color)),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Dots indicator
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(_healthStatusCount, (index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              width: index == _healthStatusIndex ? 31 : 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: index == _healthStatusIndex
-                                    ? const Color(0xFFE74665)
-                                    : const Color(0xFFCAD5E2),
-                                borderRadius: BorderRadius.circular(22),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ],
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Color(0xFF525252),
+                            size: 16,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
+              // GestureDetector(
+              //   onHorizontalDragEnd: _onHorizontalDragEnd,
+              //   child: Container(
+              //     margin: const EdgeInsets.symmetric(horizontal: 24),
+              //     padding: const EdgeInsets.all(20),
+              //     decoration: BoxDecoration(
+              //       color: Colors.white,
+              //       borderRadius: BorderRadius.circular(24),
+              //       border: Border.all(color: const Color(0xFFE2E8F0)),
+              //       boxShadow: const [
+              //         BoxShadow(
+              //           color: Color.fromRGBO(0, 0, 0, 0.03),
+              //           offset: Offset(0, 7),
+              //           blurRadius: 33.3,
+              //         ),
+              //       ],
+              //     ),
+              //     child: Column(
+              //       children: [
+              //         // Carousel Header
+              //         Row(
+              //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              //           children: [
+              //             Flexible(
+              //               child: Row(
+              //                 children: [
+              //                   Container(
+              //                     width: 50,
+              //                     height: 50,
+              //                     decoration: BoxDecoration(
+              //                       color:
+              //                           const Color.fromRGBO(240, 70, 102, 0.1),
+              //                       borderRadius: BorderRadius.circular(14),
+              //                     ),
+              //                     child: const Icon(
+              //                       Icons.favorite,
+              //                       color: Color(0xFFE64060),
+              //                     ),
+              //                   ),
+              //                   const SizedBox(width: 12),
+              //                   Flexible(
+              //                     child: Column(
+              //                       crossAxisAlignment:
+              //                           CrossAxisAlignment.start,
+              //                       children: [
+              //                         const Text(
+              //                           'Status Kesehatan',
+              //                           style: TextStyle(
+              //                             color: Color(0xFF525252),
+              //                             fontSize: 18,
+              //                             fontWeight: FontWeight.w600,
+              //                           ),
+              //                         ),
+              //                         // Text(
+              //                         //   _healthStatusTabs[_healthStatusIndex]
+              //                         //       ['title'],
+              //                         //   style: const TextStyle(
+              //                         //     color: Color(0xFF62748E),
+              //                         //     fontSize: 14,
+              //                         //   ),
+              //                         // ),
+              //                       ],
+              //                     ),
+              //                   ),
+              //                 ],
+              //               ),
+              //             ),
+              //             Row(
+              //               children: [
+              //                 GestureDetector(
+              //                   onTap: _healthStatusIndex == 0
+              //                       ? null
+              //                       : _previousTab,
+              //                   child: Container(
+              //                     width: 36,
+              //                     height: 36,
+              //                     decoration: BoxDecoration(
+              //                       color: _healthStatusIndex == 0
+              //                           ? const Color(0xFFE8EAED)
+              //                           : const Color(0xFFF1F5F9),
+              //                       borderRadius: BorderRadius.circular(10),
+              //                     ),
+              //                     child: Icon(Icons.arrow_back,
+              //                         color: _healthStatusIndex == 0
+              //                             ? const Color(0xFFBFBFBF)
+              //                             : const Color(0xFF525252),
+              //                         size: 20),
+              //                   ),
+              //                 ),
+              //                 const SizedBox(width: 8),
+              //                 GestureDetector(
+              //                   onTap:
+              //                       _healthStatusIndex == _healthStatusCount - 1
+              //                           ? null
+              //                           : _nextTab,
+              //                   child: Container(
+              //                     width: 36,
+              //                     height: 36,
+              //                     decoration: BoxDecoration(
+              //                       color: _healthStatusIndex ==
+              //                               _healthStatusCount - 1
+              //                           ? const Color(0xFFE8EAED)
+              //                           : const Color(0xFFF1F5F9),
+              //                       borderRadius: BorderRadius.circular(10),
+              //                     ),
+              //                     child: Icon(Icons.arrow_forward,
+              //                         color: _healthStatusIndex ==
+              //                                 _healthStatusCount - 1
+              //                             ? const Color(0xFFBFBFBF)
+              //                             : const Color(0xFF525252),
+              //                         size: 20),
+              //                   ),
+              //                 ),
+              //               ],
+              //             ),
+              //           ],
+              //         ),
+              //         const SizedBox(height: 16),
+
+              //         // Animated Health Metrics
+              //         AnimatedSwitcher(
+              //           duration: const Duration(milliseconds: 400),
+              //           transitionBuilder: (child, animation) {
+              //             return FadeTransition(
+              //               opacity: animation,
+              //               child: SlideTransition(
+              //                 position: Tween<Offset>(
+              //                   begin: const Offset(0.3, 0),
+              //                   end: Offset.zero,
+              //                 ).animate(
+              //                   CurvedAnimation(
+              //                     parent: animation,
+              //                     curve: Curves.easeOutCubic,
+              //                   ),
+              //                 ),
+              //                 child: child,
+              //               ),
+              //             );
+              //           },
+              //           child: Column(
+              //             key: ValueKey(_healthStatusIndex),
+              //             children: [
+              //               for (final metric
+              //                   in _healthStatusTabs[_healthStatusIndex]
+              //                       ['metrics'] as List)
+              //                 Padding(
+              //                   padding: const EdgeInsets.only(bottom: 12),
+              //                   child: Container(
+              //                     padding: const EdgeInsets.symmetric(
+              //                         horizontal: 16, vertical: 12),
+              //                     decoration: BoxDecoration(
+              //                       color: metric['backgroundColor'] as Color,
+              //                       border: Border.all(
+              //                           color: metric['borderColor'] as Color),
+              //                       borderRadius: BorderRadius.circular(12),
+              //                     ),
+              //                     child: Row(
+              //                       children: [
+              //                         Icon(metric['icon'] as IconData,
+              //                             color: metric['iconColor'] as Color),
+              //                         const SizedBox(width: 12),
+              //                         Expanded(
+              //                           child: Column(
+              //                             crossAxisAlignment:
+              //                                 CrossAxisAlignment.start,
+              //                             children: [
+              //                               Text(
+              //                                 '${metric['value']} ${metric['unit']}',
+              //                                 style: const TextStyle(
+              //                                     color: Color(0xFF525252),
+              //                                     fontSize: 18),
+              //                               ),
+              //                               Text(metric['label'] as String,
+              //                                   style: const TextStyle(
+              //                                       color: Color(0xFF62748E),
+              //                                       fontSize: 14)),
+              //                             ],
+              //                           ),
+              //                         ),
+              //                         Container(
+              //                           padding: const EdgeInsets.symmetric(
+              //                               horizontal: 16, vertical: 8),
+              //                           decoration: BoxDecoration(
+              //                             color:
+              //                                 (metric['statusColor'] as Color)
+              //                                     .withOpacity(0.1),
+              //                             borderRadius:
+              //                                 BorderRadius.circular(10),
+              //                           ),
+              //                           child: Text(metric['status'] as String,
+              //                               style: TextStyle(
+              //                                   color: metric['statusColor']
+              //                                       as Color)),
+              //                         ),
+              //                       ],
+              //                     ),
+              //                   ),
+              //                 ),
+              //             ],
+              //           ),
+              //         ),
+              //         const SizedBox(height: 20),
+
+              //         // Dots indicator
+              //         Row(
+              //           mainAxisAlignment: MainAxisAlignment.center,
+              //           children: List.generate(_healthStatusCount, (index) {
+              //             return Padding(
+              //               padding: const EdgeInsets.symmetric(horizontal: 3),
+              //               child: AnimatedContainer(
+              //                 duration: const Duration(milliseconds: 300),
+              //                 width: index == _healthStatusIndex ? 31 : 8,
+              //                 height: 8,
+              //                 decoration: BoxDecoration(
+              //                   color: index == _healthStatusIndex
+              //                       ? const Color(0xFFE74665)
+              //                       : const Color(0xFFCAD5E2),
+              //                   borderRadius: BorderRadius.circular(22),
+              //                 ),
+              //               ),
+              //             );
+              //           }),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
               const SizedBox(height: 24),
               _buildUpcomingMedicationSection(
                 context,

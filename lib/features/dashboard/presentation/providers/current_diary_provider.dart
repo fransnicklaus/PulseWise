@@ -80,28 +80,43 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
   }
 
   Future<void> addSymptomsFromModal(Map<String, dynamic> payload) async {
-    final symptoms = ((payload['symptoms'] as List?) ?? const [])
-        .map((e) => e.toString().trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    if (symptoms.isEmpty) return;
+    final symptomsMapped =
+        (payload['symptomsMapped'] as List?)?.cast<Map<String, dynamic>>() ??
+            [];
+
+    if (symptomsMapped.isEmpty) return;
 
     final now = DateTime.now();
     final diaryDate =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final intensity = payload['intensity'] is num
-        ? (payload['intensity'] as num).toInt()
-        : int.tryParse(payload['intensity']?.toString() ?? '') ?? 1;
     final time = (payload['time'] ?? '').toString();
-    final note = (payload['description'] ?? '').toString();
 
-    for (final symptomName in symptoms) {
+    for (final symptom in symptomsMapped) {
+      final symptomCode = symptom['symptomCode']?.toString() ?? 'other';
+      final bodyArea = symptom['bodyArea']?.toString() ?? 'other';
+      final isChestPain =
+          bool.tryParse(symptom['isChestPain']?.toString() ?? 'false') ?? false;
+      final intensity = payload['intensity'] is num
+          ? (payload['intensity'] as num).toInt()
+          : int.tryParse(payload['intensity']?.toString() ?? '') ?? 1;
+      final painFrequencyCode = symptom['painFrequencyCode'] is num
+          ? (symptom['painFrequencyCode'] as num).toInt()
+          : int.tryParse(symptom['painFrequencyCode']?.toString() ?? '');
+      final painLocationCode = symptom['painLocationCode'] is num
+          ? (symptom['painLocationCode'] as num).toInt()
+          : int.tryParse(symptom['painLocationCode']?.toString() ?? '');
+
       await _profileApi.addDiarySymptomByDate(
         diaryDate: diaryDate,
-        symptomName: symptomName,
+        symptomName: symptom['symptomName']?.toString() ?? '',
+        symptomCode: symptomCode,
+        bodyArea: bodyArea,
+        isChestPain: isChestPain,
+        painFrequencyCode: isChestPain ? painFrequencyCode : null,
+        painLocationCode: isChestPain ? painLocationCode : null,
         intensity: intensity,
         time: time,
-        note: note,
+        note: (payload['description'] ?? '').toString(),
       );
     }
   }
@@ -132,6 +147,15 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     final name =
         ((payload['name'] ?? payload['activity']) ?? '').toString().trim();
 
+    final activityCategory =
+        (payload['activityCategory'] ?? 'other').toString();
+    final intensityLevel = payload['intensityLevel']?.toString();
+    final transportMode = payload['transportMode']?.toString();
+    final outdoorMinutes = payload['outdoorMinutes'] is num
+        ? (payload['outdoorMinutes'] as num).toInt()
+        : int.tryParse(payload['outdoorMinutes']?.toString() ?? '');
+    final note = payload['note']?.toString();
+
     var duration = payload['duration'] is num
         ? (payload['duration'] as num).toInt()
         : int.tryParse(payload['duration']?.toString() ?? '') ?? 0;
@@ -147,24 +171,24 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         final endMinute = int.tryParse(endParts[1]) ?? 0;
         final startTotal = (startHour * 60) + startMinute;
         final endTotal = (endHour * 60) + endMinute;
-        duration = endTotal - startTotal;
+        var diff = endTotal - startTotal;
+        if (diff < 0) diff += 24 * 60; // handle overnight crossing
+        duration = diff;
       }
     }
 
     final heartRate = payload['heartRate'] is num
         ? (payload['heartRate'] as num).toInt()
-        : int.tryParse((payload['heartRate'] ?? payload['avgHeartRate'] ?? '')
-                .toString()) ??
-            0;
+        : int.tryParse(
+            (payload['heartRate'] ?? payload['avgHeartRate'] ?? '').toString());
+
     final userFeeling = ((payload['userFeeling'] ?? payload['feeling']) ?? '')
         .toString()
         .trim();
 
-    if (name.isEmpty ||
-        duration <= 0 ||
-        heartRate <= 0 ||
-        userFeeling.isEmpty) {
-      throw Exception('Data aktivitas belum lengkap. Mohon cek lagi form.');
+    if (name.isEmpty || duration <= 0) {
+      throw Exception(
+          'Data aktivitas belum lengkap (Nama & durasi wajib). Mohon cek lagi form.');
     }
 
     final now = DateTime.now();
@@ -174,9 +198,14 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     await _profileApi.addDiaryActivityByDate(
       diaryDate: diaryDate,
       name: name,
+      activityCategory: activityCategory,
+      intensityLevel: intensityLevel,
+      transportMode: transportMode,
+      outdoorMinutes: outdoorMinutes,
       duration: duration,
       heartRate: heartRate,
-      userFeeling: userFeeling,
+      userFeeling: userFeeling.isNotEmpty ? userFeeling : null,
+      note: note,
     );
   }
 

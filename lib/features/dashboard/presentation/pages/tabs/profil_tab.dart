@@ -27,6 +27,14 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   bool _isUploadingAvatar = false;
   bool _didAutoRetryAuthFetch = false;
 
+  void _goSafely(String location, {Object? extra}) {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(location, extra: extra);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -86,7 +94,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     ref.read(dashboardNavIndexProvider.notifier).state = 0;
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun');
-    context.go('/login');
+    _goSafely('/login');
   }
 
   Future<void> _confirmLogout() async {
@@ -189,6 +197,30 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
     if (!mounted) return;
     AppToast.success(context, 'Token disalin dan dicetak ke debugger.');
+  }
+
+  Future<void> _goToMlQuestionnaire() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    final userId = prefs.getString('auth_user_id') ?? '';
+
+    if (!mounted) return;
+
+    if (token.isEmpty || userId.isEmpty) {
+      AppToast.warning(
+        context,
+        'Sesi login tidak ditemukan. Silakan login ulang.',
+      );
+      return;
+    }
+
+    context.push(
+      '/login/register/ml-questionnaire',
+      extra: {
+        'auth_token': token,
+        'auth_user_id': userId,
+      },
+    );
   }
 
   Future<void> _pickAndUploadAvatar() async {
@@ -344,7 +376,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildTopBar(),
-                  const SizedBox(height: 22),
+                  const SizedBox(height: 40),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
@@ -484,6 +516,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildTopBar(),
+                      SizedBox(height: 35),
                       _buildAvatarSection(
                         (profile?.fullName.isNotEmpty ?? false)
                             ? profile!.fullName
@@ -652,6 +685,31 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         ),
                       ),
                       const SizedBox(height: 18),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: _goToMlQuestionnaire,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF7C3AED),
+                              side: const BorderSide(color: Color(0xFFC4B5FD)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.psychology_alt_outlined,
+                                size: 22),
+                            label: const Text(
+                              'Isi Kuisioner ML',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SizedBox(
@@ -1121,7 +1179,7 @@ class _InfoRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: const TextStyle(
                 color: Color(0xFF0F172A),
-                fontSize: 19 ,
+                fontSize: 19,
                 fontWeight: FontWeight.w600,
               ),
             ),

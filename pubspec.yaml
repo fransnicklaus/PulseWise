@@ -100,6 +100,7 @@ dependencies:
   flutter_contacts: ^1.1.9+2
   google_sign_in: ^6.2.1
   image_cropper: ^8.0.2
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:
