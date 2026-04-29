@@ -102,6 +102,18 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     }
   }
 
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      ref.refresh(authMeProvider.future),
+      ref.refresh(medicationCalendarRangeProvider(
+        MedicationCalendarRangeQuery(
+          from: DateTime.now(),
+          to: DateTime.now().add(const Duration(days: 2)),
+        ),
+      ).future),
+    ]);
+  }
+
   String _formatCurrentDate() {
     final now = DateTime.now();
     const weekdays = [
@@ -155,196 +167,521 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
         ref.watch(medicationCalendarRangeProvider(calendarQuery));
     double topPadding = MediaQuery.of(context).padding.top;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 120), // Space for bottom nav
-      child: Stack(
-        children: [
-          // Red gradient background header
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 200,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(35),
-                bottomRight: Radius.circular(35),
-              ),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(0.2, -2.5),
-                    end: Alignment(0.8, 0.5),
-                    colors: [
-                      Color(0xFFE64060),
-                      Color(0xFFFFADB5),
-                    ],
+    return RefreshIndicator(
+      onRefresh: _onRefresh,
+      color: const Color(0xFFE64060),
+      backgroundColor: Colors.white,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 120), // Space for bottom nav
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Stack(
+          children: [
+            // Red gradient background header
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 200,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(35),
+                  bottomRight: Radius.circular(35),
+                ),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(0.2, -2.5),
+                      end: Alignment(0.8, 0.5),
+                      colors: [
+                        Color(0xFFE64060),
+                        Color(0xFFFFADB5),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
 
-          // Scrollable content
-          Column(
-            children: [
-              SizedBox(height: topPadding),
-              // App Bar / Header content
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0, vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          greetingName,
-                          style: const TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatCurrentDate(),
-                          style: const TextStyle(
-                            fontSize: 17,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF04666).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        FluentIcons.alert_24_regular,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Emergency Contact Card
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () {
-                  context.push('/home/contacts');
-                },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                  decoration: BoxDecoration(
-                    // gradient: const LinearGradient(
-                    //   colors: [
-                    //     Color(0xFFE64060),
-                    //     Color(0xFFFF7E93),
-                    //     Color(0xFFE64060)
-                    //   ],
-                    //   begin: Alignment.centerLeft,
-                    //   end: Alignment.centerRight,
-                    // ),
-                    color: const Color(0xFFE64060),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.1),
-                        offset: Offset(0, 10),
-                        blurRadius: 23,
-                      ),
-                    ],
-                  ),
+            // Scrollable content
+            Column(
+              children: [
+                SizedBox(height: topPadding),
+                // App Bar / Header content
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0, vertical: 16.0),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            greetingName,
+                            style: const TextStyle(
+                              fontSize: 30,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatCurrentDate(),
+                            style: const TextStyle(
+                              fontSize: 17,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                       Container(
-                        width: 65,
-                        height: 65,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
-                          color: const Color.fromRGBO(255, 244, 184, 0.22),
-                          borderRadius: BorderRadius.circular(12),
+                          color: const Color(0xFFF04666).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                         child: const Icon(
-                          Icons.call,
-                          color: Color(0xFFFFFFFF),
-                          size: 35,
+                          FluentIcons.alert_24_regular,
+                          color: Colors.white,
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Kontak Darurat',
-                              style: TextStyle(
-                                color: Color(0xFFFFF4B8),
-                                fontSize: 25,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Tekan untuk menghubungi',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        FluentIcons.info_24_regular,
-                        color: Colors.white,
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              // Health Status Overview Button
-              const SizedBox(height: 24),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24), 
-                child: GestureDetector(
+                // Emergency Contact Card
+                const SizedBox(height: 16),
+                GestureDetector(
                   onTap: () {
-                    context.push('/home/patient-dashboard');
+                    context.push('/home/contacts');
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(20),
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      // gradient: const LinearGradient(
+                      //   colors: [
+                      //     Color(0xFFE64060),
+                      //     Color(0xFFFF7E93),
+                      //     Color(0xFFE64060)
+                      //   ],
+                      //   begin: Alignment.centerLeft,
+                      //   end: Alignment.centerRight,
+                      // ),
+                      color: const Color(0xFFE64060),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
                       boxShadow: const [
                         BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.03),
-                          offset: Offset(0, 7),
-                          blurRadius: 33.3,
+                          color: Color.fromRGBO(0, 0, 0, 0.1),
+                          offset: Offset(0, 10),
+                          blurRadius: 23,
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 50,
-                          height: 50,
+                          width: 65,
+                          height: 65,
                           decoration: BoxDecoration(
-                            color: const Color.fromRGBO(240, 70, 102, 0.1),
-                            borderRadius: BorderRadius.circular(14),
+                            color: const Color.fromRGBO(255, 244, 184, 0.22),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
-                            Icons.favorite,
-                            color: Color(0xFFE64060),
+                            Icons.call,
+                            color: Color(0xFFFFFFFF),
+                            size: 35,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Kontak Darurat',
+                                style: TextStyle(
+                                  color: Color(0xFFFFF4B8),
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                'Tekan untuk menghubungi',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          FluentIcons.info_24_regular,
+                          color: Colors.white,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Health Status Overview Button
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: GestureDetector(
+                    onTap: () {
+                      context.push('/home/patient-dashboard');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color.fromRGBO(0, 0, 0, 0.03),
+                            offset: Offset(0, 7),
+                            blurRadius: 33.3,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(240, 70, 102, 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(
+                              Icons.favorite,
+                              color: Color(0xFFE64060),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Status Kesehatan',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A202C),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  'Lihat dashboard metrik',
+                                  style: TextStyle(
+                                    color: Color(0xFF62748E),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Color(0xFF525252),
+                              size: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // GestureDetector(
+                //   onHorizontalDragEnd: _onHorizontalDragEnd,
+                //   child: Container(
+                //     margin: const EdgeInsets.symmetric(horizontal: 24),
+                //     padding: const EdgeInsets.all(20),
+                //     decoration: BoxDecoration(
+                //       color: Colors.white,
+                //       borderRadius: BorderRadius.circular(24),
+                //       border: Border.all(color: const Color(0xFFE2E8F0)),
+                //       boxShadow: const [
+                //         BoxShadow(
+                //           color: Color.fromRGBO(0, 0, 0, 0.03),
+                //           offset: Offset(0, 7),
+                //           blurRadius: 33.3,
+                //         ),
+                //       ],
+                //     ),
+                //     child: Column(
+                //       children: [
+                //         // Carousel Header
+                //         Row(
+                //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                //           children: [
+                //             Flexible(
+                //               child: Row(
+                //                 children: [
+                //                   Container(
+                //                     width: 50,
+                //                     height: 50,
+                //                     decoration: BoxDecoration(
+                //                       color:
+                //                           const Color.fromRGBO(240, 70, 102, 0.1),
+                //                       borderRadius: BorderRadius.circular(14),
+                //                     ),
+                //                     child: const Icon(
+                //                       Icons.favorite,
+                //                       color: Color(0xFFE64060),
+                //                     ),
+                //                   ),
+                //                   const SizedBox(width: 12),
+                //                   Flexible(
+                //                     child: Column(
+                //                       crossAxisAlignment:
+                //                           CrossAxisAlignment.start,
+                //                       children: [
+                //                         const Text(
+                //                           'Status Kesehatan',
+                //                           style: TextStyle(
+                //                             color: Color(0xFF525252),
+                //                             fontSize: 18,
+                //                             fontWeight: FontWeight.w600,
+                //                           ),
+                //                         ),
+                //                         // Text(
+                //                         //   _healthStatusTabs[_healthStatusIndex]
+                //                         //       ['title'],
+                //                         //   style: const TextStyle(
+                //                         //     color: Color(0xFF62748E),
+                //                         //     fontSize: 14,
+                //                         //   ),
+                //                         // ),
+                //                       ],
+                //                     ),
+                //                   ),
+                //                 ],
+                //               ),
+                //             ),
+                //             Row(
+                //               children: [
+                //                 GestureDetector(
+                //                   onTap: _healthStatusIndex == 0
+                //                       ? null
+                //                       : _previousTab,
+                //                   child: Container(
+                //                     width: 36,
+                //                     height: 36,
+                //                     decoration: BoxDecoration(
+                //                       color: _healthStatusIndex == 0
+                //                           ? const Color(0xFFE8EAED)
+                //                           : const Color(0xFFF1F5F9),
+                //                       borderRadius: BorderRadius.circular(10),
+                //                     ),
+                //                     child: Icon(Icons.arrow_back,
+                //                         color: _healthStatusIndex == 0
+                //                             ? const Color(0xFFBFBFBF)
+                //                             : const Color(0xFF525252),
+                //                         size: 20),
+                //                   ),
+                //                 ),
+                //                 const SizedBox(width: 8),
+                //                 GestureDetector(
+                //                   onTap:
+                //                       _healthStatusIndex == _healthStatusCount - 1
+                //                           ? null
+                //                           : _nextTab,
+                //                   child: Container(
+                //                     width: 36,
+                //                     height: 36,
+                //                     decoration: BoxDecoration(
+                //                       color: _healthStatusIndex ==
+                //                               _healthStatusCount - 1
+                //                           ? const Color(0xFFE8EAED)
+                //                           : const Color(0xFFF1F5F9),
+                //                       borderRadius: BorderRadius.circular(10),
+                //                     ),
+                //                     child: Icon(Icons.arrow_forward,
+                //                         color: _healthStatusIndex ==
+                //                                 _healthStatusCount - 1
+                //                             ? const Color(0xFFBFBFBF)
+                //                             : const Color(0xFF525252),
+                //                         size: 20),
+                //                   ),
+                //                 ),
+                //               ],
+                //             ),
+                //           ],
+                //         ),
+                //         const SizedBox(height: 16),
+
+                //         // Animated Health Metrics
+                //         AnimatedSwitcher(
+                //           duration: const Duration(milliseconds: 400),
+                //           transitionBuilder: (child, animation) {
+                //             return FadeTransition(
+                //               opacity: animation,
+                //               child: SlideTransition(
+                //                 position: Tween<Offset>(
+                //                   begin: const Offset(0.3, 0),
+                //                   end: Offset.zero,
+                //                 ).animate(
+                //                   CurvedAnimation(
+                //                     parent: animation,
+                //                     curve: Curves.easeOutCubic,
+                //                   ),
+                //                 ),
+                //                 child: child,
+                //               ),
+                //             );
+                //           },
+                //           child: Column(
+                //             key: ValueKey(_healthStatusIndex),
+                //             children: [
+                //               for (final metric
+                //                   in _healthStatusTabs[_healthStatusIndex]
+                //                       ['metrics'] as List)
+                //                 Padding(
+                //                   padding: const EdgeInsets.only(bottom: 12),
+                //                   child: Container(
+                //                     padding: const EdgeInsets.symmetric(
+                //                         horizontal: 16, vertical: 12),
+                //                     decoration: BoxDecoration(
+                //                       color: metric['backgroundColor'] as Color,
+                //                       border: Border.all(
+                //                           color: metric['borderColor'] as Color),
+                //                       borderRadius: BorderRadius.circular(12),
+                //                     ),
+                //                     child: Row(
+                //                       children: [
+                //                         Icon(metric['icon'] as IconData,
+                //                             color: metric['iconColor'] as Color),
+                //                         const SizedBox(width: 12),
+                //                         Expanded(
+                //                           child: Column(
+                //                             crossAxisAlignment:
+                //                                 CrossAxisAlignment.start,
+                //                             children: [
+                //                               Text(
+                //                                 '${metric['value']} ${metric['unit']}',
+                //                                 style: const TextStyle(
+                //                                     color: Color(0xFF525252),
+                //                                     fontSize: 18),
+                //                               ),
+                //                               Text(metric['label'] as String,
+                //                                   style: const TextStyle(
+                //                                       color: Color(0xFF62748E),
+                //                                       fontSize: 14)),
+                //                             ],
+                //                           ),
+                //                         ),
+                //                         Container(
+                //                           padding: const EdgeInsets.symmetric(
+                //                               horizontal: 16, vertical: 8),
+                //                           decoration: BoxDecoration(
+                //                             color:
+                //                                 (metric['statusColor'] as Color)
+                //                                     .withOpacity(0.1),
+                //                             borderRadius:
+                //                                 BorderRadius.circular(10),
+                //                           ),
+                //                           child: Text(metric['status'] as String,
+                //                               style: TextStyle(
+                //                                   color: metric['statusColor']
+                //                                       as Color)),
+                //                         ),
+                //                       ],
+                //                     ),
+                //                   ),
+                //                 ),
+                //             ],
+                //           ),
+                //         ),
+                //         const SizedBox(height: 20),
+
+                //         // Dots indicator
+                //         Row(
+                //           mainAxisAlignment: MainAxisAlignment.center,
+                //           children: List.generate(_healthStatusCount, (index) {
+                //             return Padding(
+                //               padding: const EdgeInsets.symmetric(horizontal: 3),
+                //               child: AnimatedContainer(
+                //                 duration: const Duration(milliseconds: 300),
+                //                 width: index == _healthStatusIndex ? 31 : 8,
+                //                 height: 8,
+                //                 decoration: BoxDecoration(
+                //                   color: index == _healthStatusIndex
+                //                       ? const Color(0xFFE74665)
+                //                       : const Color(0xFFCAD5E2),
+                //                   borderRadius: BorderRadius.circular(22),
+                //                 ),
+                //               ),
+                //             );
+                //           }),
+                //         ),
+                //       ],
+                //     ),
+                //   ),
+                // ),
+                const SizedBox(height: 24),
+                _buildUpcomingMedicationSection(
+                  context,
+                  upcomingMedicationAsync,
+                ),
+
+                // Menu Utama header
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 32, 24, 16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Menu Utama',
+                      style: TextStyle(
+                        color: Color(0xFF525252),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Diari Kesehatan Full Width Button
+                GestureDetector(
+                  onTap: () {
+                    // context.push('/home/diary');
+                    ref.read(dashboardNavIndexProvider.notifier).state = 2;
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 22, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFE7E7),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 59,
+                          height: 59,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE64060),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.favorite_border,
+                            color: Colors.white,
+                            size: 30,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -353,462 +690,145 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Status Kesehatan',
+                                'DIARI KESEHATAN',
                                 style: TextStyle(
-                                  color: Color(0xFF1A202C),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF525252),
+                                  fontSize: 19,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 4),
                               Text(
-                                'Lihat dashboard metrik',
+                                'Catat semua kondisi harian Anda',
                                 style: TextStyle(
-                                  color: Color(0xFF62748E),
-                                  fontSize: 13,
+                                  color: Color(0xFFCD3754),
+                                  fontSize: 16,
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Color(0xFF525252),
-                            size: 16,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              // GestureDetector(
-              //   onHorizontalDragEnd: _onHorizontalDragEnd,
-              //   child: Container(
-              //     margin: const EdgeInsets.symmetric(horizontal: 24),
-              //     padding: const EdgeInsets.all(20),
-              //     decoration: BoxDecoration(
-              //       color: Colors.white,
-              //       borderRadius: BorderRadius.circular(24),
-              //       border: Border.all(color: const Color(0xFFE2E8F0)),
-              //       boxShadow: const [
-              //         BoxShadow(
-              //           color: Color.fromRGBO(0, 0, 0, 0.03),
-              //           offset: Offset(0, 7),
-              //           blurRadius: 33.3,
-              //         ),
-              //       ],
-              //     ),
-              //     child: Column(
-              //       children: [
-              //         // Carousel Header
-              //         Row(
-              //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              //           children: [
-              //             Flexible(
-              //               child: Row(
-              //                 children: [
-              //                   Container(
-              //                     width: 50,
-              //                     height: 50,
-              //                     decoration: BoxDecoration(
-              //                       color:
-              //                           const Color.fromRGBO(240, 70, 102, 0.1),
-              //                       borderRadius: BorderRadius.circular(14),
-              //                     ),
-              //                     child: const Icon(
-              //                       Icons.favorite,
-              //                       color: Color(0xFFE64060),
-              //                     ),
-              //                   ),
-              //                   const SizedBox(width: 12),
-              //                   Flexible(
-              //                     child: Column(
-              //                       crossAxisAlignment:
-              //                           CrossAxisAlignment.start,
-              //                       children: [
-              //                         const Text(
-              //                           'Status Kesehatan',
-              //                           style: TextStyle(
-              //                             color: Color(0xFF525252),
-              //                             fontSize: 18,
-              //                             fontWeight: FontWeight.w600,
-              //                           ),
-              //                         ),
-              //                         // Text(
-              //                         //   _healthStatusTabs[_healthStatusIndex]
-              //                         //       ['title'],
-              //                         //   style: const TextStyle(
-              //                         //     color: Color(0xFF62748E),
-              //                         //     fontSize: 14,
-              //                         //   ),
-              //                         // ),
-              //                       ],
-              //                     ),
-              //                   ),
-              //                 ],
-              //               ),
-              //             ),
-              //             Row(
-              //               children: [
-              //                 GestureDetector(
-              //                   onTap: _healthStatusIndex == 0
-              //                       ? null
-              //                       : _previousTab,
-              //                   child: Container(
-              //                     width: 36,
-              //                     height: 36,
-              //                     decoration: BoxDecoration(
-              //                       color: _healthStatusIndex == 0
-              //                           ? const Color(0xFFE8EAED)
-              //                           : const Color(0xFFF1F5F9),
-              //                       borderRadius: BorderRadius.circular(10),
-              //                     ),
-              //                     child: Icon(Icons.arrow_back,
-              //                         color: _healthStatusIndex == 0
-              //                             ? const Color(0xFFBFBFBF)
-              //                             : const Color(0xFF525252),
-              //                         size: 20),
-              //                   ),
-              //                 ),
-              //                 const SizedBox(width: 8),
-              //                 GestureDetector(
-              //                   onTap:
-              //                       _healthStatusIndex == _healthStatusCount - 1
-              //                           ? null
-              //                           : _nextTab,
-              //                   child: Container(
-              //                     width: 36,
-              //                     height: 36,
-              //                     decoration: BoxDecoration(
-              //                       color: _healthStatusIndex ==
-              //                               _healthStatusCount - 1
-              //                           ? const Color(0xFFE8EAED)
-              //                           : const Color(0xFFF1F5F9),
-              //                       borderRadius: BorderRadius.circular(10),
-              //                     ),
-              //                     child: Icon(Icons.arrow_forward,
-              //                         color: _healthStatusIndex ==
-              //                                 _healthStatusCount - 1
-              //                             ? const Color(0xFFBFBFBF)
-              //                             : const Color(0xFF525252),
-              //                         size: 20),
-              //                   ),
-              //                 ),
-              //               ],
-              //             ),
-              //           ],
-              //         ),
-              //         const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              //         // Animated Health Metrics
-              //         AnimatedSwitcher(
-              //           duration: const Duration(milliseconds: 400),
-              //           transitionBuilder: (child, animation) {
-              //             return FadeTransition(
-              //               opacity: animation,
-              //               child: SlideTransition(
-              //                 position: Tween<Offset>(
-              //                   begin: const Offset(0.3, 0),
-              //                   end: Offset.zero,
-              //                 ).animate(
-              //                   CurvedAnimation(
-              //                     parent: animation,
-              //                     curve: Curves.easeOutCubic,
-              //                   ),
-              //                 ),
-              //                 child: child,
-              //               ),
-              //             );
-              //           },
-              //           child: Column(
-              //             key: ValueKey(_healthStatusIndex),
-              //             children: [
-              //               for (final metric
-              //                   in _healthStatusTabs[_healthStatusIndex]
-              //                       ['metrics'] as List)
-              //                 Padding(
-              //                   padding: const EdgeInsets.only(bottom: 12),
-              //                   child: Container(
-              //                     padding: const EdgeInsets.symmetric(
-              //                         horizontal: 16, vertical: 12),
-              //                     decoration: BoxDecoration(
-              //                       color: metric['backgroundColor'] as Color,
-              //                       border: Border.all(
-              //                           color: metric['borderColor'] as Color),
-              //                       borderRadius: BorderRadius.circular(12),
-              //                     ),
-              //                     child: Row(
-              //                       children: [
-              //                         Icon(metric['icon'] as IconData,
-              //                             color: metric['iconColor'] as Color),
-              //                         const SizedBox(width: 12),
-              //                         Expanded(
-              //                           child: Column(
-              //                             crossAxisAlignment:
-              //                                 CrossAxisAlignment.start,
-              //                             children: [
-              //                               Text(
-              //                                 '${metric['value']} ${metric['unit']}',
-              //                                 style: const TextStyle(
-              //                                     color: Color(0xFF525252),
-              //                                     fontSize: 18),
-              //                               ),
-              //                               Text(metric['label'] as String,
-              //                                   style: const TextStyle(
-              //                                       color: Color(0xFF62748E),
-              //                                       fontSize: 14)),
-              //                             ],
-              //                           ),
-              //                         ),
-              //                         Container(
-              //                           padding: const EdgeInsets.symmetric(
-              //                               horizontal: 16, vertical: 8),
-              //                           decoration: BoxDecoration(
-              //                             color:
-              //                                 (metric['statusColor'] as Color)
-              //                                     .withOpacity(0.1),
-              //                             borderRadius:
-              //                                 BorderRadius.circular(10),
-              //                           ),
-              //                           child: Text(metric['status'] as String,
-              //                               style: TextStyle(
-              //                                   color: metric['statusColor']
-              //                                       as Color)),
-              //                         ),
-              //                       ],
-              //                     ),
-              //                   ),
-              //                 ),
-              //             ],
-              //           ),
-              //         ),
-              //         const SizedBox(height: 20),
-
-              //         // Dots indicator
-              //         Row(
-              //           mainAxisAlignment: MainAxisAlignment.center,
-              //           children: List.generate(_healthStatusCount, (index) {
-              //             return Padding(
-              //               padding: const EdgeInsets.symmetric(horizontal: 3),
-              //               child: AnimatedContainer(
-              //                 duration: const Duration(milliseconds: 300),
-              //                 width: index == _healthStatusIndex ? 31 : 8,
-              //                 height: 8,
-              //                 decoration: BoxDecoration(
-              //                   color: index == _healthStatusIndex
-              //                       ? const Color(0xFFE74665)
-              //                       : const Color(0xFFCAD5E2),
-              //                   borderRadius: BorderRadius.circular(22),
-              //                 ),
-              //               ),
-              //             );
-              //           }),
-              //         ),
-              //       ],
-              //     ),
-              //   ),
-              // ),
-              const SizedBox(height: 24),
-              _buildUpcomingMedicationSection(
-                context,
-                upcomingMedicationAsync,
-              ),
-
-              // Menu Utama header
-              const Padding(
-                padding: EdgeInsets.fromLTRB(24, 32, 24, 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Menu Utama',
-                    style: TextStyle(
-                      color: Color(0xFF525252),
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-
-              // Diari Kesehatan Full Width Button
-              GestureDetector(
-                onTap: () {
-                  // context.push('/home/diary');
-                  ref.read(dashboardNavIndexProvider.notifier).state = 2;
-                },
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE7E7),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
+                // Half Width Buttons Row
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Row(
                     children: [
-                      Container(
-                        width: 59,
-                        height: 59,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE64060),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.favorite_border,
-                          color: Colors.white,
-                          size: 30,
+                      // Edukasi Card
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            ref.read(dashboardNavIndexProvider.notifier).state =
+                                1;
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 59,
+                                  height: 59,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9F3FF),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    FluentIcons.book_open_24_regular,
+                                    color: Color(0xFF6C2BD9),
+                                    size: 30,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'Edukasi',
+                                  style: TextStyle(
+                                    color: Color(0xFF525252),
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const Text(
+                                  'Artikel Kesehatan',
+                                  style: TextStyle(
+                                    color: Color(0xFF62748E),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'DIARI KESEHATAN',
-                              style: TextStyle(
-                                color: Color(0xFF525252),
-                                fontSize: 19,
-                                fontWeight: FontWeight.bold,
-                              ),
+
+                      // Pengingat Card
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            ref.read(dashboardNavIndexProvider.notifier).state =
+                                3;
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border:
+                                  Border.all(color: const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(24),
                             ),
-                            Text(
-                              'Catat semua kondisi harian Anda',
-                              style: TextStyle(
-                                color: Color(0xFFCD3754),
-                                fontSize: 16,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 59,
+                                  height: 59,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF3E4),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(
+                                    FluentIcons.alert_24_regular,
+                                    color: Color(0xFFE08B3D),
+                                    size: 30,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                const Text(
+                                  'Pengingat',
+                                  style: TextStyle(
+                                    color: Color(0xFF525252),
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const Text(
+                                  'Obat & Jadwal',
+                                  style: TextStyle(
+                                    color: Color(0xFF62748E),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Half Width Buttons Row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  children: [
-                    // Edukasi Card
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          ref.read(dashboardNavIndexProvider.notifier).state =
-                              1;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 59,
-                                height: 59,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF9F3FF),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  FluentIcons.book_open_24_regular,
-                                  color: Color(0xFF6C2BD9),
-                                  size: 30,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              const Text(
-                                'Edukasi',
-                                style: TextStyle(
-                                  color: Color(0xFF525252),
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const Text(
-                                'Artikel Kesehatan',
-                                style: TextStyle(
-                                  color: Color(0xFF62748E),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Pengingat Card
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          ref.read(dashboardNavIndexProvider.notifier).state =
-                              3;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 59,
-                                height: 59,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF3E4),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  FluentIcons.alert_24_regular,
-                                  color: Color(0xFFE08B3D),
-                                  size: 30,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              const Text(
-                                'Pengingat',
-                                style: TextStyle(
-                                  color: Color(0xFF525252),
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const Text(
-                                'Obat & Jadwal',
-                                style: TextStyle(
-                                  color: Color(0xFF62748E),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

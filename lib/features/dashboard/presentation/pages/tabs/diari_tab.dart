@@ -56,6 +56,11 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                   .read(currentDiaryProvider.notifier)
                   .addBodyMetricsFromModal(payload)
               : null,
+          onSubmitTidur: normalizedSection == 'tidur'
+              ? (payload) => ref
+                  .read(currentDiaryProvider.notifier)
+                  .addSleepFromModal(payload)
+              : null,
         ),
       ),
     );
@@ -138,6 +143,23 @@ class _DiariTabState extends ConsumerState<DiariTab> {
               .invalidateCurrentDiaryQuery();
           if (!mounted) return;
           AppToast.success(context, 'Metriks kesehatan berhasil disimpan');
+        }
+      } else if (section == 'tidur') {
+        if (result['saved'] == true) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
+          AppToast.success(context, 'Data tidur berhasil disimpan');
+        } else if (result['sleepTime'] != null && result['wakeTime'] != null) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .addSleepFromModal(result);
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .invalidateCurrentDiaryQuery();
+          if (!mounted) return;
+          AppToast.success(context, 'Data tidur berhasil disimpan');
         }
       } else {
         await ref
@@ -977,6 +999,79 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 20),
+
+                        // Tidur Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                          child: _SectionCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.bedtime,
+                                        color: Color(0xFF3B82F6), size: 24),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Tidur',
+                                      style: TextStyle(
+                                        fontSize: 19,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF525252),
+                                      ),
+                                    ),
+                                    if (!isSkeleton) ...[
+                                      const Spacer(),
+                                      _SectionAddButton(
+                                        onTap: () => _openSectionModal('Tidur'),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                if ((diary?.sleeps ?? []).isEmpty && !isSkeleton)
+                                  const Text(
+                                    'Belum ada data tidur hari ini',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Color(0xFF62748E),
+                                    ),
+                                  )
+                                else
+                                  ...(isSkeleton && (diary?.sleeps ?? []).isEmpty
+                                          ? List.generate(1, (index) => index)
+                                          : (diary?.sleeps ?? []).asMap().keys)
+                                      .map(
+                                    (entry) => Padding(
+                                      padding: EdgeInsets.only(
+                                        bottom: isSkeleton
+                                            ? 0
+                                            : (entry == (diary?.sleeps.length ?? 0) - 1
+                                                ? 0
+                                                : 12),
+                                      ),
+                                      child: _SleepEntryItem(
+                                        sleepTime: isSkeleton
+                                            ? '22:30'
+                                            : diary!.sleeps[entry].sleepTime,
+                                        wakeTime: isSkeleton
+                                            ? '06:30'
+                                            : diary!.sleeps[entry].wakeTime,
+                                        duration: isSkeleton
+                                            ? 8
+                                            : diary!.sleeps[entry].sleepDurationHours,
+                                        showDivider: isSkeleton
+                                            ? false
+                                            : entry != (diary?.sleeps.length ?? 0) - 1,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
                         if (diaryState.error != null) ...[
                           const SizedBox(height: 16),
                           Padding(
@@ -1273,6 +1368,56 @@ class _ActivityEntryItem extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _SleepEntryItem extends StatelessWidget {
+  final String sleepTime;
+  final String wakeTime;
+  final num? duration;
+  final bool showDivider;
+
+  const _SleepEntryItem({
+    required this.sleepTime,
+    required this.wakeTime,
+    required this.duration,
+    this.showDivider = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF3B82F6)),
+            const SizedBox(width: 8),
+            Text(
+              'Tidur: $sleepTime - Bangun: $wakeTime',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Durasi: ${duration?.toStringAsFixed(1) ?? '-'} jam',
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF475569),
+          ),
+        ),
+        if (showDivider) ...[
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: Color(0xFFEFF2F6)),
+        ],
       ],
     );
   }

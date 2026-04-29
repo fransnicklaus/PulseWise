@@ -29,17 +29,36 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     );
 
     try {
-      final diary = await _profileApi.fetchDiaryDetailByDate(DateTime.now());
+      var diary = await _profileApi.fetchDiaryDetailByDate(DateTime.now());
+      final sleepData = await _profileApi.fetchSleepDiaryByDate(DateTime.now());
 
       if (diary == null) {
-        state = CurrentDiaryState(
-          isLoading: false,
-          isRefreshing: false,
-          hasLoadedOnce: true,
-          hasCurrentDiary: false,
-          diary: shouldPreserve ? state.diary : null,
+        if (sleepData != null) {
+          diary = DiaryDetail(
+            diaryId: '',
+            userId: '',
+            diaryDate: DateTime.now(),
+            createdAt: DateTime.now(),
+            bodyMetrics: const [],
+            symptoms: const [],
+            activities: const [],
+            consumptions: const [],
+            sleeps: [DiarySleep.fromJson(sleepData)],
+          );
+        } else {
+          state = CurrentDiaryState(
+            isLoading: false,
+            isRefreshing: false,
+            hasLoadedOnce: true,
+            hasCurrentDiary: false,
+            diary: shouldPreserve ? state.diary : null,
+          );
+          return;
+        }
+      } else if (sleepData != null) {
+        diary = diary.copyWith(
+          sleeps: [DiarySleep.fromJson(sleepData)],
         );
-        return;
       }
 
       state = CurrentDiaryState(
@@ -77,6 +96,29 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
 
   Future<void> invalidateCurrentDiaryQuery() async {
     await loadCurrentDiaryForToday(preserveCurrentData: true);
+  }
+
+  Future<void> addSleepFromModal(Map<String, dynamic> payload) async {
+    final sleepTime = (payload['sleepTime'] ?? '').toString();
+    final wakeTime = (payload['wakeTime'] ?? '').toString();
+    var duration = payload['duration'] is num
+        ? (payload['duration'] as num).toDouble()
+        : double.tryParse(payload['duration']?.toString() ?? '') ?? 0.0;
+
+    if (sleepTime.isEmpty || wakeTime.isEmpty) {
+      throw Exception('Waktu tidur dan bangun harus diisi.');
+    }
+
+    final now = DateTime.now();
+    final diaryDate =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    await _profileApi.addDiarySleepByDate(
+      diaryDate: diaryDate,
+      sleepTime: sleepTime,
+      wakeTime: wakeTime,
+      sleepDurationHours: duration,
+    );
   }
 
   Future<void> addSymptomsFromModal(Map<String, dynamic> payload) async {
@@ -307,6 +349,7 @@ class DiaryDetail {
   final List<DiarySymptom> symptoms;
   final List<DiaryActivity> activities;
   final List<DiaryConsumption> consumptions;
+  final List<DiarySleep> sleeps;
 
   const DiaryDetail({
     required this.diaryId,
@@ -317,6 +360,7 @@ class DiaryDetail {
     required this.symptoms,
     required this.activities,
     required this.consumptions,
+    required this.sleeps,
   });
 
   factory DiaryDetail.fromJson(Map<String, dynamic> json) {
@@ -337,6 +381,59 @@ class DiaryDetail {
       consumptions: ((json['consumptions'] as List?) ?? const [])
           .map((e) => DiaryConsumption.fromJson(e as Map<String, dynamic>))
           .toList(),
+      sleeps: ((json['sleeps'] as List?) ?? const [])
+          .map((e) => DiarySleep.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  DiaryDetail copyWith({
+    String? diaryId,
+    String? userId,
+    DateTime? diaryDate,
+    DateTime? createdAt,
+    List<DiaryBodyMetric>? bodyMetrics,
+    List<DiarySymptom>? symptoms,
+    List<DiaryActivity>? activities,
+    List<DiaryConsumption>? consumptions,
+    List<DiarySleep>? sleeps,
+  }) {
+    return DiaryDetail(
+      diaryId: diaryId ?? this.diaryId,
+      userId: userId ?? this.userId,
+      diaryDate: diaryDate ?? this.diaryDate,
+      createdAt: createdAt ?? this.createdAt,
+      bodyMetrics: bodyMetrics ?? this.bodyMetrics,
+      symptoms: symptoms ?? this.symptoms,
+      activities: activities ?? this.activities,
+      consumptions: consumptions ?? this.consumptions,
+      sleeps: sleeps ?? this.sleeps,
+    );
+  }
+}
+
+class DiarySleep {
+  final String sleepRecordId;
+  final String sleepTime;
+  final String wakeTime;
+  final num? sleepDurationHours;
+  final String? source;
+
+  const DiarySleep({
+    required this.sleepRecordId,
+    required this.sleepTime,
+    required this.wakeTime,
+    required this.sleepDurationHours,
+    required this.source,
+  });
+
+  factory DiarySleep.fromJson(Map<String, dynamic> json) {
+    return DiarySleep(
+      sleepRecordId: (json['sleepRecordId'] ?? '').toString(),
+      sleepTime: (json['sleepTime'] ?? '').toString(),
+      wakeTime: (json['wakeTime'] ?? '').toString(),
+      sleepDurationHours: json['sleepDurationHours'] as num?,
+      source: json['source']?.toString(),
     );
   }
 }
