@@ -5,6 +5,7 @@ import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/ml_questionnaire_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
+import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/add_diary_page.dart';
@@ -151,6 +152,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                 startAtOtp: true,
               );
             },
+          ),
+          GoRoute(
+            path: 'forgot-password',
+            builder: (context, state) => const ForgotPasswordPage(),
           ),
         ],
       ),

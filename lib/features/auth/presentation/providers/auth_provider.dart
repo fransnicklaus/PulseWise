@@ -416,6 +416,151 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey) ?? state.token ?? '';
+      if (token.trim().isEmpty) {
+        throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+      }
+
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/change-password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+            (body['message'] ?? 'Gagal mengubah kata sandi').toString());
+      }
+
+      final data = body['data'] as Map<String, dynamic>? ?? {};
+      return data;
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      throw Exception(message);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<Map<String, dynamic>> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception((body['message'] ?? 'Gagal mengirim OTP').toString());
+      }
+
+      return (body['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      throw Exception(message);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyForgotPasswordOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/forgot-password/verify',
+        data: {'email': email, 'otp': otp},
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception((body['message'] ?? 'OTP tidak valid').toString());
+      }
+
+      return (body['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      throw Exception(message);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<Map<String, dynamic>> resetForgotPassword({
+    required String resetToken,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    try {
+      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
+      if (baseUrl.isEmpty) {
+        throw Exception('API_BASE_URL belum diatur di file .env');
+      }
+
+      final dio = _buildDio(baseUrl);
+      final response = await dio.post<Map<String, dynamic>>(
+        '/auth/forgot-password/reset',
+        data: {
+          'resetToken': resetToken,
+          'newPassword': newPassword,
+          'confirmNewPassword': confirmNewPassword,
+        },
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+            (body['message'] ?? 'Gagal mereset kata sandi').toString());
+      }
+
+      return (body['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+    } on DioException catch (e) {
+      final message = _extractErrorMessage(e);
+      throw Exception(message);
+    } catch (e) {
+      throw Exception(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Future<GoogleAuthFlowResult> _resolveGoogleNextStep({
     required String idToken,
     required String role,

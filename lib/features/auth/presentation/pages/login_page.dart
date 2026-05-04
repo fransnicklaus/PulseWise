@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -41,6 +42,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (authState.isAuthenticated) {
         ref.read(previousNavIndexProvider.notifier).state = 0;
         ref.read(dashboardNavIndexProvider.notifier).state = 0;
+        // Invalidate profile-related providers so they refetch with the new token
+        ref.invalidate(authMeProvider);
+        ref.invalidate(patientProfileProvider);
         context.go('/home');
       } else if (authState.error != null && authState.error!.isNotEmpty) {
         AppToast.error(context, authState.error!);
@@ -65,7 +69,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     if (!result.success) {
       final message = result.message ?? authState.error ?? 'Login Google gagal';
       _logGoogleUi('Showing error toast');
-      AppToast.error(context, message);
+      // AppToast.error(context, message);
       return;
     }
 
@@ -73,6 +77,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         authState.isAuthenticated) {
       ref.read(previousNavIndexProvider.notifier).state = 0;
       ref.read(dashboardNavIndexProvider.notifier).state = 0;
+      // Force refetch of auth/me and profile after Google login
+      ref.invalidate(authMeProvider);
+      ref.invalidate(patientProfileProvider);
       _logGoogleUi('Navigation to /home');
       context.go('/home');
       return;
@@ -306,7 +313,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () {},
+                                  onPressed: () =>
+                                      context.push('/login/forgot-password'),
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,

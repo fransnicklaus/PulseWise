@@ -219,21 +219,50 @@ class ProfileApi {
           'patientId tidak ditemukan. Login ulang untuk menyimpan userId.');
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/patients/$patientId/profile',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/patients/$patientId/profile',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['data'] == null) {
-      throw Exception('Respons profil tidak valid dari server');
+      final body = response.data;
+      if (body == null || body['data'] == null) {
+        throw Exception('Respons profil tidak valid dari server');
+      }
+
+      return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      // If profile not found (new account), return an empty/default profile
+      if (e.response?.statusCode == 404) {
+        return PatientProfile(
+          patientId: patientId,
+          firstName: '',
+          lastName: '',
+          email: '',
+          address: '',
+          dateOfBirth: null,
+          sex: '',
+          bodyHeightCm: '',
+          bloodType: '',
+          isSmoking: false,
+          isElectricSmoking: false,
+        );
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil profil pengguna.');
     }
-
-    return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<void> updatePatientProfile({
@@ -1144,6 +1173,7 @@ class ProfileApi {
     int? systolicPressure,
     int? diastolicPressure,
     int? heartRate,
+    int? oxygenSaturation,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -1173,6 +1203,7 @@ class ProfileApi {
       data['diastolicPressure'] = diastolicPressure;
     }
     if (heartRate != null) data['heartRate'] = heartRate;
+    if (oxygenSaturation != null) data['oxygenSaturation'] = oxygenSaturation;
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/users/$userId/diaries/by-date/body-metrics',

@@ -102,33 +102,45 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
         return SafeArea(
+          top: false,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
                 const Text(
                   'Konfirmasi Keluar',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Apakah Anda yakin ingin keluar dari akun ini?',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: Color(0xFF475569),
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
                   ),
                 ),
                 const SizedBox(height: 16),
+                const Text(
+                  'Apakah Anda yakin ingin keluar dari akun ini?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -136,15 +148,15 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFE64060),
                       foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(50),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: const Text(
                       'Ya, Keluar',
                       style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -156,15 +168,15 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF334155),
                       side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      minimumSize: const Size.fromHeight(50),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: const Text(
                       'Batal',
                       style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -178,6 +190,204 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     if (shouldLogout == true) {
       await _onLogout();
     }
+  }
+
+  void _showChangePasswordSheet() {
+    final _currentCtrl = TextEditingController();
+    final _newCtrl = TextEditingController();
+    final _confirmCtrl = TextEditingController();
+    final _formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        bool _obscureCurrent = true;
+        bool _obscureNew = true;
+        bool _obscureConfirm = true;
+        bool _submitting = false;
+
+        return StatefulBuilder(builder: (c, setState) {
+          return Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.of(c).viewInsets.bottom + 20,
+                left: 20,
+                right: 20,
+                top: 16),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Ubah Kata Sandi',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => context.pop(),
+                        icon: const Icon(Icons.close),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Masukkan kata sandi saat ini dan kata sandi baru Anda.',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
+                  ),
+                  const SizedBox(height: 12),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _currentCtrl,
+                          obscureText: _obscureCurrent,
+                          decoration: InputDecoration(
+                            labelText: 'Kata Sandi Saat Ini',
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(
+                                  () => _obscureCurrent = !_obscureCurrent),
+                              icon: Icon(_obscureCurrent
+                                  ? Icons.visibility_off
+                                  : Icons.visibility),
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? 'Kata sandi saat ini wajib diisi'
+                              : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _newCtrl,
+                          obscureText: _obscureNew,
+                          decoration: InputDecoration(
+                            labelText: 'Kata Sandi Baru',
+                            suffixIcon: IconButton(
+                              onPressed: () =>
+                                  setState(() => _obscureNew = !_obscureNew),
+                              icon: Icon(_obscureNew
+                                  ? Icons.visibility_off
+                                  : Icons.visibility),
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty)
+                              return 'Kata sandi baru wajib diisi';
+                            if (v.length < 6)
+                              return 'Kata sandi minimal 6 karakter';
+                            if (v == _currentCtrl.text)
+                              return 'Kata sandi baru harus berbeda dari kata sandi saat ini';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _confirmCtrl,
+                          obscureText: _obscureConfirm,
+                          decoration: InputDecoration(
+                            labelText: 'Konfirmasi Kata Sandi Baru',
+                            suffixIcon: IconButton(
+                              onPressed: () => setState(
+                                  () => _obscureConfirm = !_obscureConfirm),
+                              icon: Icon(_obscureConfirm
+                                  ? Icons.visibility_off
+                                  : Icons.visibility),
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty)
+                              return 'Konfirmasi kata sandi wajib diisi';
+                            if (v != _newCtrl.text)
+                              return 'Konfirmasi tidak cocok';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _submitting
+                                ? null
+                                : () async {
+                                    if (!(_formKey.currentState?.validate() ??
+                                        false)) return;
+                                    setState(() => _submitting = true);
+                                    try {
+                                      final data = await ref
+                                          .read(authProvider.notifier)
+                                          .changePassword(
+                                            currentPassword:
+                                                _currentCtrl.text.trim(),
+                                            newPassword: _newCtrl.text.trim(),
+                                            confirmNewPassword:
+                                                _confirmCtrl.text.trim(),
+                                          );
+                                      if (!mounted) return;
+                                      context.pop();
+
+                                      final nextStep =
+                                          (data['nextStep'] ?? '').toString();
+                                      if (nextStep == 'LOGIN_AGAIN') {
+                                        await _onLogout();
+                                      }
+                                    } catch (e) {
+                                      final message = e
+                                          .toString()
+                                          .replaceFirst('Exception: ', '');
+                                      if (!mounted) return;
+                                      AppToast.success(context,
+                                          'Gagal memperbarui kata sandi: $message');
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _submitting = false);
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE64060),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(50),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: _submitting
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        color: Colors.white, strokeWidth: 2))
+                                : const Text('Simpan Perubahan',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    ).whenComplete(() async {
+      await Future.delayed(const Duration(milliseconds: 250));
+      _currentCtrl.dispose();
+      _newCtrl.dispose();
+      _confirmCtrl.dispose();
+    });
   }
 
   Future<void> _copyAndPrintAuthToken() async {
@@ -602,13 +812,16 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             : _buildEmergencyContactChildren(emergencyState),
                       ),
                       const SizedBox(height: 14),
-                      const _SectionCard(
+                      _SectionCard(
                         title: 'Pengaturan Akun',
                         children: [
-                          _ActionRow(label: 'Ubah Kata Sandi'),
-                          _ActionRow(label: 'Privasi & Izin Data'),
-                          _ActionRow(label: 'Bahasa Aplikasi'),
-                          _ActionRow(label: 'Notifikasi'),
+                          _ActionRow(
+                            label: 'Ubah Kata Sandi',
+                            onTap: _showChangePasswordSheet,
+                          ),
+                          const _ActionRow(label: 'Privasi & Izin Data'),
+                          const _ActionRow(label: 'Bahasa Aplikasi'),
+                          const _ActionRow(label: 'Notifikasi'),
                         ],
                       ),
                       const SizedBox(height: 14),
@@ -976,7 +1189,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Color(0xFF0F172A),
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -988,7 +1201,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF64748B),
-                  fontSize: 15,
+                  fontSize: 18,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -999,7 +1212,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF94A3B8),
-              fontSize: 13,
+              fontSize: 17,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1138,7 +1351,7 @@ class _SectionCard extends StatelessWidget {
             title,
             style: const TextStyle(
               color: Color(0xFF334155),
-              fontSize: 19,
+              fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1195,14 +1408,16 @@ class _InfoRow extends StatelessWidget {
 class _ActionRow extends StatelessWidget {
   final String label;
 
-  const _ActionRow({required this.label});
+  final VoidCallback? onTap;
+
+  const _ActionRow({required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        onTap: () {},
+        onTap: onTap ?? () {},
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
@@ -1213,7 +1428,7 @@ class _ActionRow extends StatelessWidget {
                   label,
                   style: const TextStyle(
                     color: Color(0xFF0F172A),
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
