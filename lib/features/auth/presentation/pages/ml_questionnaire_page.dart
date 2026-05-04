@@ -122,9 +122,8 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
           );
 
       if (!mounted) return;
-      context.pop(true);
+      context.go('/home');
       AppToast.success(context, 'Kuisioner berhasil disimpan');
-      // _navigateToHomeSafely();
     } catch (e) {
       if (!mounted) return;
       AppToast.error(context, e.toString().replaceFirst('Exception: ', ''));
@@ -291,10 +290,10 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: CustomAppBar(
-        title: 'Kuisioner Machine Learning',
+        title: 'Kuisioner Pasien',
         subtitle: 'Isi untuk kebutuhan prediksi kesehatan',
         showBackButton: true,
-        onBackPressed: () => context.pop(),
+        onBackPressed: () => context.go('/home'),
       ),
       body: SafeArea(
         child: _isInitialLoading

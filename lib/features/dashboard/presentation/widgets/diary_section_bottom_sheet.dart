@@ -10,6 +10,8 @@ typedef AktivitasSubmitCallback = Future<void> Function(
     Map<String, dynamic> payload);
 typedef MetriksSubmitCallback = Future<void> Function(
     Map<String, dynamic> payload);
+typedef TidurSubmitCallback = Future<void> Function(
+    Map<String, dynamic> payload);
 
 class DiarySectionBottomSheet extends StatefulWidget {
   final String title;
@@ -18,6 +20,7 @@ class DiarySectionBottomSheet extends StatefulWidget {
   final KonsumsiSubmitCallback? onSubmitKonsumsi;
   final AktivitasSubmitCallback? onSubmitAktivitas;
   final MetriksSubmitCallback? onSubmitMetriks;
+  final TidurSubmitCallback? onSubmitTidur;
 
   const DiarySectionBottomSheet({
     super.key,
@@ -27,6 +30,7 @@ class DiarySectionBottomSheet extends StatefulWidget {
     this.onSubmitKonsumsi,
     this.onSubmitAktivitas,
     this.onSubmitMetriks,
+    this.onSubmitTidur,
   });
 
   @override
@@ -173,6 +177,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   String? _aktivitasOutdoorError;
   String? _aktivitasSubmitError;
   TimeOfDay _selectedTime = TimeOfDay.now();
+  TimeOfDay _sleepTime = const TimeOfDay(hour: 22, minute: 30);
+  TimeOfDay _wakeTime = const TimeOfDay(hour: 6, minute: 30);
+  bool _isSavingTidur = false;
+  String? _tidurSubmitError;
   String _selectedMood = 'Biasa Saja';
   int _symptomIntensity = 5;
   int? _painFrequencyCode;
@@ -688,6 +696,71 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     });
   }
 
+  Future<void> _pickTidurTime({required bool isStart}) async {
+    final initial = isStart ? _sleepTime : _wakeTime;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+    );
+    if (picked == null) return;
+
+    setState(() {
+      if (isStart) {
+        _sleepTime = picked;
+      } else {
+        _wakeTime = picked;
+      }
+    });
+  }
+
+  Future<void> _saveTidur() async {
+    var durationMinutes = _toMinutes(_wakeTime) - _toMinutes(_sleepTime);
+    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+
+    if (durationMinutes <= 0) {
+      setState(() {
+        _tidurSubmitError = 'Durasi tidur tidak valid.';
+      });
+      return;
+    }
+
+    setState(() {
+      _tidurSubmitError = null;
+    });
+
+    final payload = {
+      'section': widget.title,
+      'sleepTime': _formatTime(_sleepTime),
+      'wakeTime': _formatTime(_wakeTime),
+      'duration': durationMinutes / 60.0,
+    };
+
+    final submitTidur = widget.onSubmitTidur;
+    if (submitTidur == null) {
+      Navigator.of(context).pop(payload);
+      return;
+    }
+
+    setState(() => _isSavingTidur = true);
+    try {
+      await submitTidur(payload);
+      if (!mounted) return;
+      Navigator.of(context).pop({
+        'section': widget.title,
+        'saved': true,
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _tidurSubmitError = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingTidur = false);
+      }
+    }
+  }
+
   void _configureSectionLifecycle() {
     if (_normalizedSectionTitle == 'metriks kesehatan' ||
         _normalizedSectionTitle == 'kondisi' ||
@@ -720,12 +793,183 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       case 'konsumsi':
       case 'konsumsi harian':
         return _buildKonsumsiContent();
+      case 'tidur':
+        return _buildTidurSection();
       default:
         if (_normalizedSectionTitle.contains('konsumsi')) {
           return _buildKonsumsiContent();
         }
         return const SizedBox(height: 8);
     }
+  }
+
+  Widget _buildTidurSection() {
+    var durationMinutes = _toMinutes(_wakeTime) - _toMinutes(_sleepTime);
+    if (durationMinutes < 0) durationMinutes += 24 * 60; // Handle overnight
+
+    return AbsorbPointer(
+      absorbing: _isSavingTidur,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Catat Jam Tidur Anda',
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Waktu Tidur',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickTidurTime(isStart: true),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.bedtime, color: Color(0xFF3B82F6)),
+                        label: Text(
+                          _formatTime(_sleepTime),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Waktu Bangun',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickTidurTime(isStart: false),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: const Icon(Icons.wb_sunny, color: Color(0xFFF59E0B)),
+                        label: Text(
+                          _formatTime(_wakeTime),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.timer, color: Color(0xFF64748B)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Total Durasi Tidur: ${durationMinutes ~/ 60} jam ${durationMinutes % 60} menit',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF334155),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_tidurSubmitError != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              _tidurSubmitError!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFFE64060),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSavingTidur ? null : _saveTidur,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE64060),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: _isSavingTidur
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Simpan Data Tidur',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMetriksKesehatanContent() {

@@ -127,6 +127,8 @@ class MlMapping {
     "bpxpls": bpxpls,
   };
 
+  static Map<String, Map<String, dynamic>> exami1 = exam1;
+
   static Map<String, dynamic> bpxpls = {
     'pertanyaan': 'Detak Jantung',
     'tipe': 'range',
@@ -207,6 +209,7 @@ class MlMapping {
   };
 
   static Map<String, Map<String, dynamic>> quest11 = {
+    "hiq011": hiq011,
     "hiqhiq011": hiq011,
   };
 
@@ -454,8 +457,16 @@ class MlMapping {
   static Map<String, dynamic> cdq009 = {
     'pertanyaan': 'Di bagian mana Anda merasakan nyeri atau ketidaknyamanan',
     'tipe': 'selection',
-    'data': Map<int, String>.from(
-        {1: 'Ya', 2: 'Tidak', 7: 'Menolak Menjawab', 9: 'Tidak tahu'})
+    'data': Map<int, String>.from({
+      1: 'Lengan Kanan',
+      2: 'Dada Kanan',
+      3: 'Leher',
+      4: 'Dada atas / Upper sternum',
+      5: 'Dada bawah / Lower sternum',
+      6: 'Dada kiri',
+      7: 'Lengan kiri',
+      8: 'Ulu hati / Epigastric area'
+    })
   };
 
   static Map<String, dynamic> cdq010 = {
@@ -489,6 +500,7 @@ class MlMapping {
   static Map<String, Map<String, Map<String, dynamic>>> codeMaps = {
     'demog': demog1,
     'demog1': demog1,
+    'exami1': exami1,
     'exam': exam1,
     'labor1': labor1,
     'labor2': labor2,
@@ -500,13 +512,14 @@ class MlMapping {
     'quest12': quest12,
     'quest15': quest15,
     'quest16': quest16,
+    'quest17': quest17,
     'quuest17': quest17,
     'quest20': quest20,
     'quest22': quest22,
     'quest23': quest23,
   };
 
-  // Dynamic ML questionnaire mapping.
+  // Static ML questionnaire mapping.
   // Update this list to add/remove/reorder fields shown in the form.
   static const List<String> form_mapping = [
     'demog1_riagendr',
@@ -525,8 +538,35 @@ class MlMapping {
     'quest1_alq111',
   ];
 
-  // Reserved for future static forms.
-  static const List<String> static_form_mapping = [];
+  // Dynamic ML assessment mapping.
+  // This list matches the ml-assessment endpoint field names.
+  static const List<String> dynamic_form_mapping = [
+    'exami1_bpxpls',
+    'labor1_lbdtcsi',
+    'labor2_urdflow1',
+    'labor2_urdtime1',
+    'labor2_urxvol1',
+    'quest11_hiq011',
+    'quest12_heq010',
+    'quest12_heq030',
+    'quest15_kiq022',
+    'quest15_kiq026',
+    'quest16_mcq010',
+    'quest16_mcq160b',
+    'quest16_mcq220',
+    'quest16_mcq300a',
+    'quest16_mcq300c',
+    'quest17_dpq020',
+    'quest17_dpq030',
+    'quest17_dpq040',
+    'quest20_pfq061b',
+    'quest20_pfq061c',
+    'quest20_pfq061h',
+    'quest3_cdq009',
+    'quest3_cdq010',
+    'quest7_diq010',
+    'quest9_dlq050',
+  ];
 
   static String? getGroupFromFieldKey(String fieldKey) {
     final idx = fieldKey.indexOf('_');

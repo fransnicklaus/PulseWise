@@ -85,6 +85,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
     HealthConnectDataType.Steps,
     HealthConnectDataType.ExerciseSession,
     HealthConnectDataType.HeartRate,
+    HealthConnectDataType.SleepSession,
   ];
 
   @override
@@ -147,6 +148,10 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
               _ActionButton(
                 label: 'View Exercise Data',
                 onTap: _getExerciseData,
+              ),
+              _ActionButton(
+                label: 'View Sleep Data',
+                onTap: _getSleepData,
               ),
               const SizedBox(height: 18),
               _buildResultSection(),
@@ -409,6 +414,49 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
     } catch (e, s) {
       _setResult(
         action: 'View Heart Rate Data',
+        data: {'error': e.toString(), 'stack': s.toString()},
+      );
+    }
+  }
+
+  Future<void> _getSleepData() async {
+    final now = DateTime.now();
+    final start = now.subtract(const Duration(days: 7));
+
+    try {
+      final result = await HealthConnectFactory.getRecord(
+        type: HealthConnectDataType.SleepSession,
+        startTime: start,
+        endTime: now,
+      );
+
+      final records = (result['records'] as List?) ?? const [];
+      final sleepDetails = <Map<String, dynamic>>[];
+
+      for (final record in records) {
+        if (record is! Map) continue;
+
+        sleepDetails.add({
+          'title': record['title'],
+          'notes': record['notes'],
+          'startTime': record['startTime'],
+          'endTime': record['endTime'],
+        });
+      }
+
+      _setResult(
+        action: 'View Sleep Data',
+        data: {
+          'recordCount': records.length,
+          'sleepDetails': sleepDetails,
+          'start': start.toIso8601String(),
+          'end': now.toIso8601String(),
+          'records': records,
+        },
+      );
+    } catch (e, s) {
+      _setResult(
+        action: 'View Sleep Data',
         data: {'error': e.toString(), 'stack': s.toString()},
       );
     }

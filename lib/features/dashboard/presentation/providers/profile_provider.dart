@@ -396,6 +396,347 @@ class ProfileApi {
     }
   }
 
+  Future<Map<String, dynamic>> fetchLatestMlAssessment() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/patients/$patientId/ml-assessments/latest',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil asesmen ML terbaru').toString(),
+        );
+      }
+
+      final data = body['data'];
+      if (data is Map<String, dynamic>) {
+        return data;
+      }
+      if (data is Map) {
+        return data.map((key, value) => MapEntry(key.toString(), value));
+      }
+      return <String, dynamic>{};
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return <String, dynamic>{};
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil asesmen ML terbaru.');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchMlAssessments({
+    String? startDate,
+    String? endDate,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/patients/$patientId/ml-assessments',
+        queryParameters: {
+          if (startDate != null && startDate.isNotEmpty) 'startDate': startDate,
+          if (endDate != null && endDate.isNotEmpty) 'endDate': endDate,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final body = response.data ?? <String, dynamic>{};
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil daftar asesmen ML').toString(),
+        );
+      }
+
+      final data = body['data'];
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((item) =>
+                item.map((key, value) => MapEntry(key.toString(), value)))
+            .toList();
+      }
+
+      return const <Map<String, dynamic>>[];
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return const <Map<String, dynamic>>[];
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil daftar asesmen ML.');
+    }
+  }
+
+  Future<Map<String, dynamic>> fetchMlReadiness(String date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/ml-readiness',
+      queryParameters: {'date': date},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal mengambil status ML readiness').toString(),
+      );
+    }
+
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchMlPrediction(String date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$patientId/ml-predictions',
+      queryParameters: {'date': date, 'includePayload': 'true'},
+      data: {},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal mengambil prediksi ML').toString(),
+      );
+    }
+
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> fetchMlRecommendations(String date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$patientId/ml-recommendations/',
+      queryParameters: {'date': date, 'includePayload': 'true'},
+      data: {},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal mengambil ML recommendations').toString(),
+      );
+    }
+
+    return body['data'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> submitMlAssessment({
+    required Map<String, dynamic> payload,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/patients/$patientId/ml-assessments',
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    final body = response.data ?? <String, dynamic>{};
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal menyimpan asesmen ML').toString(),
+      );
+    }
+
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> updateMlAssessment({
+    required String assessmentId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/patients/$patientId/ml-assessments/$assessmentId',
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    final body = response.data ?? <String, dynamic>{};
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal memperbarui asesmen ML').toString(),
+      );
+    }
+
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> saveMlAssessment({
+    String? assessmentId,
+    required Map<String, dynamic> payload,
+  }) async {
+    if (assessmentId != null && assessmentId.trim().isNotEmpty) {
+      return updateMlAssessment(assessmentId: assessmentId, payload: payload);
+    }
+
+    return submitMlAssessment(payload: payload);
+  }
+
   Future<DiaryDetail> fetchDiaryDetail(String diaryId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -534,6 +875,93 @@ class ProfileApi {
     return DiaryHistoryResponse.fromJson(data);
   }
 
+  Future<Map<String, dynamic>?> fetchSleepDiaryByDate(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final dateParam =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/diaries/by-date/sleep',
+        queryParameters: {
+          'date': dateParam,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final body = response.data;
+      if (body != null && body['success'] == true && body['data'] != null) {
+        return body['data'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> addDiarySleepByDate({
+    required String diaryDate,
+    required String sleepTime,
+    required String wakeTime,
+    required num sleepDurationHours,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date/sleep',
+      data: {
+        'diaryDate': diaryDate,
+        'sleepTime': sleepTime,
+        'wakeTime': wakeTime,
+        'sleepDurationHours': sleepDurationHours,
+        'source': 'app_manual'
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal menyimpan data tidur').toString(),
+      );
+    }
+  }
+
   Future<void> addDiarySymptomByDate({
     required String diaryDate,
     required String symptomName,
@@ -621,6 +1049,21 @@ class ProfileApi {
         'portion': portion,
         'time': time,
         'note': note,
+        // DUMMY DATA FOR ML
+        'portionGrams': 150,
+        'fdcFoodId': '123456',
+        'nutritionSource': 'dummy',
+        'energyKcal': 250,
+        'proteinG': 10,
+        'carbohydrateG': 30,
+        'sugarG': 5,
+        'fiberG': 3,
+        'totalFatG': 8,
+        'saturatedFatG': 2,
+        'monounsaturatedFatG': 3,
+        'polyunsaturatedFatG': 1,
+        'cholesterolMg': 20,
+        'calciumMg': 50,
       },
       options: Options(
         headers: {

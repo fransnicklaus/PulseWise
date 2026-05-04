@@ -2,18 +2,60 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/current_diary_provider.dart';
 import '../providers/dashboard_provider.dart';
+import '../../services/health_connect_sync_service.dart';
 import 'tabs/beranda_tab.dart';
 import 'tabs/diari_tab.dart';
 import 'tabs/edukasi_tab.dart';
 import 'tabs/pengingat_tab.dart';
 import 'tabs/profil_tab.dart';
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Sync on first open
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _triggerHealthConnectSync();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[DashboardPage] App resumed — triggering HC sync');
+      _triggerHealthConnectSync();
+    }
+  }
+
+  Future<void> _triggerHealthConnectSync() async {
+    try {
+      final diaryNotifier = ref.read(currentDiaryProvider.notifier);
+      final service = HealthConnectSyncService(diaryNotifier: diaryNotifier);
+      await service.syncAll();
+    } catch (e) {
+      debugPrint('[DashboardPage] HC sync error: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final navIndex = ref.watch(dashboardNavIndexProvider);
 
     // List of tab widgets

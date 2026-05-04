@@ -1,13 +1,17 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import 'report_generator_flutter.dart';
 
-class PatientDashboardPage extends StatefulWidget {
+class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({
     super.key,
     required this.data,
@@ -32,18 +36,97 @@ class PatientDashboardPage extends StatefulWidget {
   final VoidCallback? onPrintReport;
 
   @override
-  State<PatientDashboardPage> createState() => _PatientDashboardPageState();
+  ConsumerState<PatientDashboardPage> createState() =>
+      _PatientDashboardPageState();
 }
 
-class _PatientDashboardPageState extends State<PatientDashboardPage> {
+class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   late final TextEditingController _searchController;
   late TimePeriodOption? _selectedPeriod;
+
+  bool _isLoadingLast = true;
+  bool _isCheckingMl = false;
+  Map<String, dynamic>? _lastAssessment;
+  List<String> _missingFields = [];
+  Map<String, dynamic>? _mlRecommendation;
+  Map<String, dynamic>? _mlPredictionResult;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
     _selectedPeriod = widget.data.selectedPeriod;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchLastAssessment();
+    });
+  }
+
+  Future<void> _fetchLastAssessment() async {
+    if (!mounted) return;
+    setState(() => _isLoadingLast = true);
+    try {
+      final api = ref.read(profileApiProvider);
+      final last = await api.fetchLatestMlAssessment();
+
+      if (mounted) {
+        setState(() {
+          _lastAssessment = last.isNotEmpty ? last : null;
+          _isLoadingLast = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching last assessment: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingLast = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkMlReadinessAndPredict() async {
+    if (!mounted) return;
+    setState(() {
+      _isCheckingMl = true;
+      _missingFields = [];
+    });
+    try {
+      final date = DateTime.now().toIso8601String().split('T').first;
+      final api = ref.read(profileApiProvider);
+      final readiness = await api.fetchMlReadiness(date);
+
+      final isReady = readiness['ready'] == true;
+      if (isReady) {
+        final prediction = await api.fetchMlPrediction(date);
+        final rec = await api.fetchMlRecommendations(date);
+        if (mounted) {
+          setState(() {
+            _mlPredictionResult = prediction;
+            _mlRecommendation = rec;
+            _isCheckingMl = false;
+          });
+        }
+      } else {
+        final missing = (readiness['missingFields'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+        if (mounted) {
+          setState(() {
+            _missingFields = missing;
+            _isCheckingMl = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking ML readiness: $e');
+      if (mounted) {
+        setState(() {
+          _isCheckingMl = false;
+        });
+      }
+    }
   }
 
   @override
@@ -121,96 +204,293 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
                   final chartWidth =
                       twoColumns ? (fullWidth - 24) / 2 : fullWidth;
 
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _PatientHeaderCard(
-                          patient: widget.data.patient,
-                          avatarUrl: widget.data.avatarUrl,
-                        ),
-                        const SizedBox(height: 24),
-                        // Latest BMI and Height side-by-side under the patient header
-                        LayoutBuilder(
-                          builder: (context, headerConstraints) {
-                            final twoSideBySide =
-                                headerConstraints.maxWidth >= 300;
-                            if (twoSideBySide) {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: _MiniStatCard(
-                                      title: 'Latest BMI',
-                                      value: widget.data.latestBmi == null
-                                          ? '-'
-                                          : widget.data.latestBmi!
-                                              .toStringAsFixed(1),
-                                      background: Colors.white,
-                                      foreground: const Color(0xFF1A202C),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 24),
-                                  Expanded(
-                                    child: _MiniStatCard(
-                                      title: 'Height',
-                                      value:
-                                          '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
-                                      background: const Color(0xFFE13D5A),
-                                      foreground: Colors.white,
-                                    ),
-                                  ),
+                  return DefaultTabController(
+                    length: 2,
+                    child: NestedScrollView(
+                      headerSliverBuilder: (context, innerBoxIsScrolled) {
+                        return [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: _PatientHeaderCard(
+                                patient: widget.data.patient,
+                                avatarUrl: widget.data.avatarUrl,
+                              ),
+                            ),
+                          ),
+                          SliverPersistentHeader(
+                            pinned: true,
+                            delegate: _StickyTabBarDelegate(
+                              const TabBar(
+                                labelColor: Color(0xFFE13D5A),
+                                unselectedLabelColor: Colors.grey,
+                                indicatorColor: Color(0xFFE13D5A),
+                                labelStyle: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 17),
+                                unselectedLabelStyle: TextStyle(
+                                    fontWeight: FontWeight.w300, fontSize: 17),
+                                tabs: [
+                                  Tab(text: 'Prediksi ML'),
+                                  Tab(text: 'Dashboard Metrik'),
                                 ],
-                              );
-                            }
-
-                            return Column(
+                              ),
+                            ),
+                          ),
+                        ];
+                      },
+                      body: TabBarView(
+                        children: [
+                          // Tab 1: Prediction results + Rekomendasi
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: _isLoadingLast
+                                ? const Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(40),
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFFE13D5A),
+                                      ),
+                                    ),
+                                  )
+                                : _isCheckingMl
+                                    ? const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(40),
+                                          child: Column(
+                                            children: [
+                                              CircularProgressIndicator(
+                                                color: Color(0xFFE13D5A),
+                                              ),
+                                              SizedBox(height: 16),
+                                              Text(
+                                                'Mengecek kesiapan data dan\nmemproses prediksi...',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                    color: Colors.grey),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      )
+                                    : _mlRecommendation != null
+                                        ? Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if (_mlPredictionResult !=
+                                                  null) ...[
+                                                SizedBox(
+                                                  width: fullWidth,
+                                                  child: PredictionMetricCard(
+                                                    title:
+                                                        'Prediksi ML Hari Ini',
+                                                    icon:
+                                                        Icons.insights_rounded,
+                                                    iconColor:
+                                                        const Color(0xFFE13D5A),
+                                                    description:
+                                                        'Berhasil melakukan prediksi berdasarkan data hari ini',
+                                                    score: (double.tryParse(_mlPredictionResult!['upstream']
+                                                                            ?[
+                                                                            'body']
+                                                                        ?[
+                                                                        'probability']
+                                                                    ?.toString() ??
+                                                                _mlPredictionResult!['upstream']
+                                                                            ?[
+                                                                            'body']?['result']
+                                                                        ?[
+                                                                        'probability']
+                                                                    ?.toString() ??
+                                                                '0') ??
+                                                            0.0)
+                                                        .clamp(0.0, 100.0),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 24),
+                                              ],
+                                              _buildRekomendasiSection(
+                                                  _mlRecommendation),
+                                            ],
+                                          )
+                                        : _missingFields.isNotEmpty
+                                            ? _buildNotReadySection(fullWidth)
+                                            : Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  const SizedBox(height: 24),
+                                                  Center(
+                                                    child: ElevatedButton.icon(
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                                0xFFE13D5A),
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                          horizontal: 24,
+                                                          vertical: 16,
+                                                        ),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(16),
+                                                        ),
+                                                      ),
+                                                      onPressed:
+                                                          _checkMlReadinessAndPredict,
+                                                      icon: const Icon(
+                                                          Icons.analytics),
+                                                      label: const Text(
+                                                        'Cek Prediksi ML Hari Ini',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(height: 16),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: FilledButton.icon(
+                                                      onPressed: () => context.push(
+                                                          '/home/patient-dashboard/ml-assessment'),
+                                                      style: FilledButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                                0xFFE64060),
+                                                        foregroundColor:
+                                                            Colors.white,
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 14),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(14),
+                                                        ),
+                                                      ),
+                                                      icon: const Icon(
+                                                          Icons
+                                                              .assignment_turned_in_rounded,
+                                                          size: 18),
+                                                      label: const Text(
+                                                        'Isi Form Asesmen',
+                                                        style: TextStyle(
+                                                            fontSize: 15,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w700),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                          ),
+                          // Tab 2: Dashboard charts and cards
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _MiniStatCard(
-                                  title: 'Latest BMI',
-                                  value: widget.data.latestBmi == null
-                                      ? '-'
-                                      : widget.data.latestBmi!
-                                          .toStringAsFixed(1),
-                                  background: Colors.white,
-                                  foreground: const Color(0xFF1A202C),
+                                LayoutBuilder(
+                                  builder: (context, headerConstraints) {
+                                    final twoSideBySide =
+                                        headerConstraints.maxWidth >= 300;
+                                    if (twoSideBySide) {
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: _MiniStatCard(
+                                              title: 'Latest BMI',
+                                              value:
+                                                  widget.data.latestBmi == null
+                                                      ? '-'
+                                                      : widget.data.latestBmi!
+                                                          .toStringAsFixed(1),
+                                              background: Colors.white,
+                                              foreground:
+                                                  const Color(0xFF1A202C),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 24),
+                                          Expanded(
+                                            child: _MiniStatCard(
+                                              title: 'Height',
+                                              value:
+                                                  '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
+                                              background:
+                                                  const Color(0xFFE13D5A),
+                                              foreground: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }
+
+                                    return Column(
+                                      children: [
+                                        _MiniStatCard(
+                                          title: 'Latest BMI',
+                                          value: widget.data.latestBmi == null
+                                              ? '-'
+                                              : widget.data.latestBmi!
+                                                  .toStringAsFixed(1),
+                                          background: Colors.white,
+                                          foreground: const Color(0xFF1A202C),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _MiniStatCard(
+                                          title: 'Height',
+                                          value:
+                                              '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
+                                          background: const Color(0xFFE13D5A),
+                                          foreground: Colors.white,
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
-                                const SizedBox(height: 12),
-                                _MiniStatCard(
-                                  title: 'Height',
-                                  value:
-                                      '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
-                                  background: const Color(0xFFE13D5A),
-                                  foreground: Colors.white,
+                                const SizedBox(height: 24),
+                                Wrap(
+                                  spacing: 24,
+                                  runSpacing: 24,
+                                  children: [
+                                    SizedBox(
+                                      width: chartWidth,
+                                      child:
+                                          _WeightAndBodyCard(data: widget.data),
+                                    ),
+                                    SizedBox(
+                                      width: chartWidth,
+                                      child: _HeartRateCard(data: widget.data),
+                                    ),
+                                    SizedBox(
+                                      width: chartWidth,
+                                      child:
+                                          _BloodPressureCard(data: widget.data),
+                                    ),
+                                    SizedBox(
+                                      width: chartWidth,
+                                      child: _Spo2Card(data: widget.data),
+                                    ),
+                                  ],
                                 ),
                               ],
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        Wrap(
-                          spacing: 24,
-                          runSpacing: 24,
-                          children: [
-                            SizedBox(
-                              width: chartWidth,
-                              child: _WeightAndBodyCard(data: widget.data),
                             ),
-                            SizedBox(
-                              width: chartWidth,
-                              child: _HeartRateCard(data: widget.data),
-                            ),
-                            SizedBox(
-                              width: chartWidth,
-                              child: _BloodPressureCard(data: widget.data),
-                            ),
-                            SizedBox(
-                              width: chartWidth,
-                              child: _Spo2Card(data: widget.data),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -220,6 +500,246 @@ class _PatientDashboardPageState extends State<PatientDashboardPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildNotReadySection(double fullWidth) {
+    return Container(
+      width: fullWidth,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.warning_amber_rounded,
+              size: 64, color: Color(0xFFE13D5A)),
+          const SizedBox(height: 16),
+          const Text(
+            'Data Belum Lengkap',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A202C),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Beberapa data kesehatan pasien belum lengkap untuk melakukan prediksi ML. Silakan lengkapi form kuisioner atau data harian.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 15,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (_missingFields.isNotEmpty) ...[
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Data yang kurang:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A202C),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ..._missingFields
+                .map((f) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '• $f',
+                          style: const TextStyle(
+                            color: Color(0xFFE13D5A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ))
+                .take(5),
+            if (_missingFields.length > 5)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '• ...dan ${_missingFields.length - 5} lainnya',
+                    style: const TextStyle(
+                      color: Color(0xFFE13D5A),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE13D5A),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            onPressed: () {
+              context.push('/home/patient-dashboard/ml-assessment');
+            },
+            icon: const Icon(Icons.edit_document),
+            label: const Text(
+              'Lengkapi Form',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRekomendasiSection(Map<String, dynamic>? mlRec) {
+    List<dynamic> lifestyle = [];
+    if (mlRec != null) {
+      final upstream = mlRec['upstream'] as Map<String, dynamic>?;
+      var bodyRaw = upstream?['body'];
+      if (bodyRaw is String) {
+        try {
+          bodyRaw = jsonDecode(bodyRaw);
+        } catch (_) {}
+      }
+      final body = bodyRaw as Map<String, dynamic>?;
+      final recResult = body?['recommendationResult'] as Map<String, dynamic>?;
+      lifestyle = recResult?['lifestyle'] as List<dynamic>? ?? [];
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF0F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.recommend, color: Color(0xFFE13D5A)),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Rekomendasi',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A202C),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (lifestyle.isEmpty)
+            const Text(
+              'Tidak ada rekomendasi spesifik saat ini.',
+              style: TextStyle(color: Color(0xFF4A5568)),
+            ),
+          ...lifestyle.map((item) {
+            final isString = item is String;
+            final title = isString
+                ? item
+                : (item['comparison']?.toString() ??
+                    item['title']?.toString() ??
+                    item['name']?.toString() ??
+                    '');
+            final rec = isString
+                ? ''
+                : (item['recommendedValueInterval']?.toString() ??
+                    item['recommendation']?.toString() ??
+                    item['description']?.toString() ??
+                    '');
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4, right: 8),
+                        child: Icon(Icons.check_circle,
+                            size: 16, color: Colors.green),
+                      ),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A202C),
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (rec.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 24.0),
+                      child: Text(
+                        rec,
+                        style: const TextStyle(
+                          color: Color(0xFF4A5568),
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _StickyTabBarDelegate extends SliverPersistentHeaderDelegate {
+  _StickyTabBarDelegate(this.tabBar);
+
+  final TabBar tabBar;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: const Color(0xFFFAFAFA),
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_StickyTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar;
   }
 }
 
@@ -786,6 +1306,180 @@ class _DetailItem extends StatelessWidget {
   }
 }
 
+class PredictionMetricCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color iconColor;
+  final String description;
+  final double score;
+  final double chartHeight;
+
+  const PredictionMetricCard({
+    super.key,
+    required this.title,
+    required this.icon,
+    required this.iconColor,
+    required this.description,
+    required this.score,
+    this.chartHeight = 280,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Color(0xFF1A202C),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Description Panel
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              description,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF64748B),
+                height: 1.4,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          const SizedBox(height: 16),
+
+          // Gauge Section
+          SizedBox(
+            height: chartHeight,
+            child: SfRadialGauge(
+              axes: <RadialAxis>[
+                RadialAxis(
+                  minimum: 0,
+                  maximum: 100,
+                  startAngle: 180,
+                  endAngle: 0,
+                  canScaleToFit: true,
+                  showLabels: false,
+                  showTicks: false,
+                  axisLineStyle: const AxisLineStyle(
+                    thickness: 0.1,
+                    thicknessUnit: GaugeSizeUnit.factor,
+                    color: Color(0xFFF1F5F9),
+                  ),
+                  ranges: <GaugeRange>[
+                    GaugeRange(
+                        startValue: 0,
+                        endValue: 60,
+                        color: Colors.green,
+                        startWidth: 15,
+                        endWidth: 15),
+                    GaugeRange(
+                        startValue: 60,
+                        endValue: 80,
+                        color: Colors.orange,
+                        startWidth: 15,
+                        endWidth: 15),
+                    GaugeRange(
+                        startValue: 80,
+                        endValue: 100,
+                        color: Colors.red,
+                        startWidth: 15,
+                        endWidth: 15),
+                  ],
+                  pointers: <GaugePointer>[
+                    // Pointer modern berbentuk segitiga terbalik
+                    MarkerPointer(
+                      value: score,
+                      markerType: MarkerType.invertedTriangle,
+                      color: const Color(0xFF1A202C),
+                      markerHeight: 15,
+                      markerWidth: 15,
+                      // positionFactor: 0.08,
+                      enableAnimation: true,
+                      animationDuration: 1500,
+                    ),
+                  ],
+                  annotations: <GaugeAnnotation>[
+                    GaugeAnnotation(
+                      widget: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${score.toInt()}%',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1A202C),
+                            ),
+                          ),
+                          const Text(
+                            'RISK SCORE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF94A3B8),
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      // angle: 90,
+                      // positionFactor: 0.5,
+                    )
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HeartRateCard extends StatelessWidget {
   const _HeartRateCard({required this.data});
 
@@ -802,6 +1496,10 @@ class _HeartRateCard extends StatelessWidget {
       title: 'Heart Rate',
       icon: Icons.favorite_rounded,
       iconColor: const Color(0xFFE13D5A),
+      legend: const _ChartLegend(items: [
+        ChartLegendItem(color: Color(0xFF2563EB), label: 'Normal'),
+        ChartLegendItem(color: Color(0xFFDC2626), label: 'Out of range'),
+      ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
         label: 'Latest Reading',
@@ -870,6 +1568,10 @@ class _BloodPressureCard extends StatelessWidget {
       title: 'Blood Pressure',
       icon: Icons.monitor_heart,
       iconColor: Colors.blue,
+      legend: const _ChartLegend(items: [
+        ChartLegendItem(color: Color(0xFF2563EB), label: 'Systolic'),
+        ChartLegendItem(color: Color(0xFF10B981), label: 'Diastolic'),
+      ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
         label: 'Latest Reading',
@@ -971,6 +1673,11 @@ class _Spo2Card extends StatelessWidget {
       title: 'Oxygen Saturation (SpO2)',
       icon: Icons.bubble_chart,
       iconColor: Colors.green[700]!,
+      legend: const _ChartLegend(items: [
+        ChartLegendItem(color: Color(0xFF2563EB), label: 'Normal'),
+        ChartLegendItem(color: Color(0xFFFCD34D), label: 'Caution'),
+        ChartLegendItem(color: Color(0xFFDC2626), label: 'Critical'),
+      ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
         label: 'Latest SpO2',
@@ -1027,6 +1734,10 @@ class _WeightAndBodyCard extends StatelessWidget {
           title: 'Weight',
           icon: Icons.monitor_weight_outlined,
           iconColor: Colors.yellow[700]!,
+          legend: const _ChartLegend(items: [
+            ChartLegendItem(color: Color(0xFF2563EB), label: 'Recent'),
+            ChartLegendItem(color: Color(0xFFE13D5A), label: 'Large change'),
+          ]),
           chartHeight: 190,
           verticalBody: true,
           leadingPanel: Center(
@@ -1110,6 +1821,7 @@ class _MetricCard extends StatelessWidget {
     required this.iconColor,
     required this.leadingPanel,
     required this.chart,
+    this.legend,
     this.chartHeight = 220,
     this.verticalBody = false,
   });
@@ -1119,6 +1831,7 @@ class _MetricCard extends StatelessWidget {
   final Widget leadingPanel;
   final Color iconColor;
   final Widget chart;
+  final Widget? legend;
   final double chartHeight;
   final bool verticalBody;
 
@@ -1140,7 +1853,7 @@ class _MetricCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(icon, color: iconColor, size: 30),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       title,
                       style: const TextStyle(
@@ -1174,7 +1887,11 @@ class _MetricCard extends StatelessWidget {
               ),
               child: leadingPanel,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            if (legend != null) ...[
+              legend!,
+              const SizedBox(height: 12),
+            ],
             SizedBox(height: chartHeight, child: chart),
           ] else ...[
             LayoutBuilder(
@@ -1192,7 +1909,11 @@ class _MetricCard extends StatelessWidget {
                         ),
                         child: leadingPanel,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      if (legend != null) ...[
+                        legend!,
+                        const SizedBox(height: 12),
+                      ],
                       SizedBox(height: chartHeight, child: chart),
                     ],
                   );
@@ -1211,7 +1932,16 @@ class _MetricCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                        child: SizedBox(height: chartHeight, child: chart)),
+                      child: Column(
+                        children: [
+                          if (legend != null) ...[
+                            legend!,
+                            const SizedBox(height: 12),
+                          ],
+                          SizedBox(height: chartHeight, child: chart),
+                        ],
+                      ),
+                    ),
                   ],
                 );
               },
@@ -1328,6 +2058,52 @@ class _MiniStatCard extends StatelessWidget {
   }
 }
 
+class ChartLegendItem {
+  const ChartLegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+}
+
+class _ChartLegend extends StatelessWidget {
+  const _ChartLegend({required this.items});
+
+  final List<ChartLegendItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: items.map((it) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: it.color,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white, width: 0.5),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              it.label,
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+}
+
 class _ThresholdLineChart extends StatelessWidget {
   const _ThresholdLineChart({
     required this.points,
@@ -1384,27 +2160,40 @@ class _ThresholdLineChart extends StatelessWidget {
             sideTitles: SideTitles(showTitles: false),
           ),
           leftTitles: AxisTitles(
-            axisNameWidget: Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                yTitle,
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
+            // drawBelowEverything: true,
+            axisNameWidget: Text(
+              yTitle,
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
               ),
             ),
+            // axisNameWidget: Padding(
+            //   padding: const EdgeInsets.only(bottom: 8),
+            //   child: Text(
+            //     yTitle,
+            //     style: const TextStyle(
+            //       color: Color(0xFF94A3B8),
+            //       fontSize: 11,
+            //       fontWeight: FontWeight.w700,
+            //     ),
+            //   ),
+            // ),
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 42,
+              reservedSize: 37,
               interval: _gridInterval(minY ?? 0, maxY ?? 100),
               getTitlesWidget: (value, meta) {
-                return Text(
-                  value.toStringAsFixed(0),
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 11,
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  space: 8,
+                  child: Text(
+                    value.toStringAsFixed(0),
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 11,
+                    ),
                   ),
                 );
               },
@@ -1420,13 +2209,17 @@ class _ThresholdLineChart extends StatelessWidget {
                 if (index < 0 || index >= points.length) {
                   return const SizedBox.shrink();
                 }
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    _shortDate(points[index].timestamp),
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 11,
+                return SideTitleWidget(
+                  axisSide: meta.axisSide,
+                  space: 10,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _shortDate(points[index].timestamp),
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 );

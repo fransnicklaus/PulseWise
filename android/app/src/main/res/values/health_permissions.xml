@@ -4,5 +4,6 @@
         <item>android.permission.health.READ_STEPS</item>
         <item>android.permission.health.READ_EXERCISE</item>
         <item>android.permission.health.READ_HEART_RATE</item>
+        <item>android.permission.health.READ_SLEEP</item>
     </string-array>
 </resources>

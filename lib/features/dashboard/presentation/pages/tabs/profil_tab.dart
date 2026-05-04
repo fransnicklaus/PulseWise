@@ -183,6 +183,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   Future<void> _copyAndPrintAuthToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token') ?? '';
+    final userId = prefs.getString('auth_user_id') ?? '';
 
     if (!mounted) return;
 
@@ -194,6 +195,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
     await Clipboard.setData(ClipboardData(text: token));
     debugPrint('[AUTH_TOKEN] $token');
+    debugPrint('[USER_ID] $userId');
 
     if (!mounted) return;
     AppToast.success(context, 'Token disalin dan dicetak ke debugger.');

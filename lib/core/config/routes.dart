@@ -19,6 +19,7 @@ import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.
 import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/update_profile_page.dart';
 // import 'package:pulsewise/features/dashboard/presentation/pages/patient_dashboard_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/patient_ml_assessment_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
@@ -226,6 +227,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             path: 'patient-dashboard',
             builder: (context, state) => const _PatientDashboardRoute(),
             routes: [
+              GoRoute(
+                path: 'ml-assessment',
+                builder: (context, state) => const PatientMlAssessmentPage(),
+              ),
               GoRoute(
                 path: 'print',
                 builder: (context, state) => const PrintPage(),
