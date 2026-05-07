@@ -274,8 +274,20 @@ class _DiariTabState extends ConsumerState<DiariTab> {
     final diastolicDisplay = isSkeleton
         ? '78'
         : (latestMetric?.diastolicPressure?.toString() ?? '-');
-    final heartRateDisplay =
-        isSkeleton ? '98' : (latestMetric?.heartRate?.toString() ?? '-');
+    String heartRateDisplay;
+    if (diary?.latestHeartRate?.toString() == null) {
+      heartRateDisplay =
+          isSkeleton ? '98' : (latestMetric?.heartRate?.toString() ?? '-');
+      // print(
+      //     'Debug Info: diary?.latestHeartRate: ${diary?.latestHeartRate}, diary?.heartRate: ${diary?.heartRate}');
+    } else {
+      heartRateDisplay = isSkeleton
+          ? '98'
+          : (latestMetric?.latestHeartRate?.toString() ?? '-');
+    }
+
+    final oxygenSatDisplay =
+        isSkeleton ? '98' : (diary?.latestOxygenSaturation?.toString() ?? '-');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -591,6 +603,36 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   ),
                                   const Text(
                                     'BPM',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF62748E),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Saturasi Oksigen (SpO2)',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFF62748E),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    oxygenSatDisplay,
+                                    style: const TextStyle(
+                                      fontSize: 33,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF525252),
+                                    ),
+                                  ),
+                                  const Text(
+                                    '%',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: Color(0xFF62748E),
@@ -1031,7 +1073,8 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                if ((diary?.sleeps ?? []).isEmpty && !isSkeleton)
+                                if ((diary?.sleeps ?? []).isEmpty &&
+                                    !isSkeleton)
                                   const Text(
                                     'Belum ada data tidur hari ini',
                                     style: TextStyle(
@@ -1040,7 +1083,8 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                     ),
                                   )
                                 else
-                                  ...(isSkeleton && (diary?.sleeps ?? []).isEmpty
+                                  ...(isSkeleton &&
+                                              (diary?.sleeps ?? []).isEmpty
                                           ? List.generate(1, (index) => index)
                                           : (diary?.sleeps ?? []).asMap().keys)
                                       .map(
@@ -1048,7 +1092,10 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                       padding: EdgeInsets.only(
                                         bottom: isSkeleton
                                             ? 0
-                                            : (entry == (diary?.sleeps.length ?? 0) - 1
+                                            : (entry ==
+                                                    (diary?.sleeps.length ??
+                                                            0) -
+                                                        1
                                                 ? 0
                                                 : 12),
                                       ),
@@ -1061,10 +1108,12 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                             : diary!.sleeps[entry].wakeTime,
                                         duration: isSkeleton
                                             ? 8
-                                            : diary!.sleeps[entry].sleepDurationHours,
+                                            : diary!.sleeps[entry]
+                                                .sleepDurationHours,
                                         showDivider: isSkeleton
                                             ? false
-                                            : entry != (diary?.sleeps.length ?? 0) - 1,
+                                            : entry !=
+                                                (diary?.sleeps.length ?? 0) - 1,
                                       ),
                                     ),
                                   ),
@@ -1393,7 +1442,8 @@ class _SleepEntryItem extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF3B82F6)),
+            const Icon(Icons.timer_outlined,
+                size: 16, color: Color(0xFF3B82F6)),
             const SizedBox(width: 8),
             Text(
               'Tidur: $sleepTime - Bangun: $wakeTime',

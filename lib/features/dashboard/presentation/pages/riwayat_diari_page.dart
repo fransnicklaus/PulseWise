@@ -81,7 +81,9 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
 
     if (isExpanded) return;
 
-    await ref.read(diaryHistoryProvider.notifier).loadDiaryDetail(item.diaryId);
+    await ref
+        .read(diaryHistoryProvider.notifier)
+        .loadDiaryDetail(item.diaryDate!);
 
     if (!mounted) return;
 
@@ -348,10 +350,10 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                   ...state.items.map((item) {
                     final isExpanded = _expandedDiaryId == item.diaryId;
                     final isDetailLoading =
-                        state.loadingDetailDiaryIds.contains(item.diaryId);
-                    final detail = state.detailsByDiaryId[item.diaryId];
+                        state.loadingDetailDiaryIds.contains(item.diaryDate);
+                    final detail = state.detailsByDiaryId[item.diaryDate];
                     final detailError =
-                        state.detailErrorsByDiaryId[item.diaryId];
+                        state.detailErrorsByDiaryId[item.diaryDate];
 
                     _itemKeys[item.diaryId] ??= GlobalKey();
 
@@ -446,8 +448,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                                               onRetry: () => ref
                                                   .read(diaryHistoryProvider
                                                       .notifier)
-                                                  .loadDiaryDetail(
-                                                      item.diaryId),
+                                                  .loadDiaryDetail(item.diaryDate!),
                                               formatTime: _formatTime,
                                             ),
                                           )

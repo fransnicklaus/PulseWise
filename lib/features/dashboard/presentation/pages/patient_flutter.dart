@@ -48,8 +48,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   bool _isCheckingMl = false;
   Map<String, dynamic>? _lastAssessment;
   List<String> _missingFields = [];
-  Map<String, dynamic>? _mlRecommendation;
-  Map<String, dynamic>? _mlPredictionResult;
+  MlRecommendationResponse? _mlRecommendation;
+  MlRecommendationResponse? _mlPredictionResult;
 
   @override
   void initState() {
@@ -58,25 +58,42 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     _selectedPeriod = widget.data.selectedPeriod;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchLastAssessment();
+      _fetchInitialData();
     });
   }
 
-  Future<void> _fetchLastAssessment() async {
+  Future<void> _fetchInitialData() async {
     if (!mounted) return;
     setState(() => _isLoadingLast = true);
     try {
       final api = ref.read(profileApiProvider);
-      final last = await api.fetchLatestMlAssessment();
+
+      final futures = await Future.wait([
+        api.fetchLatestMlAssessment().catchError((e) {
+          debugPrint('Error fetching last assessment: $e');
+          return <String, dynamic>{};
+        }),
+        api.fetchLatestMlRecommendation().catchError((e) {
+          debugPrint('Error fetching last ML recommendation: $e');
+          return null; // Return null instead of empty map since it expects MlRecommendationResponse?
+        }),
+      ]);
+
+      final last = futures[0] as Map<String, dynamic>?;
+      final rec = futures[1] as MlRecommendationResponse?;
 
       if (mounted) {
         setState(() {
-          _lastAssessment = last.isNotEmpty ? last : null;
+          _lastAssessment = last != null && last.isNotEmpty ? last : null;
+          if (rec != null && rec.success) {
+            _mlRecommendation = rec;
+            _mlPredictionResult = rec.data?.upstream != null ? rec : null;
+          }
           _isLoadingLast = false;
         });
       }
     } catch (e) {
-      debugPrint('Error fetching last assessment: $e');
+      debugPrint('Error fetching initial data: $e');
       if (mounted) {
         setState(() {
           _isLoadingLast = false;
@@ -98,11 +115,14 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
       final isReady = readiness['ready'] == true;
       if (isReady) {
-        final prediction = await api.fetchMlPrediction(date);
+        // await api.fetchMlPrediction(date); // Not used currently, just call
         final rec = await api.fetchMlRecommendations(date);
         if (mounted) {
           setState(() {
-            _mlPredictionResult = prediction;
+            // Kita map rec result sebagai prediction result jika available
+            if (rec != null && rec.data?.upstream != null) {
+              _mlPredictionResult = rec;
+            }
             _mlRecommendation = rec;
             _isCheckingMl = false;
           });
@@ -230,7 +250,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                 unselectedLabelStyle: TextStyle(
                                     fontWeight: FontWeight.w300, fontSize: 17),
                                 tabs: [
-                                  Tab(text: 'Prediksi ML'),
+                                  Tab(text: 'Prediksi'),
                                   Tab(text: 'Dashboard Metrik'),
                                 ],
                               ),
@@ -277,34 +297,120 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton.icon(
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color(0xFFE13D5A),
+                                                    foregroundColor:
+                                                        Colors.white,
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        vertical: 12),
+                                                    shape:
+                                                        RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                  ),
+                                                  onPressed:
+                                                      _checkMlReadinessAndPredict,
+                                                  icon: const Icon(
+                                                      Icons.refresh,
+                                                      size: 28),
+                                                  label: const Text(
+                                                      'Jalankan Prediksi Lagi',
+                                                      style: TextStyle(
+                                                          fontSize: 18)),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: OutlinedButton.icon(
+                                                      style: OutlinedButton
+                                                          .styleFrom(
+                                                        foregroundColor:
+                                                            const Color(
+                                                                0xFFE13D5A),
+                                                        side: const BorderSide(
+                                                            color: Color(
+                                                                0xFFE13D5A)),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 12),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                        ),
+                                                      ),
+                                                      onPressed: () => context.push(
+                                                          '/home/patient-dashboard/ml-assessment'),
+                                                      icon: const Icon(
+                                                          Icons.edit_document,
+                                                          size: 28),
+                                                      label: const Text(
+                                                          'Isi Form',
+                                                          style: TextStyle(
+                                                              fontSize: 18)),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: OutlinedButton.icon(
+                                                      style: OutlinedButton
+                                                          .styleFrom(
+                                                        foregroundColor:
+                                                            const Color(
+                                                                0xFFE13D5A),
+                                                        side: const BorderSide(
+                                                            color: Color(
+                                                                0xFFE13D5A)),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 12),
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                        ),
+                                                      ),
+                                                      onPressed: () => context.push(
+                                                          '/home/patient-dashboard/ml-recommendation-history'),
+                                                      icon: const Icon(
+                                                          Icons.history,
+                                                          size: 28),
+                                                      label: const Text(
+                                                          'Cek History',
+                                                          style: TextStyle(
+                                                              fontSize: 18)),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 24),
                                               if (_mlPredictionResult !=
                                                   null) ...[
                                                 SizedBox(
                                                   width: fullWidth,
                                                   child: PredictionMetricCard(
-                                                    title:
-                                                        'Prediksi ML Hari Ini',
+                                                    title: 'Prediksi',
                                                     icon:
                                                         Icons.insights_rounded,
                                                     iconColor:
                                                         const Color(0xFFE13D5A),
                                                     description:
-                                                        'Berhasil melakukan prediksi berdasarkan data hari ini',
-                                                    score: (double.tryParse(_mlPredictionResult!['upstream']
-                                                                            ?[
-                                                                            'body']
-                                                                        ?[
-                                                                        'probability']
-                                                                    ?.toString() ??
-                                                                _mlPredictionResult!['upstream']
-                                                                            ?[
-                                                                            'body']?['result']
-                                                                        ?[
-                                                                        'probability']
-                                                                    ?.toString() ??
-                                                                '0') ??
-                                                            0.0)
-                                                        .clamp(0.0, 100.0),
+                                                        'Dihasilkan pada: ${_getGeneratedDateStr()}',
+                                                    score: _getProbability(),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 24),
@@ -601,20 +707,41 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     );
   }
 
-  Widget _buildRekomendasiSection(Map<String, dynamic>? mlRec) {
-    List<dynamic> lifestyle = [];
-    if (mlRec != null) {
-      final upstream = mlRec['upstream'] as Map<String, dynamic>?;
-      var bodyRaw = upstream?['body'];
-      if (bodyRaw is String) {
-        try {
-          bodyRaw = jsonDecode(bodyRaw);
-        } catch (_) {}
+  double _getProbability() {
+    if (_mlPredictionResult == null) return 0.0;
+    try {
+      final recResult =
+          _mlPredictionResult?.data?.upstream?.body?.recommendationResult;
+      if (recResult != null) {
+        if (recResult.currentRisk > 0) {
+          final val = recResult.currentRisk;
+          return val.clamp(0.0, 100.0);
+        }
       }
-      final body = bodyRaw as Map<String, dynamic>?;
-      final recResult = body?['recommendationResult'] as Map<String, dynamic>?;
-      lifestyle = recResult?['lifestyle'] as List<dynamic>? ?? [];
+    } catch (_) {}
+    return 0.0;
+  }
+
+  String _getGeneratedDateStr() {
+    if (_mlPredictionResult == null) return 'Hari Ini';
+    final genAt = _mlPredictionResult?.data?.generatedAt;
+    if (genAt != null && genAt.isNotEmpty) {
+      try {
+        final date = DateTime.parse(genAt).toLocal();
+        final day = date.day.toString().padLeft(2, '0');
+        final month = date.month.toString().padLeft(2, '0');
+        final year = date.year;
+        final hour = date.hour.toString().padLeft(2, '0');
+        final minute = date.minute.toString().padLeft(2, '0');
+        return '$day/$month/$year $hour:$minute WIB';
+      } catch (_) {}
     }
+    return 'Hari Ini';
+  }
+
+  Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
+    final lifestyle =
+        mlRec?.data?.upstream?.body?.recommendationResult.lifestyle ?? [];
 
     return Container(
       width: double.infinity,
@@ -655,19 +782,14 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
               style: TextStyle(color: Color(0xFF4A5568)),
             ),
           ...lifestyle.map((item) {
-            final isString = item is String;
-            final title = isString
-                ? item
-                : (item['comparison']?.toString() ??
-                    item['title']?.toString() ??
-                    item['name']?.toString() ??
-                    '');
-            final rec = isString
-                ? ''
-                : (item['recommendedValueInterval']?.toString() ??
-                    item['recommendation']?.toString() ??
-                    item['description']?.toString() ??
-                    '');
+            final title =
+                item.comparison.isNotEmpty ? item.comparison : item.description;
+            // final rec = item.recommendedValueInterval;
+            final changeStatus = item.changeStatus;
+
+            if (changeStatus == 'False') {
+              return const SizedBox.shrink();
+            }
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
@@ -694,19 +816,19 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                       ),
                     ],
                   ),
-                  if (rec.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 24.0),
-                      child: Text(
-                        rec,
-                        style: const TextStyle(
-                          color: Color(0xFF4A5568),
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
+                  // if (rec.isNotEmpty) ...[
+                  //   const SizedBox(height: 6),
+                  //   Padding(
+                  //     padding: const EdgeInsets.only(left: 24.0),
+                  //     child: Text(
+                  //       rec,
+                  //       style: const TextStyle(
+                  //         color: Color(0xFF4A5568),
+                  //         height: 1.5,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ],
                 ],
               ),
             );
@@ -1156,10 +1278,10 @@ class _PatientHeaderCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 Wrap(
-                  spacing: 28,
-                  runSpacing: 16,
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
                     _DetailItem(label: 'Sex', value: properGender),
                     _DetailItem(
@@ -1275,33 +1397,31 @@ class _DetailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 180,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1,
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
           ),
-          const SizedBox(height: 4),
-          Text(
+        ),
+        Flexible(
+          child: Text(
             value,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Color(0xFF1A202C),
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1375,21 +1495,32 @@ class PredictionMetricCard extends StatelessWidget {
               color: const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(
-              description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
-                height: 1.4,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Text(
+                  'Berikut adalah skor risiko kesehatan terbaru pasien yang menunjukkan probabilitas komplikasi serius dalam waktu dekat',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A202C),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           ),
-
-          const SizedBox(height: 16),
-
-          const SizedBox(height: 16),
 
           // Gauge Section
           SizedBox(

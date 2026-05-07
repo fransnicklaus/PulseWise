@@ -24,6 +24,7 @@ import 'package:pulsewise/features/dashboard/presentation/pages/patient_ml_asses
 import 'package:pulsewise/features/dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
@@ -235,6 +236,11 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               GoRoute(
                 path: 'ml-assessment',
                 builder: (context, state) => const PatientMlAssessmentPage(),
+              ),
+              GoRoute(
+                path: 'ml-recommendation-history',
+                builder: (context, state) =>
+                    const MlRecommendationHistoryPage(),
               ),
               GoRoute(
                 path: 'print',

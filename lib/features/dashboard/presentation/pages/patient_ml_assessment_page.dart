@@ -518,7 +518,7 @@ class _PatientMlAssessmentPageState
         title: 'Form Asesmen Pasien',
         subtitle: 'Isi asesmen terbaru pasien',
         showBackButton: true,
-        onBackPressed: () => context.go('/home'),
+        onBackPressed: () => context.pop(),
       ),
       body: SafeArea(
         child: _isInitialLoading

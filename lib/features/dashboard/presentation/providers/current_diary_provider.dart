@@ -39,6 +39,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
             userId: '',
             diaryDate: DateTime.now(),
             createdAt: DateTime.now(),
+            heartRate: null,
             bodyMetrics: const [],
             symptoms: const [],
             activities: const [],
@@ -270,13 +271,17 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     final heartRate = payload['heartRate'] is num
         ? (payload['heartRate'] as num).toInt()
         : int.tryParse(payload['heartRate']?.toString() ?? '');
+    final oxygenSaturation = payload['oxygenSaturation'] is num
+        ? (payload['oxygenSaturation'] as num).toInt()
+        : int.tryParse(payload['oxygenSaturation']?.toString() ?? '');
 
     final hasAnyField = bodyHeight != null ||
         bodyWeight != null ||
         bmi != null ||
         systolicPressure != null ||
         diastolicPressure != null ||
-        heartRate != null;
+        heartRate != null ||
+        oxygenSaturation != null;
     if (!hasAnyField) {
       throw Exception('Isi minimal satu data metrik kesehatan.');
     }
@@ -296,6 +301,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       systolicPressure: systolicPressure,
       diastolicPressure: diastolicPressure,
       heartRate: heartRate,
+      oxygenSaturation: oxygenSaturation,
     );
   }
 }
@@ -345,6 +351,11 @@ class DiaryDetail {
   final String userId;
   final DateTime? diaryDate;
   final DateTime? createdAt;
+  final num? heartRate;
+  final num? latestHeartRate;
+  final DateTime? latestHeartRateMeasuredAt;
+  final num? latestOxygenSaturation;
+  final DateTime? latestOxygenSaturationMeasuredAt;
   final List<DiaryBodyMetric> bodyMetrics;
   final List<DiarySymptom> symptoms;
   final List<DiaryActivity> activities;
@@ -356,6 +367,11 @@ class DiaryDetail {
     required this.userId,
     required this.diaryDate,
     required this.createdAt,
+    required this.heartRate,
+    this.latestHeartRate,
+    this.latestHeartRateMeasuredAt,
+    this.latestOxygenSaturation,
+    this.latestOxygenSaturationMeasuredAt,
     required this.bodyMetrics,
     required this.symptoms,
     required this.activities,
@@ -369,6 +385,17 @@ class DiaryDetail {
       userId: (json['userId'] ?? '').toString(),
       diaryDate: DateTime.tryParse((json['diaryDate'] ?? '').toString()),
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+      heartRate: json['heartRate'] as num?,
+      latestHeartRate: json['latestHeartRate'] as num?,
+      latestHeartRateMeasuredAt: json['latestHeartRateMeasuredAt'] != null
+          ? DateTime.tryParse(json['latestHeartRateMeasuredAt'].toString())
+          : null,
+      latestOxygenSaturation: json['latestOxygenSaturation'] as num?,
+      latestOxygenSaturationMeasuredAt:
+          json['latestOxygenSaturationMeasuredAt'] != null
+              ? DateTime.tryParse(
+                  json['latestOxygenSaturationMeasuredAt'].toString())
+              : null,
       bodyMetrics: ((json['bodyMetrics'] as List?) ?? const [])
           .map((e) => DiaryBodyMetric.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -392,6 +419,11 @@ class DiaryDetail {
     String? userId,
     DateTime? diaryDate,
     DateTime? createdAt,
+    num? heartRate,
+    num? latestHeartRate,
+    DateTime? latestHeartRateMeasuredAt,
+    num? latestOxygenSaturation,
+    DateTime? latestOxygenSaturationMeasuredAt,
     List<DiaryBodyMetric>? bodyMetrics,
     List<DiarySymptom>? symptoms,
     List<DiaryActivity>? activities,
@@ -403,6 +435,7 @@ class DiaryDetail {
       userId: userId ?? this.userId,
       diaryDate: diaryDate ?? this.diaryDate,
       createdAt: createdAt ?? this.createdAt,
+      heartRate: heartRate ?? this.heartRate,
       bodyMetrics: bodyMetrics ?? this.bodyMetrics,
       symptoms: symptoms ?? this.symptoms,
       activities: activities ?? this.activities,
@@ -445,6 +478,10 @@ class DiaryBodyMetric {
   final num? bodyWeight;
   final num? bmi;
   final num? heartRate;
+  final num? latestHeartRate;
+  final DateTime? latestHeartRateMeasuredAt;
+  final num? latestOxygenSaturation;
+  final DateTime? latestOxygenSaturationMeasuredAt;
   final num? systolicPressure;
   final num? diastolicPressure;
   final DateTime? timeStamp;
@@ -456,6 +493,10 @@ class DiaryBodyMetric {
     required this.bodyWeight,
     required this.bmi,
     required this.heartRate,
+    this.latestHeartRate,
+    this.latestHeartRateMeasuredAt,
+    this.latestOxygenSaturation,
+    this.latestOxygenSaturationMeasuredAt,
     required this.systolicPressure,
     required this.diastolicPressure,
     required this.timeStamp,
@@ -469,6 +510,16 @@ class DiaryBodyMetric {
       bodyWeight: json['bodyWeight'] as num?,
       bmi: json['bmi'] as num?,
       heartRate: json['heartRate'] as num?,
+      latestHeartRate: json['latestHeartRate'] as num?,
+      latestHeartRateMeasuredAt: json['latestHeartRateMeasuredAt'] != null
+          ? DateTime.tryParse(json['latestHeartRateMeasuredAt'].toString())
+          : null,
+      latestOxygenSaturation: json['latestOxygenSaturation'] as num?,
+      latestOxygenSaturationMeasuredAt:
+          json['latestOxygenSaturationMeasuredAt'] != null
+              ? DateTime.tryParse(
+                  json['latestOxygenSaturationMeasuredAt'].toString())
+              : null,
       systolicPressure: json['systolicPressure'] as num?,
       diastolicPressure: json['diastolicPressure'] as num?,
       timeStamp: DateTime.tryParse((json['timeStamp'] ?? '').toString()),

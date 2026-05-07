@@ -44,6 +44,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   final TextEditingController _systolicController = TextEditingController();
   final TextEditingController _diastolicController = TextEditingController();
   final TextEditingController _heartRateController = TextEditingController();
+  final TextEditingController _oxygenController = TextEditingController();
   final TextEditingController _conditionController = TextEditingController();
   final TextEditingController _symptomSearchController =
       TextEditingController();
@@ -166,6 +167,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   String? _metrikSystolicError;
   String? _metrikDiastolicError;
   String? _metrikHeartRateError;
+  String? _metrikOxygenError;
   String? _konsumsiTypeError;
   String? _konsumsiNameError;
   String? _konsumsiPortionError;
@@ -248,6 +250,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     _systolicController.dispose();
     _diastolicController.dispose();
     _heartRateController.dispose();
+    _oxygenController.dispose();
     _conditionController.dispose();
     _symptomSearchController.dispose();
     _activitySearchController.dispose();
@@ -331,12 +334,14 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     final systolicRaw = _systolicController.text.trim();
     final diastolicRaw = _diastolicController.text.trim();
     final heartRateRaw = _heartRateController.text.trim();
+    final oxygenRaw = _oxygenController.text.trim();
 
     final hasAnyField = heightRaw.isNotEmpty ||
         weightRaw.isNotEmpty ||
         systolicRaw.isNotEmpty ||
         diastolicRaw.isNotEmpty ||
-        heartRateRaw.isNotEmpty;
+        heartRateRaw.isNotEmpty ||
+        oxygenRaw.isNotEmpty;
 
     final heightValue = heightRaw.isEmpty ? null : double.tryParse(heightRaw);
     final weightValue = weightRaw.isEmpty ? null : double.tryParse(weightRaw);
@@ -346,12 +351,14 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
         diastolicRaw.isEmpty ? null : int.tryParse(diastolicRaw);
     final heartRateValue =
         heartRateRaw.isEmpty ? null : int.tryParse(heartRateRaw);
+    final oxygenValue = oxygenRaw.isEmpty ? null : int.tryParse(oxygenRaw);
 
     final hasInvalidNumber = (heightRaw.isNotEmpty && heightValue == null) ||
         (weightRaw.isNotEmpty && weightValue == null) ||
         (systolicRaw.isNotEmpty && systolicValue == null) ||
         (diastolicRaw.isNotEmpty && diastolicValue == null) ||
-        (heartRateRaw.isNotEmpty && heartRateValue == null);
+        (heartRateRaw.isNotEmpty && heartRateValue == null) ||
+        (oxygenRaw.isNotEmpty && oxygenValue == null);
 
     if (!hasAnyField || hasInvalidNumber) {
       setState(() {
@@ -374,6 +381,9 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             (heartRateRaw.isNotEmpty && heartRateValue == null)
                 ? 'Detak jantung harus angka.'
                 : null;
+        _metrikOxygenError = (oxygenRaw.isNotEmpty && oxygenValue == null)
+            ? 'Saturasi Oksigen harus angka.'
+            : null;
       });
       return;
     }
@@ -385,6 +395,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       _metrikSystolicError = null;
       _metrikDiastolicError = null;
       _metrikHeartRateError = null;
+      _metrikOxygenError = null;
     });
 
     final bodyMassIndex = (heightValue != null &&
@@ -406,6 +417,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       'systolicPressure': systolicValue,
       'diastolicPressure': diastolicValue,
       'heartRate': heartRateValue,
+      'oxygenSaturation': oxygenValue,
       'timeStamp': now.toUtc().toIso8601String(),
     };
 
@@ -846,7 +858,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        icon: const Icon(Icons.bedtime, color: Color(0xFF3B82F6)),
+                        icon:
+                            const Icon(Icons.bedtime, color: Color(0xFF3B82F6)),
                         label: Text(
                           _formatTime(_sleepTime),
                           style: const TextStyle(
@@ -884,7 +897,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        icon: const Icon(Icons.wb_sunny, color: Color(0xFFF59E0B)),
+                        icon: const Icon(Icons.wb_sunny,
+                            color: Color(0xFFF59E0B)),
                         label: Text(
                           _formatTime(_wakeTime),
                           style: const TextStyle(
@@ -1207,6 +1221,52 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               hintStyle: const TextStyle(color: Color(0x7094A3B8)),
               suffixText: 'BPM',
               errorText: _metrikHeartRateError,
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE64060)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Saturasi Oksigen (opsional)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _oxygenController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) {
+              if (_metrikOxygenError == null && _metrikFormError == null) {
+                return;
+              }
+              setState(() {
+                _metrikOxygenError = null;
+                _metrikFormError = null;
+              });
+            },
+            style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
+            decoration: InputDecoration(
+              hintText: 'Contoh: 98',
+              hintStyle: const TextStyle(color: Color(0x7094A3B8)),
+              suffixText: '%',
+              errorText: _metrikOxygenError,
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               contentPadding:

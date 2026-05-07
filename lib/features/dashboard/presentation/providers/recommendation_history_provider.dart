@@ -1,21 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'current_diary_provider.dart';
+// import 'current_diary_provider.dart';
 import 'profile_provider.dart';
 
-final diaryHistoryProvider =
-    StateNotifierProvider.autoDispose<DiaryHistoryNotifier, DiaryHistoryState>(
+final recommendationhistoryNotifier = StateNotifierProvider.autoDispose<
+    RecommendationHistoryNotifier, RecommendationHistoryState>(
   (ref) {
-    return DiaryHistoryNotifier(ref.watch(profileApiProvider));
+    return RecommendationHistoryNotifier(ref.watch(profileApiProvider));
   },
 );
 
-class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
-  DiaryHistoryNotifier(this._profileApi) : super(const DiaryHistoryState());
+class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryState> {
+  RecommendationHistoryNotifier(this._profileApi)
+      : super(const RecommendationHistoryState());
 
   final ProfileApi _profileApi;
 
-  Future<void> loadDiaryHistory({
+  Future<void> loadRecommendationHistory({
     int page = 1,
     int limit = 10,
     DateTime? startDate,
@@ -36,11 +37,9 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     );
 
     try {
-      final response = await _profileApi.fetchDiaryHistory(
+      final response = await _profileApi.fetchMlRecommendationHistory(
         page: page,
         limit: limit,
-        startDate: startDate,
-        endDate: endDate,
       );
 
       if (!mounted) return;
@@ -68,11 +67,9 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     if (state.isLoading || state.isLoadingMore) return;
     if (state.page >= state.totalPages) return;
 
-    await loadDiaryHistory(
+    await loadRecommendationHistory(
       page: state.page + 1,
       limit: state.limit,
-      startDate: state.startDate,
-      endDate: state.endDate,
       append: true,
     );
   }
@@ -89,22 +86,20 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
       loadingDetailDiaryIds: const {},
     );
 
-    await loadDiaryHistory(
+    await loadRecommendationHistory(
       page: 1,
       limit: state.limit,
-      startDate: startDate ?? state.startDate,
-      endDate: endDate ?? state.endDate,
     );
   }
 
-  Future<void> loadDiaryDetail(DateTime diaryDate) async {
+  Future<void> loadRecommendationDetail(String resultId) async {
     // if (diaryId == null) return;
-    if (state.detailsByDiaryId.containsKey(diaryDate)) return;
-    if (state.loadingDetailDiaryIds.contains(diaryDate)) return;
+    if (state.detailsByDiaryId.containsKey(resultId)) return;
+    if (state.loadingDetailDiaryIds.contains(resultId)) return;
     if (!mounted) return;
 
-    final loadingIds = {...state.loadingDetailDiaryIds, diaryDate};
-    final detailErrors = {...state.detailErrorsByDiaryId}..remove(diaryDate);
+    final loadingIds = {...state.loadingDetailDiaryIds, resultId};
+    final detailErrors = {...state.detailErrorsByDiaryId}..remove(resultId);
 
     state = state.copyWith(
       loadingDetailDiaryIds: loadingIds,
@@ -112,12 +107,15 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     );
 
     try {
-      final detail = await _profileApi.fetchDiaryDetail(diaryDate);
+      final detail =
+          await _profileApi.fetchMlRecommendationHistoryDetail(resultId);
       if (!mounted) return;
 
-      final nextDetails = {...state.detailsByDiaryId, diaryDate: detail};
-      final nextLoadingIds = {...state.loadingDetailDiaryIds}
-        ..remove(diaryDate);
+      final Map<String, MlRecommendationResponse> nextDetails = {
+        ...state.detailsByDiaryId,
+        resultId: detail
+      };
+      final nextLoadingIds = {...state.loadingDetailDiaryIds}..remove(resultId);
 
       state = state.copyWith(
         detailsByDiaryId: nextDetails,
@@ -126,11 +124,10 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     } catch (e) {
       if (!mounted) return;
 
-      final nextLoadingIds = {...state.loadingDetailDiaryIds}
-        ..remove(diaryDate);
+      final nextLoadingIds = {...state.loadingDetailDiaryIds}..remove(resultId);
       final nextErrors = {
         ...state.detailErrorsByDiaryId,
-        diaryDate: e.toString().replaceFirst('Exception: ', ''),
+        resultId: e.toString().replaceFirst('Exception: ', ''),
       };
 
       state = state.copyWith(
@@ -142,26 +139,26 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
 
   void clearCache() {
     if (!mounted) return;
-    state = const DiaryHistoryState();
+    state = const RecommendationHistoryState();
   }
 }
 
-class DiaryHistoryState {
+class RecommendationHistoryState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
-  final List<DiaryHistoryItem> items;
+  final List<MlRecommendationHistoryItem> items;
   final int page;
   final int limit;
   final int totalItems;
   final int totalPages;
   final DateTime? startDate;
   final DateTime? endDate;
-  final Map<DateTime, DiaryDetail> detailsByDiaryId;
-  final Set<DateTime> loadingDetailDiaryIds;
-  final Map<DateTime, String> detailErrorsByDiaryId;
+  final Map<String, MlRecommendationResponse> detailsByDiaryId;
+  final Set<String> loadingDetailDiaryIds;
+  final Map<String, String> detailErrorsByDiaryId;
 
-  const DiaryHistoryState({
+  const RecommendationHistoryState({
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
@@ -177,22 +174,22 @@ class DiaryHistoryState {
     this.detailErrorsByDiaryId = const {},
   });
 
-  DiaryHistoryState copyWith({
+  RecommendationHistoryState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
-    List<DiaryHistoryItem>? items,
+    List<MlRecommendationHistoryItem>? items,
     int? page,
     int? limit,
     int? totalItems,
     int? totalPages,
     DateTime? startDate,
     DateTime? endDate,
-    Map<DateTime, DiaryDetail>? detailsByDiaryId,
-    Set<DateTime>? loadingDetailDiaryIds,
-    Map<DateTime, String>? detailErrorsByDiaryId,
+    Map<String, MlRecommendationResponse>? detailsByDiaryId,
+    Set<String>? loadingDetailDiaryIds,
+    Map<String, String>? detailErrorsByDiaryId,
   }) {
-    return DiaryHistoryState(
+    return RecommendationHistoryState(
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
