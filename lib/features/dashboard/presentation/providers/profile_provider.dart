@@ -984,6 +984,8 @@ class ProfileApi {
   Future<MlRecommendationHistoryResponse> fetchMlRecommendationHistory({
     int page = 1,
     int limit = 20,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -1009,6 +1011,8 @@ class ProfileApi {
       queryParameters: {
         'page': page,
         'limit': limit,
+        'startDate': startDate != null ? formatDate(startDate) : null,
+        'endDate': endDate != null ? formatDate(endDate) : null,
       },
       options: Options(
         headers: {

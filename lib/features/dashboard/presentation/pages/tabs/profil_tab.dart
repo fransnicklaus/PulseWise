@@ -761,18 +761,18 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                                     ? '-'
                                     : profile.address),
                           ),
-                          _InfoRow(
-                            label: 'Merokok',
-                            value: profile == null
-                                ? '-'
-                                : (profile.isSmoking ? 'Ya' : 'Tidak'),
-                          ),
-                          _InfoRow(
-                            label: 'Merokok Elektrik',
-                            value: profile == null
-                                ? '-'
-                                : (profile.isElectricSmoking ? 'Ya' : 'Tidak'),
-                          ),
+                          // _InfoRow(
+                          //   label: 'Merokok',
+                          //   value: profile == null
+                          //       ? '-'
+                          //       : (profile.isSmoking ? 'Ya' : 'Tidak'),
+                          // ),
+                          // _InfoRow(
+                          //   label: 'Merokok Elektrik',
+                          //   value: profile == null
+                          //       ? '-'
+                          //       : (profile.isElectricSmoking ? 'Ya' : 'Tidak'),
+                          // ),
                         ],
                       ),
                       const SizedBox(height: 14),

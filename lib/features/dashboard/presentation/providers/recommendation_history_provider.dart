@@ -40,6 +40,8 @@ class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryS
       final response = await _profileApi.fetchMlRecommendationHistory(
         page: page,
         limit: limit,
+        startDate: startDate,
+        endDate: endDate,
       );
 
       if (!mounted) return;
@@ -70,6 +72,8 @@ class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryS
     await loadRecommendationHistory(
       page: state.page + 1,
       limit: state.limit,
+      startDate: state.startDate,
+      endDate: state.endDate,
       append: true,
     );
   }

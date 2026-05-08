@@ -243,7 +243,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                     : contactsState.items.isEmpty
                         ? const Text(
                             'Belum ada kontak darurat',
-                            style: TextStyle(color: Color(0xFF64748B)),
+                            style: TextStyle(
+                                color: Color(0xFF64748B), fontSize: 18),
                           )
                         : const SizedBox.shrink(),
               ),
@@ -300,7 +301,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                       'Layanan 24 Jam',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 18,
                       ),
                     ),
                   ],

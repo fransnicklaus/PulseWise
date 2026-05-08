@@ -742,6 +742,12 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
     final lifestyle =
         mlRec?.data?.upstream?.body?.recommendationResult.lifestyle ?? [];
+    final recommendationIncrease = lifestyle
+        .where((r) => r.comparison.toLowerCase().contains('tingkat'))
+        .toList();
+    final recommendationDecrease = lifestyle
+        .where((r) => r.comparison.toLowerCase().contains('kurang'))
+        .toList();
 
     return Container(
       width: double.infinity,
@@ -781,56 +787,30 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
               'Tidak ada rekomendasi spesifik saat ini.',
               style: TextStyle(color: Color(0xFF4A5568)),
             ),
-          ...lifestyle.map((item) {
+          ...recommendationIncrease.map((item) {
             final title =
                 item.comparison.isNotEmpty ? item.comparison : item.description;
             // final rec = item.recommendedValueInterval;
-            final changeStatus = item.changeStatus;
+            // final changeStatus = item.changeStatus;
+            // String action = '';
 
-            if (changeStatus == 'False') {
-              return const SizedBox.shrink();
-            }
+            return RecommendationItem(
+              title: title,
+              // description: item.description,
+              action: 'increase',
+            );
+          }),
+          ...recommendationDecrease.map((item) {
+            final title =
+                item.comparison.isNotEmpty ? item.comparison : item.description;
+            // final rec = item.recommendedValueInterval;
+            // final changeStatus = item.changeStatus;
+            // String action = '';
 
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4, right: 8),
-                        child: Icon(Icons.check_circle,
-                            size: 16, color: Colors.green),
-                      ),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A202C),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  // if (rec.isNotEmpty) ...[
-                  //   const SizedBox(height: 6),
-                  //   Padding(
-                  //     padding: const EdgeInsets.only(left: 24.0),
-                  //     child: Text(
-                  //       rec,
-                  //       style: const TextStyle(
-                  //         color: Color(0xFF4A5568),
-                  //         height: 1.5,
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ],
-                ],
-              ),
+            return RecommendationItem(
+              title: title,
+              // description: item.description,
+              action: 'decrease',
             );
           }),
         ],
@@ -1607,6 +1587,63 @@ class PredictionMetricCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class RecommendationItem extends StatelessWidget {
+  final String title;
+  // final String description;
+  final String action; // 'increase', 'decrease', or ''
+
+  const RecommendationItem({
+    super.key,
+    required this.title,
+    // required this.description,
+    this.action = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color? actionColor;
+    IconData? actionIcon;
+
+    if (action == 'increase') {
+      actionColor = Colors.green;
+      actionIcon = Icons.arrow_upward;
+    } else if (action == 'decrease') {
+      actionColor = Colors.red;
+      actionIcon = Icons.arrow_downward;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (actionIcon != null)
+          CircleAvatar(
+            backgroundColor: actionColor!.withOpacity(0.2),
+            radius: 10,
+            child: Icon(actionIcon, size: 16, color: actionColor),
+          ),
+        if (actionIcon != null) const SizedBox(width: 8),
+        Expanded(
+          // Expanded harus di luar Padding jika ini di dalam Row
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 12, left: 4),
+            child: Text(
+              title,
+              softWrap: true, // Memastikan teks membungkus
+              overflow: TextOverflow
+                  .visible, // Atau TextOverflow.ellipsis jika ingin dipotong titik-titik
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A202C),
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

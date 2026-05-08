@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/recommendation_history_provider.dart';
+import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import '../../../../core/widgets/custom_app_bar.dart';
 
@@ -78,7 +79,9 @@ class _MlRecommendationHistoryPageState
 
     if (isExpanded) return;
 
-    await ref.read(profileApiProvider).fetchMlRecommendationHistoryDetail(id);
+    await ref
+        .read(recommendationhistoryNotifier.notifier)
+        .loadRecommendationDetail(id);
     if (!mounted) return;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -146,17 +149,101 @@ class _MlRecommendationHistoryPageState
     String day = dateTime.day.toString();
     String month = months[dateTime.month - 1];
     int year = dateTime.year;
+    Duration offset = DateTime.now().timeZoneOffset;
+
+    // Ambil jam dan menit dari durasi offset
+    int offsetHour = offset.inHours;
 
     // Time parts (padded to 2 digits)
-    String hour = dateTime.hour.toString().padLeft(2, '0');
+    String hour = (dateTime.hour + offsetHour).toString().padLeft(2, '0');
     String minute = dateTime.minute.toString().padLeft(2, '0');
 
     return "$day $month $year, $hour:$minute";
   }
 
+  DateTime _asDateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  Future<void> _pickStartDate() async {
+    final now = DateTime.now();
+    final state = ref.read(recommendationhistoryNotifier);
+    final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
+    final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentStart,
+      firstDate: DateTime(now.year - 5, 1, 1),
+      lastDate: DateTime(now.year + 2, 12, 31),
+    );
+
+    if (picked == null || !mounted) return;
+
+    var startDate = _asDateOnly(picked);
+    var endDate = _asDateOnly(currentEnd);
+
+    if (startDate.isAfter(endDate)) {
+      endDate = startDate;
+    }
+
+    setState(() {
+      _expandedId = null;
+    });
+
+    await ref
+        .read(recommendationhistoryNotifier.notifier)
+        .loadRecommendationHistory(
+          page: 1,
+          limit: 10,
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
+  Future<void> _pickEndDate() async {
+    final now = DateTime.now();
+    final state = ref.read(recommendationhistoryNotifier);
+    final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
+    final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: currentEnd,
+      firstDate: DateTime(now.year - 5, 1, 1),
+      lastDate: DateTime(now.year + 2, 12, 31),
+    );
+
+    if (picked == null || !mounted) return;
+
+    var startDate = _asDateOnly(currentStart);
+    var endDate = _asDateOnly(picked);
+
+    if (endDate.isBefore(startDate)) {
+      startDate = endDate;
+    }
+
+    setState(() {
+      _expandedId = null;
+    });
+
+    await ref
+        .read(recommendationhistoryNotifier.notifier)
+        .loadRecommendationHistory(
+          page: 1,
+          limit: 10,
+          startDate: startDate,
+          endDate: endDate,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(recommendationhistoryNotifier);
+    final startLabel =
+        state.startDate != null ? _formatDate(state.startDate) : 'Start date';
+    final endLabel =
+        state.endDate != null ? _formatDate(state.endDate) : 'End date';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -172,614 +259,605 @@ class _MlRecommendationHistoryPageState
             ref.read(recommendationhistoryNotifier.notifier).refreshHistory(),
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            if (state.isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFFE64060)),
-                ),
-              )
-            else if (state.items.isEmpty)
-              const SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'Belum ada riwayat prediksi ML',
-                    style: TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final item = state.items[index];
-                      final id = item.resultId as String;
-                      final date = formatToCustomDate(item.generatedAt);
-                      final dateTime = formatWithTime(item.generatedAt);
-                      // final cleanDate = formatToCustomDate(
-                      //     date.toIso8601String().split('T')[0]);
-
-                      final isExpanded = _expandedId == id;
-
-                      return Padding(
-                        key: _itemKeys[id],
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 7),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => _toggleEntry(id),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
+        child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    minHeight: MediaQuery.of(context).size.height),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          top: 16, left: 16, right: 16, bottom: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.event_available, size: 18),
+                              label: Text(
+                                startLabel,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 18),
+                              ),
+                              onPressed:
+                                  state.isLoading ? null : _pickStartDate,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF475569),
+                                side:
+                                    const BorderSide(color: Color(0xFFD9E2EC)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
-                              ],
+                              ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            date,
-                                            style: const TextStyle(
-                                              color: Color(0xFF1E293B),
-                                              fontSize: 17,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          Text(
-                                            'Dibuat $dateTime',
-                                            style: const TextStyle(
-                                              color: Color(0xFF64748B),
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    AnimatedRotation(
-                                      turns: isExpanded ? 0.25 : 0,
-                                      duration:
-                                          const Duration(milliseconds: 220),
-                                      child: const Icon(
-                                        Icons.chevron_right,
-                                        color: Color(0xFF94A3B8),
-                                      ),
-                                    ),
-                                  ],
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '-',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.event, size: 18),
+                              label: Text(
+                                endLabel,
+                                style: TextStyle(fontSize: 18),
+                              ),
+                              onPressed: state.isLoading ? null : _pickEndDate,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF475569),
+                                side:
+                                    const BorderSide(color: Color(0xFFD9E2EC)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
                                 ),
-                                // ...state.items.map((item) {
-                                //   final id = item.resultId;
-                                //   final detail = state.detailsByDiaryId[id];
-                                //   final isDetailLoading =
-                                //       state.loadingDetailDiaryIds.contains(id);
-                                //   final detailError =
-                                //       state.detailErrorsByDiaryId[id];
-                                //   return
-
-                                // _itemKeys[id] ??= GlobalKey();
-
-                                // return Padding(
-                                //   key: _itemKeys[id],
-                                //   padding: const EdgeInsets.symmetric(
-                                //     horizontal: 16,
-                                //     vertical: 7,
-                                //   ),
-                                //   child: InkWell(
-                                //     borderRadius: BorderRadius.circular(16),
-                                //     onTap: () => _toggleEntry(id),
-                                //     child: Container(
-                                //       padding: const EdgeInsets.all(16),
-                                //       decoration: BoxDecoration(
-                                //         color: Colors.white,
-                                //         borderRadius:
-                                //             BorderRadius.circular(16),
-                                //         boxShadow: [
-                                //           BoxShadow(
-                                //             color: Colors.black
-                                //                 .withOpacity(0.03),
-                                //             blurRadius: 10,
-                                //             offset: const Offset(0, 4),
-                                //           ),
-                                //         ],
-                                //       ),
-                                //       child: Column(
-                                //         crossAxisAlignment:
-                                //             CrossAxisAlignment.start,
-                                //         children: [
-                                //           Row(
-                                //             children: [
-                                //               Expanded(
-                                //                 child: Column(
-                                //                   crossAxisAlignment:
-                                //                       CrossAxisAlignment
-                                //                           .start,
-                                //                   children: [
-                                //                     Text(
-                                //                       date,
-                                //                       style: const TextStyle(
-                                //                         color:
-                                //                             Color(0xFF1E293B),
-                                //                         fontSize: 17,
-                                //                         fontWeight:
-                                //                             FontWeight.w700,
-                                //                       ),
-                                //                     ),
-                                //                     const SizedBox(height: 3),
-                                //                     Text(
-                                //                       'Dibuat $dateTime',
-                                //                       style: const TextStyle(
-                                //                         color:
-                                //                             Color(0xFF64748B),
-                                //                         fontSize: 13,
-                                //                         fontWeight:
-                                //                             FontWeight.w500,
-                                //                       ),
-                                //                     ),
-                                //                   ],
-                                //                 ),
-                                //               ),
-                                //               AnimatedRotation(
-                                //                 turns: isExpanded ? 0.25 : 0,
-                                //                 duration: const Duration(
-                                //                     milliseconds: 220),
-                                //                 child: const Icon(
-                                //                   Icons.chevron_right,
-                                //                   color: Color(0xFF94A3B8),
-                                //                 ),
-                                //               ),
-                                //             ],
-                                //           ),
-                                //           ClipRect(
-                                //             child: AnimatedSize(
-                                //               duration: const Duration(
-                                //                   milliseconds: 220),
-                                //               curve: Curves.easeInOutCubic,
-                                //               alignment: Alignment.topCenter,
-                                //               child: AnimatedSwitcher(
-                                //                 duration: const Duration(
-                                //                     milliseconds: 180),
-                                //                 switchInCurve: Curves.easeOut,
-                                //                 switchOutCurve: Curves.easeIn,
-                                //                 transitionBuilder:
-                                //                     (child, animation) {
-                                //                   return FadeTransition(
-                                //                     opacity: animation,
-                                //                     child: child,
-                                //                   );
-                                //                 },
-                                //                 child: isExpanded
-                                //                     ? Padding(
-                                //                         key: ValueKey<String>(
-                                //                           'expanded-$id',
-                                //                         ),
-                                //                         padding:
-                                //                             const EdgeInsets
-                                //                                 .only(
-                                //                                 top: 12),
-                                //                         child: Text(
-                                //                             'this works'),
-                                //                         // child: _ExpandedArea(
-                                //                         //   isLoading: isDetailLoading,
-                                //                         //   error: detailError,
-                                //                         //   detail: detail,
-                                //                         //   onRetry: () => ref
-                                //                         //       .read(diaryHistoryProvider
-                                //                         //           .notifier)
-                                //                         //       .loadDiaryDetail(item.diaryDate!),
-                                //                         //   formatTime: _formatTime,
-                                //                         // ),
-                                //                       )
-                                //                     : const SizedBox(
-                                //                         key: ValueKey<String>(
-                                //                             'collapsed'),
-                                //                       ),
-                                //               ),
-                                //             ),
-                                //           ),
-                                //         ],
-                                //       ),
-                                //     ),
-                                // ),
-                                // );
-                                // }
-                              ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (state.isLoading)
+                      const SizedBox(
+                        height: 240,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFFE64060)),
+                        ),
+                      )
+                    else if (state.items.isEmpty)
+                      const SizedBox(
+                        height: 240,
+                        child: Center(
+                          child: Text(
+                            'Belum ada riwayat prediksi ML',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
-                      );
-                    },
-                    childCount: state.items.length,
-                  ),
-                ),
-              ),
-            if (state.error != null && state.items.isEmpty)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Text(
-                  state.error!,
-                  style: const TextStyle(
-                    color: Color(0xFFB91C1C),
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            if (state.error != null && state.items.isEmpty)
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Text(
-                  state.error!,
-                  style: const TextStyle(
-                    color: Color(0xFFB91C1C),
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            if (state.isLoadingMore)
-              const Padding(
-                padding: EdgeInsets.only(top: 8, bottom: 18),
-                child: Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.3,
-                      color: Color(0xFFE64060),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+                      )
+                    else
+                      ...state.items.map((item) {
+                        // final id = state.items.indexWhere((e) => e.resultId == item.resultId);
+                        final id = item.resultId;
+                        final detail = state.detailsByDiaryId[id];
+                        final isDetailLoading =
+                            state.loadingDetailDiaryIds.contains(id);
+                        final detailError = state.detailErrorsByDiaryId[id];
+                        // return _itemKeys[id] ??= GlobalKey();
+                        // final id = item.resultId as String;
+                        final date = formatToCustomDate(item.generatedAt);
+                        final dateTime = formatWithTime(item.generatedAt);
+                        // final cleanDate = formatToCustomDate(
+                        //     date.toIso8601String().split('T')[0]);
+
+                        final isExpanded = _expandedId == id;
+
+                        return Padding(
+                          key: _itemKeys[id],
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 7,
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () => _toggleEntry(id),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.03),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              date,
+                                              style: const TextStyle(
+                                                color: Color(0xFF1E293B),
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              'Dibuat $dateTime',
+                                              style: const TextStyle(
+                                                color: Color(0xFF64748B),
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      AnimatedRotation(
+                                        turns: isExpanded ? 0.25 : 0,
+                                        duration:
+                                            const Duration(milliseconds: 220),
+                                        child: const Icon(
+                                          Icons.chevron_right,
+                                          color: Color(0xFF94A3B8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  ClipRect(
+                                    child: AnimatedSize(
+                                      duration:
+                                          const Duration(milliseconds: 220),
+                                      curve: Curves.easeInOutCubic,
+                                      alignment: Alignment.topCenter,
+                                      child: AnimatedSwitcher(
+                                        duration:
+                                            const Duration(milliseconds: 180),
+                                        switchInCurve: Curves.easeOut,
+                                        switchOutCurve: Curves.easeIn,
+                                        transitionBuilder: (child, animation) {
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: child,
+                                          );
+                                        },
+                                        child: isExpanded
+                                            ? Padding(
+                                                key: ValueKey<String>(
+                                                  'expanded-$id',
+                                                ),
+                                                padding: const EdgeInsets.only(
+                                                    top: 12),
+                                                // child: Text('this works'),
+                                                child: _expandedArea(
+                                                  detail: detail,
+                                                  isLoading: isDetailLoading,
+                                                  error: detailError,
+                                                ),
+                                              )
+                                            : const SizedBox(
+                                                key: ValueKey<String>(
+                                                    'collapsed'),
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    //   SliverPadding(
+                    //     padding: const EdgeInsets.symmetric(vertical: 16),
+                    //     sliver: SliverList(
+                    //       delegate: SliverChildBuilderDelegate(
+                    //         (context, index) {
+                    //           final item = state.items[index];
+                    //           final id = item.resultId as String;
+                    //           final date = formatToCustomDate(item.generatedAt);
+                    //           final dateTime = formatWithTime(item.generatedAt);
+                    //           // final cleanDate = formatToCustomDate(
+                    //           //     date.toIso8601String().split('T')[0]);
+
+                    //           final isExpanded = _expandedId == id;
+
+                    //           return Padding(
+                    //             key: _itemKeys[id],
+                    //             padding: const EdgeInsets.symmetric(
+                    //                 horizontal: 16, vertical: 7),
+                    //             child: InkWell(
+                    //               borderRadius: BorderRadius.circular(16),
+                    //               onTap: () => _toggleEntry(id),
+                    //               child: Container(
+                    //                 padding: const EdgeInsets.all(16),
+                    //                 decoration: BoxDecoration(
+                    //                   color: Colors.white,
+                    //                   borderRadius: BorderRadius.circular(16),
+                    //                   boxShadow: [
+                    //                     BoxShadow(
+                    //                       color: Colors.black.withOpacity(0.03),
+                    //                       blurRadius: 10,
+                    //                       offset: const Offset(0, 4),
+                    //                     ),
+                    //                   ],
+                    //                 ),
+                    //                 child: Column(
+                    //                   crossAxisAlignment:
+                    //                       CrossAxisAlignment.start,
+                    //                   children: [
+                    //                     Row(
+                    //                       children: [
+                    //                         Expanded(
+                    //                           child: Column(
+                    //                             crossAxisAlignment:
+                    //                                 CrossAxisAlignment.start,
+                    //                             children: [
+                    //                               Text(
+                    //                                 date,
+                    //                                 style: const TextStyle(
+                    //                                   color: Color(0xFF1E293B),
+                    //                                   fontSize: 17,
+                    //                                   fontWeight:
+                    //                                       FontWeight.w700,
+                    //                                 ),
+                    //                               ),
+                    //                               const SizedBox(height: 3),
+                    //                               Text(
+                    //                                 'Dibuat $dateTime',
+                    //                                 style: const TextStyle(
+                    //                                   color: Color(0xFF64748B),
+                    //                                   fontSize: 13,
+                    //                                   fontWeight:
+                    //                                       FontWeight.w500,
+                    //                                 ),
+                    //                               ),
+                    //                             ],
+                    //                           ),
+                    //                         ),
+                    //                         AnimatedRotation(
+                    //                           turns: isExpanded ? 0.25 : 0,
+                    //                           duration: const Duration(
+                    //                               milliseconds: 220),
+                    //                           child: const Icon(
+                    //                             Icons.chevron_right,
+                    //                             color: Color(0xFF94A3B8),
+                    //                           ),
+                    //                         ),
+                    //                       ],
+                    //                     ),
+                    //                   ],
+                    //                 ),
+                    //               ),
+                    //             ),
+                    //           );
+                    //         },
+                    //         childCount: state.items.length,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // if (state.error != null && state.items.isEmpty)
+                    //   Padding(
+                    //     padding: const EdgeInsets.symmetric(
+                    //         horizontal: 16, vertical: 14),
+                    //     child: Text(
+                    //       state.error!,
+                    //       style: const TextStyle(
+                    //         color: Color(0xFFB91C1C),
+                    //         fontSize: 13,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // if (state.error != null && state.items.isEmpty)
+                    //   Padding(
+                    //     padding: const EdgeInsets.symmetric(
+                    //         horizontal: 16, vertical: 14),
+                    //     child: Text(
+                    //       state.error!,
+                    //       style: const TextStyle(
+                    //         color: Color(0xFFB91C1C),
+                    //         fontSize: 13,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // if (state.isLoadingMore)
+                    //   const Padding(
+                    //     padding: EdgeInsets.only(top: 8, bottom: 18),
+                    //     child: Center(
+                    //       child: SizedBox(
+                    //         width: 22,
+                    //         height: 22,
+                    //         child: CircularProgressIndicator(
+                    //           strokeWidth: 2.3,
+                    //           color: Color(0xFFE64060),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                  ],
+                ))),
       ),
     );
   }
 }
-// Widget _buildRecommendationSection() {
-//   final state = ref.watch(recommendationhistoryNotifier);
-//   return SingleChildScrollView(
-//                           padding: const EdgeInsets.all(24),
-//                           child: state.isLoading
-//                               ? const Center(
-//                                   child: Padding(
-//                                     padding: EdgeInsets.all(40),
-//                                     child: CircularProgressIndicator(
-//                                       color: Color(0xFFE13D5A),
-//                                     ),
-//                                   ),
-//                                 )
-//                               : Column(
-//                                           crossAxisAlignment:
-//                                               CrossAxisAlignment.start,
-//                                           children: [
-//                                             // SizedBox(
-//                                             //   width: double.infinity,
-//                                             //   child: ElevatedButton.icon(
-//                                             //     style:
-//                                             //         ElevatedButton.styleFrom(
-//                                             //       backgroundColor:
-//                                             //           const Color(0xFFE13D5A),
-//                                             //       foregroundColor:
-//                                             //           Colors.white,
-//                                             //       padding: const EdgeInsets
-//                                             //           .symmetric(
-//                                             //           vertical: 12),
-//                                             //       shape:
-//                                             //           RoundedRectangleBorder(
-//                                             //         borderRadius:
-//                                             //             BorderRadius.circular(
-//                                             //                 12),
-//                                             //       ),
-//                                             //     ),
-//                                             //     onPressed:
-//                                             //         _checkMlReadinessAndPredict,
-//                                             //     icon: const Icon(
-//                                             //         Icons.refresh,
-//                                             //         size: 28),
-//                                             //     label: const Text(
-//                                             //         'Jalankan Prediksi Lagi',
-//                                             //         style: TextStyle(
-//                                             //             fontSize: 18)),
-//                                             //   ),
-//                                             // ),
-//                                             // const SizedBox(height: 12),
-//                                             // Row(
-//                                             //   children: [
-//                                             //     Expanded(
-//                                             //       child: OutlinedButton.icon(
-//                                             //         style: OutlinedButton
-//                                             //             .styleFrom(
-//                                             //           foregroundColor:
-//                                             //               const Color(
-//                                             //                   0xFFE13D5A),
-//                                             //           side: const BorderSide(
-//                                             //               color: Color(
-//                                             //                   0xFFE13D5A)),
-//                                             //           padding:
-//                                             //               const EdgeInsets
-//                                             //                   .symmetric(
-//                                             //                   vertical: 12),
-//                                             //           shape:
-//                                             //               RoundedRectangleBorder(
-//                                             //             borderRadius:
-//                                             //                 BorderRadius
-//                                             //                     .circular(12),
-//                                             //           ),
-//                                             //         ),
-//                                             //         onPressed: () => context.push(
-//                                             //             '/home/patient-dashboard/ml-assessment'),
-//                                             //         icon: const Icon(
-//                                             //             Icons.edit_document,
-//                                             //             size: 28),
-//                                             //         label: const Text(
-//                                             //             'Isi Form',
-//                                             //             style: TextStyle(
-//                                             //                 fontSize: 18)),
-//                                             //       ),
-//                                             //     ),
-//                                             //     const SizedBox(width: 12),
-//                                             //     Expanded(
-//                                             //       child: OutlinedButton.icon(
-//                                             //         style: OutlinedButton
-//                                             //             .styleFrom(
-//                                             //           foregroundColor:
-//                                             //               const Color(
-//                                             //                   0xFFE13D5A),
-//                                             //           side: const BorderSide(
-//                                             //               color: Color(
-//                                             //                   0xFFE13D5A)),
-//                                             //           padding:
-//                                             //               const EdgeInsets
-//                                             //                   .symmetric(
-//                                             //                   vertical: 12),
-//                                             //           shape:
-//                                             //               RoundedRectangleBorder(
-//                                             //             borderRadius:
-//                                             //                 BorderRadius
-//                                             //                     .circular(12),
-//                                             //           ),
-//                                             //         ),
-//                                             //         onPressed: () => context.push(
-//                                             //             '/home/patient-dashboard/ml-recommendation-history'),
-//                                             //         icon: const Icon(
-//                                             //             Icons.history,
-//                                             //             size: 28),
-//                                             //         label: const Text(
-//                                             //             'Cek History',
-//                                             //             style: TextStyle(
-//                                             //                 fontSize: 18)),
-//                                             //       ),
-//                                             //     ),
-//                                             //   ],
-//                                             // ),
-//                                             const SizedBox(height: 24),
-//                                             if (_mlPredictionResult !=
-//                                                 null) ...[
-//                                               SizedBox(
-//                                                 width: fullWidth,
-//                                                 child: PredictionMetricCard(
-//                                                   title: 'Prediksi',
-//                                                   icon:
-//                                                       Icons.insights_rounded,
-//                                                   iconColor:
-//                                                       const Color(0xFFE13D5A),
-//                                                   description:
-//                                                       'Dihasilkan pada: ${_getGeneratedDateStr()}',
-//                                                   score: _getProbability(),
-//                                                 ),
-//                                               ),
-//                                               const SizedBox(height: 24),
-//                                             ],
-//                                             _buildRekomendasiSection(
-//                                                 _mlRecommendation),
-//                                           ],
-//                                         )
-//                                       : _missingFields.isNotEmpty
-//                                           ? _buildNotReadySection(fullWidth)
-//                                           : Column(
-//                                               crossAxisAlignment:
-//                                                   CrossAxisAlignment.start,
-//                                               children: [
-//                                                 const SizedBox(height: 24),
-//                                                 Center(
-//                                                   child: ElevatedButton.icon(
-//                                                     style: ElevatedButton
-//                                                         .styleFrom(
-//                                                       backgroundColor:
-//                                                           const Color(
-//                                                               0xFFE13D5A),
-//                                                       foregroundColor:
-//                                                           Colors.white,
-//                                                       padding:
-//                                                           const EdgeInsets
-//                                                               .symmetric(
-//                                                         horizontal: 24,
-//                                                         vertical: 16,
-//                                                       ),
-//                                                       shape:
-//                                                           RoundedRectangleBorder(
-//                                                         borderRadius:
-//                                                             BorderRadius
-//                                                                 .circular(16),
-//                                                       ),
-//                                                     ),
-//                                                     onPressed:
-//                                                         _checkMlReadinessAndPredict,
-//                                                     icon: const Icon(
-//                                                         Icons.analytics),
-//                                                     label: const Text(
-//                                                       'Cek Prediksi ML Hari Ini',
-//                                                       style: TextStyle(
-//                                                         fontSize: 16,
-//                                                         fontWeight:
-//                                                             FontWeight.bold,
-//                                                       ),
-//                                                     ),
-//                                                   ),
-//                                                 ),
-//                                                 SizedBox(height: 16),
-//                                                 SizedBox(
-//                                                   width: double.infinity,
-//                                                   child: FilledButton.icon(
-//                                                     onPressed: () => context.push(
-//                                                         '/home/patient-dashboard/ml-assessment'),
-//                                                     style: FilledButton
-//                                                         .styleFrom(
-//                                                       backgroundColor:
-//                                                           const Color(
-//                                                               0xFFE64060),
-//                                                       foregroundColor:
-//                                                           Colors.white,
-//                                                       padding:
-//                                                           const EdgeInsets
-//                                                               .symmetric(
-//                                                               vertical: 14),
-//                                                       shape:
-//                                                           RoundedRectangleBorder(
-//                                                         borderRadius:
-//                                                             BorderRadius
-//                                                                 .circular(14),
-//                                                       ),
-//                                                     ),
-//                                                     icon: const Icon(
-//                                                         Icons
-//                                                             .assignment_turned_in_rounded,
-//                                                         size: 18),
-//                                                     label: const Text(
-//                                                       'Isi Form Asesmen',
-//                                                       style: TextStyle(
-//                                                           fontSize: 15,
-//                                                           fontWeight:
-//                                                               FontWeight
-//                                                                   .w700),
-//                                                     ),
-//                                                   ),
-//                                                 ),
-//                                               ],
-//                                             ),
-//                         ),
-// }
 
-//   Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
-//     final lifestyle =
-//         mlRec?.data?.upstream?.body?.recommendationResult.lifestyle ?? [];
+String _formatDate(DateTime? date) {
+  if (date == null) return '-';
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agt',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
+  ];
 
-//     return Container(
-//       width: double.infinity,
-//       padding: const EdgeInsets.all(24),
-//       decoration: BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.circular(24),
-//         border: Border.all(color: const Color(0xFFF1F5F9)),
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//           Row(
-//             children: [
-//               Container(
-//                 padding: const EdgeInsets.all(10),
-//                 decoration: BoxDecoration(
-//                   color: const Color(0xFFFFF0F2),
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//                 child: const Icon(Icons.recommend, color: Color(0xFFE13D5A)),
-//               ),
-//               const SizedBox(width: 16),
-//               const Text(
-//                 'Rekomendasi',
-//                 style: TextStyle(
-//                   fontSize: 20,
-//                   fontWeight: FontWeight.bold,
-//                   color: Color(0xFF1A202C),
-//                 ),
-//               ),
-//             ],
-//           ),
-//           const SizedBox(height: 20),
-//           if (lifestyle.isEmpty)
-//             const Text(
-//               'Tidak ada rekomendasi spesifik saat ini.',
-//               style: TextStyle(color: Color(0xFF4A5568)),
-//             ),
-//           ...lifestyle.map((item) {
-//             final title =
-//                 item.comparison.isNotEmpty ? item.comparison : item.description;
-//             // final rec = item.recommendedValueInterval;
-//             final changeStatus = item.changeStatus;
+  return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
+}
 
-//             if (changeStatus == 'False') {
-//               return const SizedBox.shrink();
-//             }
+class _expandedArea extends StatelessWidget {
+  final MlRecommendationResponse? detail;
+  final bool isLoading;
+  final String? error;
 
-//             return Padding(
-//               padding: const EdgeInsets.only(bottom: 16.0),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Row(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     children: [
-//                       const Padding(
-//                         padding: EdgeInsets.only(top: 4, right: 8),
-//                         child: Icon(Icons.check_circle,
-//                             size: 16, color: Colors.green),
-//                       ),
-//                       Expanded(
-//                         child: Text(
-//                           title,
-//                           style: const TextStyle(
-//                             fontWeight: FontWeight.bold,
-//                             color: Color(0xFF1A202C),
-//                             fontSize: 16,
-//                           ),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                   // if (rec.isNotEmpty) ...[
-//                   //   const SizedBox(height: 6),
-//                   //   Padding(
-//                   //     padding: const EdgeInsets.only(left: 24.0),
-//                   //     child: Text(
-//                   //       rec,
-//                   //       style: const TextStyle(
-//                   //         color: Color(0xFF4A5568),
-//                   //         height: 1.5,
-//                   //       ),
-//                   //     ),
-//                   //   ),
-//                   // ],
-//                 ],
-//               ),
-//             );
-//           }),
-//         ],
-//       ),
-//     );
-//   }
-// }
+  const _expandedArea(
+      {required this.detail, required this.isLoading, this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    // final state = ref.watch(recommendationhistoryNotifier);
+    // final _mlPredictionResult = detail!.data;
+    // final currentRisk =
+    //     _mlPredictionResult?.upstream?.body?.recommendationResult.currentRisk;
+    // final _mlRecommendation = detail;
+
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(
+            color: Color(0xFFE13D5A),
+          ),
+        ),
+      );
+    }
+
+    if (error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Text(
+            error!,
+            style: const TextStyle(
+              color: Color(0xFFB91C1C),
+              fontSize: 14,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (detail == null) {
+      return const SizedBox.shrink();
+    }
+    final currentRisk =
+        detail!.data!.upstream!.body!.recommendationResult.currentRisk;
+    final currentRiskPercentage = currentRisk.toStringAsFixed(1);
+    return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Prediksi',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A202C),
+                )),
+            const SizedBox(height: 24),
+            SfLinearGauge(
+              minimum: 0,
+              maximum: 100,
+              orientation: LinearGaugeOrientation.horizontal,
+              ranges: const <LinearGaugeRange>[
+                LinearGaugeRange(
+                    startValue: 0, endValue: 60, color: Colors.green),
+                LinearGaugeRange(
+                    startValue: 60, endValue: 80, color: Colors.orange),
+                LinearGaugeRange(
+                    startValue: 80, endValue: 100, color: Colors.red),
+              ],
+              markerPointers: [
+                LinearShapePointer(
+                  value: currentRisk,
+                  shapeType: LinearShapePointerType.invertedTriangle,
+                  color: Colors.black,
+                  position: LinearElementPosition.outside,
+                ),
+                // LinearWidgetPointer(
+                //   value: 48000,
+                //   child: Container(width: 2, height: 40, color: Colors.black),
+                // )
+              ],
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: Text(
+                'Risiko Saat Ini: $currentRiskPercentage%',
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A202C),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildRekomendasiSection(detail),
+          ],
+        ));
+  }
+}
+
+Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
+  final lifestyle =
+      mlRec?.data?.upstream?.body?.recommendationResult.lifestyle ?? [];
+  final recommendationIncrease = lifestyle
+      .where((r) => r.comparison.toLowerCase().contains('tingkat'))
+      .toList();
+  final recommendationDecrease = lifestyle
+      .where((r) => r.comparison.toLowerCase().contains('kurang'))
+      .toList();
+
+  return Container(
+    width: double.infinity,
+    // padding: const EdgeInsets.all(24),
+    // decoration: BoxDecoration(
+    //   color: Colors.white,
+    //   borderRadius: BorderRadius.circular(24),
+    //   border: Border.all(color: const Color(0xFFF1F5F9)),
+    // ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Row(
+        //   children: [
+        //     Container(
+        //       padding: const EdgeInsets.all(10),
+        //       decoration: BoxDecoration(
+        //         color: const Color(0xFFFFF0F2),
+        //         borderRadius: BorderRadius.circular(12),
+        //       ),
+        //       child: const Icon(Icons.recommend, color: Color(0xFFE13D5A)),
+        //     ),
+        //     const SizedBox(width: 16),
+        //     const Text(
+        //       'Rekomendasi',
+        //       style: TextStyle(
+        //         fontSize: 20,
+        //         fontWeight: FontWeight.bold,
+        //         color: Color(0xFF1A202C),
+        //       ),
+        //     ),
+        //   ],
+        // ),
+        const Text('Rekomendasi',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A202C),
+            )),
+        const SizedBox(height: 20),
+        if (lifestyle.isEmpty)
+          const Text(
+            'Tidak ada rekomendasi spesifik saat ini.',
+            style: TextStyle(color: Color(0xFF4A5568)),
+          ),
+        ...recommendationIncrease.map((item) {
+          final title =
+              item.comparison.isNotEmpty ? item.comparison : item.description;
+
+          return RecommendationItem(
+            title: title,
+            action: 'increase',
+          );
+        }),
+        ...recommendationDecrease.map((item) {
+          final title =
+              item.comparison.isNotEmpty ? item.comparison : item.description;
+
+          return RecommendationItem(
+            title: title,
+            action: 'decrease',
+          );
+        }),
+      ],
+    ),
+  );
+}
+
+class RecommendationItem extends StatelessWidget {
+  final String title;
+  // final String description;
+  final String action; // 'increase', 'decrease', or ''
+
+  const RecommendationItem({
+    super.key,
+    required this.title,
+    // required this.description,
+    this.action = '',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color? actionColor;
+    IconData? actionIcon;
+
+    if (action == 'increase') {
+      actionColor = Colors.green;
+      actionIcon = Icons.arrow_upward;
+    } else if (action == 'decrease') {
+      actionColor = Colors.red;
+      actionIcon = Icons.arrow_downward;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (actionIcon != null)
+          CircleAvatar(
+            backgroundColor: actionColor!.withOpacity(0.2),
+            radius: 10,
+            child: Icon(actionIcon, size: 16, color: actionColor),
+          ),
+        if (actionIcon != null) const SizedBox(width: 8),
+        Expanded(
+          // Expanded harus di luar Padding jika ini di dalam Row
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 12, left: 4),
+            child: Text(
+              title,
+              softWrap: true, // Memastikan teks membungkus
+              overflow: TextOverflow
+                  .visible, // Atau TextOverflow.ellipsis jika ingin dipotong titik-titik
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A202C),
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

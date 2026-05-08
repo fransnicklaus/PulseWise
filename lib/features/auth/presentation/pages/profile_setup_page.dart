@@ -275,8 +275,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           'dateOfBirth': dateOfBirth,
           'sex': (_selectedGender ?? '').toLowerCase(),
           'heightCm': double.parse(_heightController.text.trim()),
-          'isSmoking': _isSmoking ?? false,
-          'isElectricSmoking': _isElectricSmoking ?? false,
+          // 'isSmoking': _isSmoking ?? false,
+          // 'isElectricSmoking': _isElectricSmoking ?? false,
           'bloodType': _selectedBloodType ?? 'O+',
           'address': _addressController.text.trim(),
         },
@@ -637,69 +637,69 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                           },
                                         ),
                                         const SizedBox(height: 12),
-                                        DropdownButtonFormField<bool>(
-                                          dropdownColor: Colors.white,
-                                          value: _isSmoking,
-                                          isExpanded: true,
-                                          itemHeight: _fieldMinHeight,
-                                          alignment: Alignment.centerLeft,
-                                          icon: const Icon(
-                                            FluentIcons.chevron_down_24_regular,
-                                            size: 24,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                          style: _dropdownTextStyle,
-                                          items: [
-                                            _dropdownItemBool(true, 'Ya'),
-                                            _dropdownItemBool(false, 'Tidak'),
-                                          ],
-                                          decoration: _inputDecoration(
-                                            hint: 'Apakah Anda Merokok?',
-                                            icon:
-                                                FluentIcons.question_24_regular,
-                                          ).copyWith(
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 18),
-                                          ),
-                                          onChanged: (value) => setState(
-                                              () => _isSmoking = value),
-                                          validator: (value) => value == null
-                                              ? 'Wajib dipilih'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        DropdownButtonFormField<bool>(
-                                          dropdownColor: Colors.white,
-                                          value: _isElectricSmoking,
-                                          isExpanded: true,
-                                          itemHeight: _fieldMinHeight,
-                                          alignment: Alignment.centerLeft,
-                                          icon: const Icon(
-                                            FluentIcons.chevron_down_24_regular,
-                                            size: 24,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                          style: _dropdownTextStyle,
-                                          items: [
-                                            _dropdownItemBool(true, 'Ya'),
-                                            _dropdownItemBool(false, 'Tidak'),
-                                          ],
-                                          decoration: _inputDecoration(
-                                            hint: 'Merokok Elektrik (Vape)?',
-                                            icon:
-                                                FluentIcons.question_24_regular,
-                                          ).copyWith(
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 18),
-                                          ),
-                                          onChanged: (value) => setState(
-                                              () => _isElectricSmoking = value),
-                                          validator: (value) => value == null
-                                              ? 'Wajib dipilih'
-                                              : null,
-                                        ),
+                                        // DropdownButtonFormField<bool>(
+                                        //   dropdownColor: Colors.white,
+                                        //   value: _isSmoking,
+                                        //   isExpanded: true,
+                                        //   itemHeight: _fieldMinHeight,
+                                        //   alignment: Alignment.centerLeft,
+                                        //   icon: const Icon(
+                                        //     FluentIcons.chevron_down_24_regular,
+                                        //     size: 24,
+                                        //     color: Color(0xFF64748B),
+                                        //   ),
+                                        //   style: _dropdownTextStyle,
+                                        //   items: [
+                                        //     _dropdownItemBool(true, 'Ya'),
+                                        //     _dropdownItemBool(false, 'Tidak'),
+                                        //   ],
+                                        //   decoration: _inputDecoration(
+                                        //     hint: 'Apakah Anda Merokok?',
+                                        //     icon:
+                                        //         FluentIcons.question_24_regular,
+                                        //   ).copyWith(
+                                        //     contentPadding:
+                                        //         const EdgeInsets.symmetric(
+                                        //             horizontal: 18),
+                                        //   ),
+                                        //   onChanged: (value) => setState(
+                                        //       () => _isSmoking = value),
+                                        //   validator: (value) => value == null
+                                        //       ? 'Wajib dipilih'
+                                        //       : null,
+                                        // ),
+                                        // const SizedBox(height: 12),
+                                        // DropdownButtonFormField<bool>(
+                                        //   dropdownColor: Colors.white,
+                                        //   value: _isElectricSmoking,
+                                        //   isExpanded: true,
+                                        //   itemHeight: _fieldMinHeight,
+                                        //   alignment: Alignment.centerLeft,
+                                        //   icon: const Icon(
+                                        //     FluentIcons.chevron_down_24_regular,
+                                        //     size: 24,
+                                        //     color: Color(0xFF64748B),
+                                        //   ),
+                                        //   style: _dropdownTextStyle,
+                                        //   items: [
+                                        //     _dropdownItemBool(true, 'Ya'),
+                                        //     _dropdownItemBool(false, 'Tidak'),
+                                        //   ],
+                                        //   decoration: _inputDecoration(
+                                        //     hint: 'Merokok Elektrik (Vape)?',
+                                        //     icon:
+                                        //         FluentIcons.question_24_regular,
+                                        //   ).copyWith(
+                                        //     contentPadding:
+                                        //         const EdgeInsets.symmetric(
+                                        //             horizontal: 18),
+                                        //   ),
+                                        //   onChanged: (value) => setState(
+                                        //       () => _isElectricSmoking = value),
+                                        //   validator: (value) => value == null
+                                        //       ? 'Wajib dipilih'
+                                        //       : null,
+                                        // ),
                                       ],
                                     ),
                                   ),
