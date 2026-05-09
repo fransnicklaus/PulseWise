@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
@@ -17,6 +18,8 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     with AutomaticKeepAliveClientMixin {
   late DateTime _selectedDate;
   late DateTime _focusedDate;
+
+  bool _isSaving = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -143,7 +146,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
-                    'Jadwal ${_formatDateLong(_selectedDate)}',
+                    _formatDateLong(_selectedDate),
                     style: const TextStyle(
                       color: Color(0xFF334155),
                       fontSize: 20,
@@ -226,6 +229,14 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     BuildContext context,
     MedicationCalendarItem item,
   ) async {
+    // The static list of options for your health app
+    final List<Map<String, dynamic>> _activityLevels = [
+      {'label': 'Taken', 'icon': Icons.shutter_speed_outlined},
+      {'label': 'Skipped', 'icon': Icons.directions_walk_rounded},
+      {'label': 'Missed', 'icon': Icons.directions_run_rounded},
+    ];
+
+    String _selectedLevel = 'Taken';
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -234,78 +245,232 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (sheetContext) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 42,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBD5E1),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                item.name,
-                style: const TextStyle(
-                  color: Color(0xFF0F172A),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${_doseText(item.singleDose)} ${item.singleDoseUnit}',
-                style: const TextStyle(
-                  color: Color(0xFF475569),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${_formatDateLong(item.scheduledDate)} • ${item.scheduledTime}',
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _StatusChip(status: item.status),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.of(sheetContext).pop();
-                    context.push('/home/reminder/detail/${item.medicationId}');
-                  },
-                  icon: const Icon(Icons.settings),
-                  label: const Text(
-                    'Kelola Obat',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+
+            Future<void> _submit(String status, String medicationId, DateTime scheduledDate, String scheduledTime) async {
+              setModalState(() => _isSaving = true);
+
+              try {
+                await ref
+                    .read(profileApiProvider)
+                    .takeMedication(status.toLowerCase(), medicationId, scheduledDate, scheduledTime);
+
+                if (!mounted) return;
+
+                // ref.invalidate(medicationDetailProvider(widget.medicationId));
+                // await ref.read(medicationHistoryProvider.notifier).refreshMedications();
+
+                if (!mounted) return;
+                context.pop(true);
+                AppToast.success(context, 'Status obat berhasil diperbarui.');
+
+              } catch (e) {
+                if (!mounted) return;
+                AppToast.warning(
+                  context,
+                  e.toString().replaceFirst('Exception: ', ''),
+                );
+              } finally {
+                if (mounted) {
+                  setModalState(() => _isSaving = false);
+                }
+              }
+            }
+
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCBD5E1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE64060),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: const TextStyle(
+                                color: Color(0xFF0F172A),
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${_doseText(item.singleDose)} ${item.singleDoseUnit}',
+                              style: const TextStyle(
+                                color: Color(0xFF475569),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${_formatDateLong(item.scheduledDate)} • ${item.scheduledTime}',
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          width: 160,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedLevel,
+                            dropdownColor: Colors.white,
+                            // Styling the container
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor:
+                                  _isSaving ? Colors.white : Colors.grey[50],
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide:
+                                    BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: const BorderSide(
+                                    color: const Color(0xFFE64060), width: 2),
+                              ),
+                            ),
+                            // Mapping the static items
+                            items: _activityLevels.map((item) {
+                              return DropdownMenuItem<String>(
+                                value: item['label'],
+                                child: Row(
+                                  children: [
+                                    // Icon(item['icon'],
+                                    //     color: Colors.blueAccent, size: 20),
+                                    // const SizedBox(width: 12),
+                                    Text(
+                                      item['label'],
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: _isSaving
+                                ? null
+                                : (val) {
+                                    setState(() {
+                                      _selectedLevel = val!;
+                                    });
+                                  },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  // const SizedBox(height: 8),
+                  // _StatusChip(status: item.status),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isSaving
+                                ? null
+                                : () {
+                                    // Navigator.of(sheetContext).pop();
+                                    // context.push(
+                                    //     '/home/reminder/detail/${item.medicationId}');
+                                    print(
+                                        'Selected status: $_selectedLevel for medication ID: ${item.medicationId}');
+                                      _submit(_selectedLevel, item.medicationId, item.scheduledDate!, item.scheduledTime);
+                                    // setModalState(() => _isSaving = true);
+                                  },
+                            icon: _isSaving
+                                ? SizedBox.shrink()
+                                : const Icon(Icons.check_circle_outline_sharp),
+                            label: _isSaving
+                                ? CircularProgressIndicator(
+                                    color: Color(0xFFE13D5A),
+                                  )
+                                : const Text(
+                                    'Simpan',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE64060),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isSaving
+                                ? null
+                                : () {
+                                    Navigator.of(sheetContext).pop();
+                                    context.push(
+                                        '/home/reminder/detail/${item.medicationId}');
+                                  },
+                            icon: const Icon(Icons.settings),
+                            label: const Text(
+                              'Kelola Obat',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: _isSaving
+                                  ? const Color(0xFFE64060).withOpacity(0.2)
+                                  : const Color(0xFFE64060),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: _isSaving
+                                    ? BorderSide(
+                                        color: const Color(0xFFE64060)
+                                            .withOpacity(0.2))
+                                    : const BorderSide(
+                                        color: Color(0xFFE64060)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

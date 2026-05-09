@@ -34,6 +34,16 @@ final patientProfileProvider = FutureProvider<PatientProfile>((ref) async {
   return api.fetchProfile();
 });
 
+final dashboardVitalsProvider =
+    FutureProvider.family<DashboardVitalsResponse, String>(
+        (ref, timePeriod) async {
+  final api = ref.watch(profileApiProvider);
+  return api.fetchDashboardVitals(timePeriod);
+});
+
+final dashboardTimePeriodProvider =
+    StateProvider<String>((ref) => 'last_30_days');
+
 final authMeProvider = FutureProvider<AuthMeUser>((ref) async {
   final api = ref.watch(profileApiProvider);
   return api.fetchAuthMe();
@@ -310,6 +320,184 @@ class MlRecommendationHistoryItem {
       requestContext: json['requestContext']?.toString() ?? '',
       mlVersion: json['mlVersion']?.toString() ?? '',
       generatedAt: json['generatedAt']?.toString() ?? '',
+    );
+  }
+}
+
+class DashboardVitalsResponse {
+  final bool success;
+  final String message;
+  final DashboardVitalsData? data;
+
+  DashboardVitalsResponse({
+    required this.success,
+    required this.message,
+    this.data,
+  });
+
+  factory DashboardVitalsResponse.fromJson(Map<String, dynamic> json) {
+    return DashboardVitalsResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      data: json['data'] != null
+          ? DashboardVitalsData.fromJson(json['data'])
+          : null,
+    );
+  }
+}
+
+class DashboardVitalsData {
+  final DashboardPatient patient;
+  final DashboardPeriod period;
+  final DashboardSeries series;
+  final DashboardLatestVitals? latestVitals;
+
+  DashboardVitalsData({
+    required this.patient,
+    required this.period,
+    required this.series,
+    this.latestVitals,
+  });
+
+  factory DashboardVitalsData.fromJson(Map<String, dynamic> json) {
+    return DashboardVitalsData(
+      patient: DashboardPatient.fromJson(json['patient']),
+      period: DashboardPeriod.fromJson(json['period']),
+      series: DashboardSeries.fromJson(json['series']),
+      latestVitals: json['latestVitals'] != null
+          ? DashboardLatestVitals.fromJson(json['latestVitals'])
+          : null,
+    );
+  }
+}
+
+class DashboardPatient {
+  final String patientId;
+  final String firstName;
+  final String lastName;
+  final String? email;
+  final String? phone;
+  final String? dateOfBirth;
+  final int? age;
+  final String? sex;
+
+  DashboardPatient({
+    required this.patientId,
+    required this.firstName,
+    required this.lastName,
+    this.email,
+    this.phone,
+    this.dateOfBirth,
+    this.age,
+    this.sex,
+  });
+
+  factory DashboardPatient.fromJson(Map<String, dynamic> json) {
+    return DashboardPatient(
+      patientId: json['patientId'] ?? '',
+      firstName: json['firstName'] ?? '',
+      lastName: json['lastName'] ?? '',
+      email: json['email'],
+      phone: json['phone'],
+      dateOfBirth: json['dateOfBirth'],
+      age: json['age'],
+      sex: json['sex'],
+    );
+  }
+}
+
+class DashboardPeriod {
+  final String startAt;
+  final String endAt;
+  final String timePeriod;
+
+  DashboardPeriod({
+    required this.startAt,
+    required this.endAt,
+    required this.timePeriod,
+  });
+
+  factory DashboardPeriod.fromJson(Map<String, dynamic> json) {
+    return DashboardPeriod(
+      startAt: json['startAt'] ?? '',
+      endAt: json['endAt'] ?? '',
+      timePeriod: json['timePeriod'] ?? '',
+    );
+  }
+}
+
+class DashboardSeries {
+  final List<String> timestamps;
+  final List<num?> systolicBp;
+  final List<num?> diastolicBp;
+  final List<num?> heartRate;
+  final List<num?> oxygenSaturation;
+  final List<num?> weight;
+  final List<num?> height;
+  final List<num?> bmi;
+
+  DashboardSeries({
+    required this.timestamps,
+    required this.systolicBp,
+    required this.diastolicBp,
+    required this.heartRate,
+    required this.oxygenSaturation,
+    required this.weight,
+    required this.height,
+    required this.bmi,
+  });
+
+  factory DashboardSeries.fromJson(Map<String, dynamic> json) {
+    List<num?> parseList(String key) {
+      if (json[key] == null) return [];
+      return (json[key] as List).map((e) => e as num?).toList();
+    }
+
+    return DashboardSeries(
+      timestamps:
+          (json['timestamps'] as List?)?.map((e) => e as String).toList() ?? [],
+      systolicBp: parseList('systolicBp'),
+      diastolicBp: parseList('diastolicBp'),
+      heartRate: parseList('heartRate'),
+      oxygenSaturation: parseList('oxygenSaturation'),
+      weight: parseList('weight'),
+      height: parseList('height'),
+      bmi: parseList('bmi'),
+    );
+  }
+}
+
+class DashboardLatestVitals {
+  final String? measuredAt;
+  final num? systolicBp;
+  final num? diastolicBp;
+  final num? heartRate;
+  final num? oxygenSaturation;
+  final num? weight;
+  final num? height;
+  final num? bmi;
+
+  DashboardLatestVitals({
+    this.measuredAt,
+    this.systolicBp,
+    this.diastolicBp,
+    this.heartRate,
+    this.oxygenSaturation,
+    this.weight,
+    this.height,
+    this.bmi,
+  });
+
+  factory DashboardLatestVitals.fromJson(Map<String, dynamic> json) {
+    return DashboardLatestVitals(
+      measuredAt: json['measuredAt'],
+      systolicBp: json['systolicBp'] as num?,
+      diastolicBp: json['diastolicBp'] as num?,
+      heartRate: json['heartRate'] as num?,
+      oxygenSaturation: json['oxygenSaturation'] as num?,
+      weight: json['weight'] as num?,
+      height: json['height'] as num?,
+      bmi: json['bmi'] as num?,
     );
   }
 }
@@ -942,6 +1130,44 @@ class ProfileApi {
       }
       throw Exception('Gagal mengambil rekomendasi ML terbaru.');
     }
+  }
+
+  Future<DashboardVitalsResponse> fetchDashboardVitals(
+      String timePeriod) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/dashboard/vitals',
+      queryParameters: {'timePeriod': timePeriod},
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal mengambil data dashboard vitals')
+            .toString(),
+      );
+    }
+
+    return DashboardVitalsResponse.fromJson(body);
   }
 
   Future<MlRecommendationResponse> fetchMlRecommendations(String date) async {
@@ -1877,6 +2103,53 @@ class ProfileApi {
     if (body == null || body['success'] != true) {
       throw Exception(
           (body?['message'] ?? 'Gagal menghapus medication').toString());
+    }
+  }
+
+  Future<void> takeMedication(String status, String medicationId,
+      DateTime scheduledDate, String scheduledTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final userId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan. Silakan login ulang.');
+    }
+
+    DateTime now = DateTime.now();
+
+    String hour = now.hour.toString().padLeft(2, '0');
+    String minute = now.minute.toString().padLeft(2, '0');
+
+    final payload = <String, dynamic>{
+      'medicationDate': scheduledDate.toIso8601String().split('T')[0],
+      'medicationTime':
+          scheduledTime.isNotEmpty ? scheduledTime : '$hour:$minute',
+      'status': status,
+    };
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/users/$userId/medications/$medicationId/logs',
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception((body?['message'] ??
+              'Gagal menandai medication sebagai sudah diminum')
+          .toString());
     }
   }
 
