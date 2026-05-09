@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -14,7 +13,7 @@ import 'report_generator_flutter.dart';
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({
     super.key,
-    required this.data,
+    this.data,
     this.searchResults = const [],
     this.logoUrl,
     this.onSearchChanged,
@@ -25,7 +24,7 @@ class PatientDashboardPage extends ConsumerStatefulWidget {
     this.onPrintReport,
   });
 
-  final PatientDashboardData data;
+  final PatientDashboardData? data;
   final List<PatientSearchResult> searchResults;
   final String? logoUrl;
   final ValueChanged<String>? onSearchChanged;
@@ -43,10 +42,21 @@ class PatientDashboardPage extends ConsumerStatefulWidget {
 class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   late final TextEditingController _searchController;
   late TimePeriodOption? _selectedPeriod;
+  PatientDashboardData? _dashboardData;
+  bool _isLoadingDashboard = true;
+  String? _dashboardError;
+
+  static const List<TimePeriodOption> _periodOptions = [
+    TimePeriodOption(id: 'last_7_days', label: '7 Hari Kebelakang'),
+    TimePeriodOption(id: 'last_14_days', label: '14 Hari Kebelakang'),
+    TimePeriodOption(id: 'last_30_days', label: '30 Hari Kebelakang'),
+    TimePeriodOption(id: 'last_3_months', label: '3 Bulan Kebelakang'),
+    TimePeriodOption(id: 'last_6_months', label: '6 Bulan Kebelakang'),
+    TimePeriodOption(id: 'all', label: 'Semua Data'),
+  ];
 
   bool _isLoadingLast = true;
   bool _isCheckingMl = false;
-  Map<String, dynamic>? _lastAssessment;
   List<String> _missingFields = [];
   MlRecommendationResponse? _mlRecommendation;
   MlRecommendationResponse? _mlPredictionResult;
@@ -55,11 +65,120 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
-    _selectedPeriod = widget.data.selectedPeriod;
+    _dashboardData = widget.data;
+    _selectedPeriod = widget.data?.selectedPeriod ??
+        _periodOptions.firstWhere(
+          (period) => period.id == 'last_30_days',
+          orElse: () => _periodOptions.first,
+        );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDashboardData();
       _fetchInitialData();
     });
+  }
+
+  Future<void> _loadDashboardData({TimePeriodOption? period}) async {
+    if (!mounted) return;
+
+    final selectedPeriod = period ?? _selectedPeriod ?? _periodOptions[1];
+    setState(() {
+      _selectedPeriod = selectedPeriod;
+      _isLoadingDashboard = true;
+      _dashboardError = null;
+    });
+
+    try {
+      final api = ref.read(profileApiProvider);
+      final vitals = await api.fetchDashboardVitals(selectedPeriod.id);
+      AuthMeUser? authMe;
+      try {
+        authMe = await api.fetchAuthMe();
+      } catch (_) {
+        authMe = null;
+      }
+
+      final dashboardData = vitals.data;
+      if (dashboardData == null) {
+        throw Exception('Data dashboard vitals tidak tersedia.');
+      }
+
+      final patient = dashboardData.patient;
+
+      final mappedData = PatientDashboardData(
+        patient: PatientProfile(
+          id: patient.patientId,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          sex: _normalizeNullable(patient.sex),
+          dateOfBirth: _normalizeNullable(patient.dateOfBirth),
+          phone: _normalizeNullable(patient.phone),
+          email: _normalizeNullable(patient.email) ?? authMe?.email,
+        ),
+        periods: _periodOptions,
+        selectedPeriod: selectedPeriod,
+        avatarUrl: authMe?.avatarPhoto,
+        heartRatePoints: _buildChartPoints(
+          dashboardData.series.timestamps,
+          dashboardData.series.heartRate,
+        ),
+        bloodPressurePoints: _buildBloodPressurePoints(
+          dashboardData.series.timestamps,
+          dashboardData.series.systolicBp,
+          dashboardData.series.diastolicBp,
+        ),
+        spo2Points: _buildChartPoints(
+          dashboardData.series.timestamps,
+          dashboardData.series.oxygenSaturation,
+        ),
+        weightPoints: _buildChartPoints(
+          dashboardData.series.timestamps,
+          dashboardData.series.weight,
+        ),
+        bmiPoints: _buildChartPoints(
+          dashboardData.series.timestamps,
+          dashboardData.series.bmi,
+        ),
+        latestHeightCm: dashboardData.latestVitals?.height?.toDouble() ??
+            (_lastNonNull(dashboardData.series.height) ?? 0).toDouble(),
+        heartRateThreshold: const HeartRateThreshold(
+          normalMin: 60,
+          normalMax: 100,
+        ),
+        bloodPressureThreshold: const BloodPressureThreshold(
+          normalSystolicMax: 120,
+          normalDiastolicMax: 80,
+          elevatedSystolicMin: 120,
+          elevatedSystolicMax: 129,
+          elevatedDiastolicMax: 80,
+          stage1SystolicMin: 130,
+          stage1SystolicMax: 139,
+          stage1DiastolicMin: 80,
+          stage1DiastolicMax: 89,
+          stage2SystolicMin: 140,
+          stage2DiastolicMin: 90,
+        ),
+        spo2Threshold: const Spo2Threshold(
+          criticalThreshold: 90,
+          cautionThreshold: 95,
+        ),
+        weightThreshold: const WeightThreshold(
+          dailyIncreaseCriticalKg: 2,
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _dashboardData = mappedData;
+        _isLoadingDashboard = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _dashboardError = e.toString();
+        _isLoadingDashboard = false;
+      });
+    }
   }
 
   Future<void> _fetchInitialData() async {
@@ -68,23 +187,13 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     try {
       final api = ref.read(profileApiProvider);
 
-      final futures = await Future.wait([
-        api.fetchLatestMlAssessment().catchError((e) {
-          debugPrint('Error fetching last assessment: $e');
-          return <String, dynamic>{};
-        }),
-        api.fetchLatestMlRecommendation().catchError((e) {
-          debugPrint('Error fetching last ML recommendation: $e');
-          return null; // Return null instead of empty map since it expects MlRecommendationResponse?
-        }),
-      ]);
-
-      final last = futures[0] as Map<String, dynamic>?;
-      final rec = futures[1] as MlRecommendationResponse?;
+      final rec = await api.fetchLatestMlRecommendation().catchError((e) {
+        debugPrint('Error fetching last ML recommendation: $e');
+        return null;
+      });
 
       if (mounted) {
         setState(() {
-          _lastAssessment = last != null && last.isNotEmpty ? last : null;
           if (rec != null && rec.success) {
             _mlRecommendation = rec;
             _mlPredictionResult = rec.data?.upstream != null ? rec : null;
@@ -120,7 +229,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
         if (mounted) {
           setState(() {
             // Kita map rec result sebagai prediction result jika available
-            if (rec != null && rec.data?.upstream != null) {
+            if (rec.data?.upstream != null) {
               _mlPredictionResult = rec;
             }
             _mlRecommendation = rec;
@@ -157,13 +266,17 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
   Future<void> _handleGenerateReport() async {
     final repository = widget.reportRepository;
+    final data = _dashboardData;
     if (repository == null) {
+      return;
+    }
+    if (data == null) {
       return;
     }
 
     await showPatientReportFlow(
       context,
-      patientId: widget.data.patient.id,
+      patientId: data.patient.id,
       repository: repository,
       onPrintRequested: widget.onPrintReport,
     );
@@ -176,16 +289,19 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final data = _dashboardData ??
+        _emptyDashboardData(_selectedPeriod ?? _periodOptions[1]);
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final sidebar = _DashboardSidebar(
-      data: widget.data,
+      data: data,
       searchController: _searchController,
       searchResults: widget.searchResults,
       selectedPeriod: _selectedPeriod,
       onSearchChanged: _handleSearchChanged,
       onPatientSelected: widget.onPatientSelected,
       onPeriodChanged: (period) {
-        setState(() => _selectedPeriod = period);
+        if (period == null) return;
+        _loadDashboardData(period: period);
         widget.onTimePeriodChanged?.call(period);
       },
       onGenerateReport:
@@ -226,377 +342,534 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
                   return DefaultTabController(
                     length: 2,
-                    child: NestedScrollView(
-                      headerSliverBuilder: (context, innerBoxIsScrolled) {
-                        return [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: _PatientHeaderCard(
-                                patient: widget.data.patient,
-                                avatarUrl: widget.data.avatarUrl,
-                              ),
-                            ),
-                          ),
-                          SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _StickyTabBarDelegate(
-                              const TabBar(
-                                labelColor: Color(0xFFE13D5A),
-                                unselectedLabelColor: Colors.grey,
-                                indicatorColor: Color(0xFFE13D5A),
-                                labelStyle: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 17),
-                                unselectedLabelStyle: TextStyle(
-                                    fontWeight: FontWeight.w300, fontSize: 17),
-                                tabs: [
-                                  Tab(text: 'Prediksi'),
-                                  Tab(text: 'Dashboard Metrik'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ];
-                      },
-                      body: TabBarView(
-                        children: [
-                          // Tab 1: Prediction results + Rekomendasi
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.all(24),
-                            child: _isLoadingLast
-                                ? const Center(
-                                    child: Padding(
-                                      padding: EdgeInsets.all(40),
-                                      child: CircularProgressIndicator(
-                                        color: Color(0xFFE13D5A),
-                                      ),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: NestedScrollView(
+                            headerSliverBuilder: (context, innerBoxIsScrolled) {
+                              return [
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: _PatientHeaderCard(
+                                      patient: data.patient,
+                                      avatarUrl: data.avatarUrl,
                                     ),
-                                  )
-                                : _isCheckingMl
-                                    ? const Center(
-                                        child: Padding(
-                                          padding: EdgeInsets.all(40),
-                                          child: Column(
-                                            children: [
-                                              CircularProgressIndicator(
-                                                color: Color(0xFFE13D5A),
-                                              ),
-                                              SizedBox(height: 16),
-                                              Text(
-                                                'Mengecek kesiapan data dan\nmemproses prediksi...',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                    color: Colors.grey),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                    : _mlRecommendation != null
-                                        ? Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              SizedBox(
-                                                width: double.infinity,
-                                                child: ElevatedButton.icon(
-                                                  style:
-                                                      ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        const Color(0xFFE13D5A),
-                                                    foregroundColor:
-                                                        Colors.white,
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        vertical: 12),
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                    ),
-                                                  ),
-                                                  onPressed:
-                                                      _checkMlReadinessAndPredict,
-                                                  icon: const Icon(
-                                                      Icons.refresh,
-                                                      size: 28),
-                                                  label: const Text(
-                                                      'Jalankan Prediksi Lagi',
-                                                      style: TextStyle(
-                                                          fontSize: 18)),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: OutlinedButton.icon(
-                                                      style: OutlinedButton
-                                                          .styleFrom(
-                                                        foregroundColor:
-                                                            const Color(
-                                                                0xFFE13D5A),
-                                                        side: const BorderSide(
-                                                            color: Color(
-                                                                0xFFE13D5A)),
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 12),
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(12),
-                                                        ),
-                                                      ),
-                                                      onPressed: () => context.push(
-                                                          '/home/patient-dashboard/ml-assessment'),
-                                                      icon: const Icon(
-                                                          Icons.edit_document,
-                                                          size: 28),
-                                                      label: const Text(
-                                                          'Isi Form',
-                                                          style: TextStyle(
-                                                              fontSize: 18)),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: OutlinedButton.icon(
-                                                      style: OutlinedButton
-                                                          .styleFrom(
-                                                        foregroundColor:
-                                                            const Color(
-                                                                0xFFE13D5A),
-                                                        side: const BorderSide(
-                                                            color: Color(
-                                                                0xFFE13D5A)),
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 12),
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(12),
-                                                        ),
-                                                      ),
-                                                      onPressed: () => context.push(
-                                                          '/home/patient-dashboard/ml-recommendation-history'),
-                                                      icon: const Icon(
-                                                          Icons.history,
-                                                          size: 28),
-                                                      label: const Text(
-                                                          'Cek History',
-                                                          style: TextStyle(
-                                                              fontSize: 18)),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 24),
-                                              if (_mlPredictionResult !=
-                                                  null) ...[
-                                                SizedBox(
-                                                  width: fullWidth,
-                                                  child: PredictionMetricCard(
-                                                    title: 'Prediksi',
-                                                    icon:
-                                                        Icons.insights_rounded,
-                                                    iconColor:
-                                                        const Color(0xFFE13D5A),
-                                                    description:
-                                                        'Dihasilkan pada: ${_getGeneratedDateStr()}',
-                                                    score: _getProbability(),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 24),
-                                              ],
-                                              _buildRekomendasiSection(
-                                                  _mlRecommendation),
-                                            ],
-                                          )
-                                        : _missingFields.isNotEmpty
-                                            ? _buildNotReadySection(fullWidth)
-                                            : Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  const SizedBox(height: 24),
-                                                  Center(
-                                                    child: ElevatedButton.icon(
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            const Color(
-                                                                0xFFE13D5A),
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                          horizontal: 24,
-                                                          vertical: 16,
-                                                        ),
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(16),
-                                                        ),
-                                                      ),
-                                                      onPressed:
-                                                          _checkMlReadinessAndPredict,
-                                                      icon: const Icon(
-                                                          Icons.analytics),
-                                                      label: const Text(
-                                                        'Cek Prediksi ML Hari Ini',
-                                                        style: TextStyle(
-                                                          fontSize: 16,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(height: 16),
-                                                  SizedBox(
-                                                    width: double.infinity,
-                                                    child: FilledButton.icon(
-                                                      onPressed: () => context.push(
-                                                          '/home/patient-dashboard/ml-assessment'),
-                                                      style: FilledButton
-                                                          .styleFrom(
-                                                        backgroundColor:
-                                                            const Color(
-                                                                0xFFE64060),
-                                                        foregroundColor:
-                                                            Colors.white,
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 14),
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(14),
-                                                        ),
-                                                      ),
-                                                      icon: const Icon(
-                                                          Icons
-                                                              .assignment_turned_in_rounded,
-                                                          size: 18),
-                                                      label: const Text(
-                                                        'Isi Form Asesmen',
-                                                        style: TextStyle(
-                                                            fontSize: 15,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w700),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                          ),
-                          // Tab 2: Dashboard charts and cards
-                          SingleChildScrollView(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                LayoutBuilder(
-                                  builder: (context, headerConstraints) {
-                                    final twoSideBySide =
-                                        headerConstraints.maxWidth >= 300;
-                                    if (twoSideBySide) {
-                                      return Row(
-                                        children: [
-                                          Expanded(
-                                            child: _MiniStatCard(
-                                              title: 'Latest BMI',
-                                              value:
-                                                  widget.data.latestBmi == null
-                                                      ? '-'
-                                                      : widget.data.latestBmi!
-                                                          .toStringAsFixed(1),
-                                              background: Colors.white,
-                                              foreground:
-                                                  const Color(0xFF1A202C),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 24),
-                                          Expanded(
-                                            child: _MiniStatCard(
-                                              title: 'Height',
-                                              value:
-                                                  '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
-                                              background:
-                                                  const Color(0xFFE13D5A),
-                                              foreground: Colors.white,
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    }
-
-                                    return Column(
-                                      children: [
-                                        _MiniStatCard(
-                                          title: 'Latest BMI',
-                                          value: widget.data.latestBmi == null
-                                              ? '-'
-                                              : widget.data.latestBmi!
-                                                  .toStringAsFixed(1),
-                                          background: Colors.white,
-                                          foreground: const Color(0xFF1A202C),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _MiniStatCard(
-                                          title: 'Height',
-                                          value:
-                                              '${widget.data.latestHeightCm.toStringAsFixed(0)} cm',
-                                          background: const Color(0xFFE13D5A),
-                                          foreground: Colors.white,
-                                        ),
-                                      ],
-                                    );
-                                  },
+                                  ),
                                 ),
-                                const SizedBox(height: 24),
-                                Wrap(
-                                  spacing: 24,
-                                  runSpacing: 24,
-                                  children: [
-                                    SizedBox(
-                                      width: chartWidth,
-                                      child:
-                                          _WeightAndBodyCard(data: widget.data),
+                                SliverPersistentHeader(
+                                  pinned: true,
+                                  delegate: _StickyTabBarDelegate(
+                                    const TabBar(
+                                      labelColor: Color(0xFFE13D5A),
+                                      unselectedLabelColor: Colors.grey,
+                                      indicatorColor: Color(0xFFE13D5A),
+                                      labelStyle: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 17),
+                                      unselectedLabelStyle: TextStyle(
+                                          fontWeight: FontWeight.w300,
+                                          fontSize: 17),
+                                      tabs: [
+                                        Tab(text: 'Prediksi'),
+                                        Tab(text: 'Dashboard Metrik'),
+                                      ],
                                     ),
-                                    SizedBox(
-                                      width: chartWidth,
-                                      child: _HeartRateCard(data: widget.data),
-                                    ),
-                                    SizedBox(
-                                      width: chartWidth,
-                                      child:
-                                          _BloodPressureCard(data: widget.data),
-                                    ),
-                                    SizedBox(
-                                      width: chartWidth,
-                                      child: _Spo2Card(data: widget.data),
-                                    ),
-                                  ],
+                                  ),
+                                ),
+                              ];
+                            },
+                            body: TabBarView(
+                              children: [
+                                // Tab 1: Prediction results + Rekomendasi
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.all(24),
+                                  child: _isLoadingLast
+                                      ? const Center(
+                                          child: Padding(
+                                            padding: EdgeInsets.all(40),
+                                            child: CircularProgressIndicator(
+                                              color: Color(0xFFE13D5A),
+                                            ),
+                                          ),
+                                        )
+                                      : _isCheckingMl
+                                          ? const Center(
+                                              child: Padding(
+                                                padding: EdgeInsets.all(40),
+                                                child: Column(
+                                                  children: [
+                                                    CircularProgressIndicator(
+                                                      color: Color(0xFFE13D5A),
+                                                    ),
+                                                    SizedBox(height: 16),
+                                                    Text(
+                                                      'Mengecek kesiapan data dan\nmemproses prediksi...',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                          color: Colors.grey),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            )
+                                          : _mlRecommendation != null
+                                              ? Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: double.infinity,
+                                                      child:
+                                                          ElevatedButton.icon(
+                                                        style: ElevatedButton
+                                                            .styleFrom(
+                                                          backgroundColor:
+                                                              const Color(
+                                                                  0xFFE13D5A),
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  vertical: 12),
+                                                          shape:
+                                                              RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                          ),
+                                                        ),
+                                                        onPressed:
+                                                            _checkMlReadinessAndPredict,
+                                                        icon: const Icon(
+                                                            Icons.refresh,
+                                                            size: 28),
+                                                        label: const Text(
+                                                            'Jalankan Prediksi Lagi',
+                                                            style: TextStyle(
+                                                                fontSize: 18)),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 12),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: OutlinedButton
+                                                              .icon(
+                                                            style:
+                                                                OutlinedButton
+                                                                    .styleFrom(
+                                                              foregroundColor:
+                                                                  const Color(
+                                                                      0xFFE13D5A),
+                                                              side: const BorderSide(
+                                                                  color: Color(
+                                                                      0xFFE13D5A)),
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          12),
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            12),
+                                                              ),
+                                                            ),
+                                                            onPressed: () =>
+                                                                context.push(
+                                                                    '/home/patient-dashboard/ml-assessment'),
+                                                            icon: const Icon(
+                                                                Icons
+                                                                    .edit_document,
+                                                                size: 28),
+                                                            label: const Text(
+                                                                'Isi Form',
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        18)),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 12),
+                                                        Expanded(
+                                                          child: OutlinedButton
+                                                              .icon(
+                                                            style:
+                                                                OutlinedButton
+                                                                    .styleFrom(
+                                                              foregroundColor:
+                                                                  const Color(
+                                                                      0xFFE13D5A),
+                                                              side: const BorderSide(
+                                                                  color: Color(
+                                                                      0xFFE13D5A)),
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          12),
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            12),
+                                                              ),
+                                                            ),
+                                                            onPressed: () =>
+                                                                context.push(
+                                                                    '/home/patient-dashboard/ml-recommendation-history'),
+                                                            icon: const Icon(
+                                                                Icons.history,
+                                                                size: 28),
+                                                            label: const Text(
+                                                                'Cek History',
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        18)),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 24),
+                                                    if (_mlPredictionResult !=
+                                                        null) ...[
+                                                      SizedBox(
+                                                        width: fullWidth,
+                                                        child:
+                                                            PredictionMetricCard(
+                                                          title: 'Prediksi',
+                                                          icon: Icons
+                                                              .insights_rounded,
+                                                          iconColor:
+                                                              const Color(
+                                                                  0xFFE13D5A),
+                                                          description:
+                                                              'Dihasilkan pada: ${_getGeneratedDateStr()}',
+                                                          score:
+                                                              _getProbability(),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                          height: 24),
+                                                    ],
+                                                    _buildRekomendasiSection(
+                                                        _mlRecommendation),
+                                                  ],
+                                                )
+                                              : _missingFields.isNotEmpty
+                                                  ? _buildNotReadySection(
+                                                      fullWidth)
+                                                  : Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        const SizedBox(
+                                                            height: 24),
+                                                        Center(
+                                                          child: ElevatedButton
+                                                              .icon(
+                                                            style:
+                                                                ElevatedButton
+                                                                    .styleFrom(
+                                                              backgroundColor:
+                                                                  const Color(
+                                                                      0xFFE13D5A),
+                                                              foregroundColor:
+                                                                  Colors.white,
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                horizontal: 24,
+                                                                vertical: 16,
+                                                              ),
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            16),
+                                                              ),
+                                                            ),
+                                                            onPressed:
+                                                                _checkMlReadinessAndPredict,
+                                                            icon: const Icon(
+                                                                Icons
+                                                                    .analytics),
+                                                            label: const Text(
+                                                              'Cek Prediksi ML Hari Ini',
+                                                              style: TextStyle(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        SizedBox(height: 16),
+                                                        SizedBox(
+                                                          width:
+                                                              double.infinity,
+                                                          child:
+                                                              FilledButton.icon(
+                                                            onPressed: () =>
+                                                                context.push(
+                                                                    '/home/patient-dashboard/ml-assessment'),
+                                                            style: FilledButton
+                                                                .styleFrom(
+                                                              backgroundColor:
+                                                                  const Color(
+                                                                      0xFFE64060),
+                                                              foregroundColor:
+                                                                  Colors.white,
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          14),
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            14),
+                                                              ),
+                                                            ),
+                                                            icon: const Icon(
+                                                                Icons
+                                                                    .assignment_turned_in_rounded,
+                                                                size: 18),
+                                                            label: const Text(
+                                                              'Isi Form Asesmen',
+                                                              style: TextStyle(
+                                                                  fontSize: 15,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                ),
+                                // Tab 2: Dashboard charts and cards
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            0, 16, 0, 16),
+                                        child: DropdownButtonFormField<String>(
+                                          dropdownColor: Colors.white,
+                                          value: _selectedPeriod?.id,
+                                          items: data.periods
+                                              .map(
+                                                (period) =>
+                                                    DropdownMenuItem<String>(
+                                                  value: period.id,
+                                                  child: Text(
+                                                    period.label,
+                                                    style:
+                                                        TextStyle(fontSize: 18),
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                          onChanged: (value) {
+                                            final period = data.periods
+                                                .where((it) => it.id == value)
+                                                .firstOrNull;
+                                            if (period == null) return;
+                                            _loadDashboardData(period: period);
+                                          },
+                                          decoration: InputDecoration(
+                                            labelText: 'Periode',
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            // border: OutlineInputBorder(
+                                            //   borderRadius:
+                                            //       BorderRadius.circular(16),
+                                            //   borderSide: BorderSide.none,
+                                            // ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              borderSide: const BorderSide(
+                                                color: Color(
+                                                    0xFFE2E8F0), // Subtle border color
+                                                width: 1.5,
+                                              ),
+                                            ),
+                                            // 2. Define the border when the user taps/focuses on it
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              borderSide: const BorderSide(
+                                                color: Color(
+                                                    0xFFE13D5A), // Blue border when focused
+                                                width: 2.0,
+                                              ),
+                                            ),
+                                            labelStyle: const TextStyle(
+                                              color: Color(0xFF64748B),
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      if (_isLoadingDashboard)
+                                        const Padding(
+                                          padding: EdgeInsets.fromLTRB(
+                                              24, 12, 24, 0),
+                                          child: LinearProgressIndicator(
+                                            color: Color(0xFFE13D5A),
+                                          ),
+                                        ),
+                                      if (_dashboardError != null)
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              24, 12, 24, 0),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFFEF2F2),
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                const Expanded(
+                                                  child: Text(
+                                                    'Gagal memuat data periode terbaru.',
+                                                    style: TextStyle(
+                                                      color: Color(0xFFB91C1C),
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: _loadDashboardData,
+                                                  child:
+                                                      const Text('Coba Lagi'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      if (!_isLoadingDashboard &&
+                                          _dashboardData != null) ...[
+                                        LayoutBuilder(
+                                          builder:
+                                              (context, headerConstraints) {
+                                            final twoSideBySide =
+                                                headerConstraints.maxWidth >=
+                                                    300;
+                                            if (twoSideBySide) {
+                                              return Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: _MiniStatCard(
+                                                      title: 'Latest BMI',
+                                                      value: data.latestBmi ==
+                                                              null
+                                                          ? '-'
+                                                          : data.latestBmi!
+                                                              .toStringAsFixed(
+                                                                  1),
+                                                      background: Colors.white,
+                                                      foreground: const Color(
+                                                          0xFF1A202C),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 24),
+                                                  Expanded(
+                                                    child: _MiniStatCard(
+                                                      title: 'Height',
+                                                      value:
+                                                          '${data.latestHeightCm.toStringAsFixed(0)} cm',
+                                                      background: const Color(
+                                                          0xFFE13D5A),
+                                                      foreground: Colors.white,
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            }
+
+                                            return Column(
+                                              children: [
+                                                _MiniStatCard(
+                                                  title: 'Latest BMI',
+                                                  value: data.latestBmi == null
+                                                      ? '-'
+                                                      : data.latestBmi!
+                                                          .toStringAsFixed(1),
+                                                  background: Colors.white,
+                                                  foreground:
+                                                      const Color(0xFF1A202C),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                _MiniStatCard(
+                                                  title: 'Height',
+                                                  value:
+                                                      '${data.latestHeightCm.toStringAsFixed(0)} cm',
+                                                  background:
+                                                      const Color(0xFFE13D5A),
+                                                  foreground: Colors.white,
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(height: 24),
+                                        Wrap(
+                                          spacing: 24,
+                                          runSpacing: 24,
+                                          children: [
+                                            SizedBox(
+                                              width: chartWidth,
+                                              child: _WeightAndBodyCard(
+                                                  data: data),
+                                            ),
+                                            SizedBox(
+                                              width: chartWidth,
+                                              child: _HeartRateCard(data: data),
+                                            ),
+                                            SizedBox(
+                                              width: chartWidth,
+                                              child: _BloodPressureCard(
+                                                  data: data),
+                                            ),
+                                            SizedBox(
+                                              width: chartWidth,
+                                              child: _Spo2Card(data: data),
+                                            ),
+                                          ],
+                                        ),
+                                      ]
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   );
                 },
@@ -606,6 +879,115 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
         ),
       ),
     );
+  }
+
+  PatientDashboardData _emptyDashboardData(TimePeriodOption selectedPeriod) {
+    return PatientDashboardData(
+      patient: const PatientProfile(
+        id: '',
+        firstName: '',
+        lastName: '',
+      ),
+      periods: _periodOptions,
+      selectedPeriod: selectedPeriod,
+      heartRatePoints: const [],
+      bloodPressurePoints: const [],
+      spo2Points: const [],
+      weightPoints: const [],
+      bmiPoints: const [],
+      latestHeightCm: 0,
+      heartRateThreshold: const HeartRateThreshold(
+        normalMin: 60,
+        normalMax: 100,
+      ),
+      bloodPressureThreshold: const BloodPressureThreshold(
+        normalSystolicMax: 120,
+        normalDiastolicMax: 80,
+        elevatedSystolicMin: 120,
+        elevatedSystolicMax: 129,
+        elevatedDiastolicMax: 80,
+        stage1SystolicMin: 130,
+        stage1SystolicMax: 139,
+        stage1DiastolicMin: 80,
+        stage1DiastolicMax: 89,
+        stage2SystolicMin: 140,
+        stage2DiastolicMin: 90,
+      ),
+      spo2Threshold: const Spo2Threshold(
+        criticalThreshold: 90,
+        cautionThreshold: 95,
+      ),
+      weightThreshold: const WeightThreshold(
+        dailyIncreaseCriticalKg: 2,
+      ),
+    );
+  }
+
+  String? _normalizeNullable(Object? value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty || text == 'null') return null;
+    return text;
+  }
+
+  List<ChartPoint> _buildChartPoints(
+    List<String> timestamps,
+    List<num?> values,
+  ) {
+    final length = math.min(timestamps.length, values.length);
+    final points = <ChartPoint>[];
+
+    for (var index = 0; index < length; index++) {
+      final value = values[index];
+      if (value == null) continue;
+
+      final timestamp = DateTime.parse(timestamps[index]).toLocal();
+      points.add(
+        ChartPoint(
+          timestamp: timestamp,
+          value: value.toDouble(),
+        ),
+      );
+    }
+
+    return points;
+  }
+
+  List<BloodPressurePoint> _buildBloodPressurePoints(
+    List<String> timestamps,
+    List<num?> systolicValues,
+    List<num?> diastolicValues,
+  ) {
+    final length = math.min(
+      timestamps.length,
+      math.min(systolicValues.length, diastolicValues.length),
+    );
+    final points = <BloodPressurePoint>[];
+
+    for (var index = 0; index < length; index++) {
+      final systolic = systolicValues[index];
+      final diastolic = diastolicValues[index];
+      if (systolic == null || diastolic == null) continue;
+
+      final timestamp = DateTime.parse(timestamps[index]).toLocal();
+      points.add(
+        BloodPressurePoint(
+          timestamp: timestamp,
+          systolic: systolic.toDouble(),
+          diastolic: diastolic.toDouble(),
+        ),
+      );
+    }
+
+    return points;
+  }
+
+  num? _lastNonNull(List<num?>? values) {
+    if (values == null) return null;
+    for (var index = values.length - 1; index >= 0; index--) {
+      final value = values[index];
+      if (value != null) return value;
+    }
+    return null;
   }
 
   Widget _buildNotReadySection(double fullWidth) {
@@ -1219,8 +1601,10 @@ class _PatientHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String properGender =
-        patient.sex![0].toUpperCase() + patient.sex!.substring(1).toLowerCase();
+    final sexRaw = patient.sex?.trim();
+    final properGender = (sexRaw == null || sexRaw.isEmpty)
+        ? '-'
+        : '${sexRaw[0].toUpperCase()}${sexRaw.substring(1).toLowerCase()}';
     String properName = patient.fullName
         .split(' ')
         .map((word) => word.isEmpty

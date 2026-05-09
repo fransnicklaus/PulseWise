@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/ml_questionnaire_page.dart';
@@ -25,7 +23,6 @@ import 'package:pulsewise/features/dashboard/presentation/pages/patient_flutter.
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
   return GoRouter(
@@ -231,7 +228,8 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           ),
           GoRoute(
             path: 'patient-dashboard',
-            builder: (context, state) => const _PatientDashboardRoute(),
+            builder: (context, state) =>
+                const patient_ui.PatientDashboardPage(),
             routes: [
               GoRoute(
                 path: 'ml-assessment',
@@ -252,151 +250,4 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
       ),
     ],
   );
-}
-
-class _PatientDashboardRoute extends ConsumerWidget {
-  const _PatientDashboardRoute();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final profileAsync = ref.watch(patientProfileProvider);
-    final authMeAsync = ref.watch(authMeProvider);
-
-    return profileAsync.when(
-      data: (patientProfile) {
-        final authMe = authMeAsync.valueOrNull;
-        final patient = patient_ui.PatientProfile(
-          id: patientProfile.patientId,
-          firstName: patientProfile.firstName.isNotEmpty
-              ? patientProfile.firstName
-              : authMe?.firstName ?? '',
-          lastName: patientProfile.lastName.isNotEmpty
-              ? patientProfile.lastName
-              : authMe?.lastName ?? '',
-          sex: patientProfile.sex.isEmpty ? null : patientProfile.sex,
-          dateOfBirth:
-              patientProfile.dateOfBirth?.toIso8601String().split('T').first,
-          phone: null,
-          email: patientProfile.email.isNotEmpty
-              ? patientProfile.email
-              : authMe?.email,
-        );
-
-        const periods = [
-          patient_ui.TimePeriodOption(id: '7d', label: '7 Hari'),
-          patient_ui.TimePeriodOption(id: '30d', label: '30 Hari'),
-          patient_ui.TimePeriodOption(id: '90d', label: '90 Hari'),
-        ];
-
-        final data = patient_ui.PatientDashboardData(
-          patient: patient,
-          periods: periods,
-          selectedPeriod: periods.first,
-          avatarUrl: authMe?.avatarPhoto,
-          heartRatePoints: _buildDummyHeartRatePoints(),
-          bloodPressurePoints: _buildDummyBloodPressurePoints(),
-          spo2Points: _buildDummySpo2Points(),
-          weightPoints: _buildDummyWeightPoints(),
-          bmiPoints: _buildDummyBmiPoints(),
-          latestHeightCm: double.tryParse(patientProfile.bodyHeightCm) ?? 0,
-          heartRateThreshold: const patient_ui.HeartRateThreshold(
-            normalMin: 60,
-            normalMax: 100,
-          ),
-          bloodPressureThreshold: const patient_ui.BloodPressureThreshold(
-            normalSystolicMax: 120,
-            normalDiastolicMax: 80,
-            elevatedSystolicMin: 120,
-            elevatedSystolicMax: 129,
-            elevatedDiastolicMax: 80,
-            stage1SystolicMin: 130,
-            stage1SystolicMax: 139,
-            stage1DiastolicMin: 80,
-            stage1DiastolicMax: 89,
-            stage2SystolicMin: 140,
-            stage2DiastolicMin: 90,
-          ),
-          spo2Threshold: const patient_ui.Spo2Threshold(
-            criticalThreshold: 90,
-            cautionThreshold: 95,
-          ),
-          weightThreshold: const patient_ui.WeightThreshold(
-            dailyIncreaseCriticalKg: 2,
-          ),
-        );
-
-        return patient_ui.PatientDashboardPage(data: data);
-      },
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (error, stackTrace) => Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              error.toString(),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-List<patient_ui.ChartPoint> _buildDummyHeartRatePoints() {
-  final now = DateTime.now();
-  return List.generate(7, (index) {
-    final offset = 6 - index;
-    return patient_ui.ChartPoint(
-      timestamp: DateTime(now.year, now.month, now.day - offset),
-      value: (72 + (index.isEven ? index * 2 : -index)).toDouble(),
-    );
-  });
-}
-
-List<patient_ui.BloodPressurePoint> _buildDummyBloodPressurePoints() {
-  final now = DateTime.now();
-  return List.generate(7, (index) {
-    final offset = 6 - index;
-    return patient_ui.BloodPressurePoint(
-      timestamp: DateTime(now.year, now.month, now.day - offset),
-      systolic: 116 + (index * 2),
-      diastolic: 76 + (index % 3),
-    );
-  });
-}
-
-List<patient_ui.ChartPoint> _buildDummySpo2Points() {
-  final now = DateTime.now();
-  return List.generate(7, (index) {
-    final offset = 6 - index;
-    return patient_ui.ChartPoint(
-      timestamp: DateTime(now.year, now.month, now.day - offset),
-      value: (97 - (index % 4)).toDouble(),
-    );
-  });
-}
-
-List<patient_ui.ChartPoint> _buildDummyWeightPoints() {
-  final now = DateTime.now();
-  return List.generate(7, (index) {
-    final offset = 6 - index;
-    return patient_ui.ChartPoint(
-      timestamp: DateTime(now.year, now.month, now.day - offset),
-      value: 68.0 + (index * 0.2),
-    );
-  });
-}
-
-List<patient_ui.ChartPoint> _buildDummyBmiPoints() {
-  final now = DateTime.now();
-  return List.generate(7, (index) {
-    final offset = 6 - index;
-    return patient_ui.ChartPoint(
-      timestamp: DateTime(now.year, now.month, now.day - offset),
-      value: 23.1 + (index * 0.05),
-    );
-  });
 }
