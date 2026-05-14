@@ -41,6 +41,12 @@ final dashboardVitalsProvider =
   return api.fetchDashboardVitals(timePeriod);
 });
 
+final quickDashboardProvider =
+    FutureProvider<QuickDashboardResponse?>((ref) async {
+  final api = ref.watch(profileApiProvider);
+  return api.fetchQuickDashboard();
+});
+
 final dashboardTimePeriodProvider =
     StateProvider<String>((ref) => 'last_30_days');
 
@@ -498,6 +504,47 @@ class DashboardLatestVitals {
       weight: json['weight'] as num?,
       height: json['height'] as num?,
       bmi: json['bmi'] as num?,
+    );
+  }
+}
+
+class QuickDashboardResponse {
+  final bool success;
+  final String message;
+  final QuickDashboardData? data;
+
+  QuickDashboardResponse({
+    required this.success,
+    required this.message,
+    this.data,
+  });
+
+  factory QuickDashboardResponse.fromJson(Map<String, dynamic> json) {
+    return QuickDashboardResponse(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      data: json['data'] != null
+          ? QuickDashboardData.fromJson(json['data'])
+          : null,
+    );
+  }
+}
+
+class QuickDashboardData {
+  final DashboardPatient patient;
+  final DashboardLatestVitals? latestVitals;
+
+  QuickDashboardData({
+    required this.patient,
+    this.latestVitals,
+  });
+
+  factory QuickDashboardData.fromJson(Map<String, dynamic> json) {
+    return QuickDashboardData(
+      patient: DashboardPatient.fromJson(json['patient'] ?? {}),
+      latestVitals: json['latestVitals'] != null
+          ? DashboardLatestVitals.fromJson(json['latestVitals'])
+          : null,
     );
   }
 }
@@ -1168,6 +1215,48 @@ class ProfileApi {
     }
 
     return DashboardVitalsResponse.fromJson(body);
+  }
+
+  Future<QuickDashboardResponse?> fetchQuickDashboard() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$patientId/dashboard',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal mengambil data dashboard').toString(),
+        );
+      }
+
+      return QuickDashboardResponse.fromJson(body);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+      throw Exception('Gagal mengambil data dashboard.');
+    }
   }
 
   Future<MlRecommendationResponse> fetchMlRecommendations(String date) async {
@@ -2153,6 +2242,68 @@ class ProfileApi {
     }
   }
 
+  Future<MedicationLogResponse> fetchMedicationLogs({
+    required String patientId,
+    required String medicationId,
+    required int page,
+    required int limit,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    if (patientId.trim().isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    if (medicationId.trim().isEmpty) {
+      throw Exception('medicationId tidak ditemukan. Silakan login ulang.');
+    }
+
+    String formatDate(DateTime date) {
+      final y = date.year.toString().padLeft(4, '0');
+      final m = date.month.toString().padLeft(2, '0');
+      final d = date.day.toString().padLeft(2, '0');
+      return '$y-$m-$d';
+    }
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$patientId/medications/$medicationId/logs',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        'startDate': formatDate(startDate),
+        'endDate': formatDate(endDate),
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null) {
+      throw Exception('Respons medication logs tidak valid dari server');
+    }
+
+    if (body['success'] != true) {
+      throw Exception(
+        (body['message'] ?? 'Gagal mengambil medication logs').toString(),
+      );
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return MedicationLogResponse.fromJson(data);
+  }
+
   Future<MedicationCalendarResponse> fetchMedicationCalendar({
     required DateTime from,
     required DateTime to,
@@ -2492,6 +2643,60 @@ class MedicationCalendarRange {
     return MedicationCalendarRange(
       from: DateTime.tryParse((json['from'] ?? '').toString()),
       to: DateTime.tryParse((json['to'] ?? '').toString()),
+    );
+  }
+}
+
+class MedicationLogResponse {
+  final List<MedicationLogItem> items;
+  final MedicationPagination pagination;
+
+  const MedicationLogResponse({
+    required this.items,
+    required this.pagination,
+  });
+
+  factory MedicationLogResponse.fromJson(Map<String, dynamic> json) {
+    return MedicationLogResponse(
+      items: ((json['items'] as List?) ?? const [])
+          .map((e) => MedicationLogItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      pagination: MedicationPagination.fromJson(
+        (json['pagination'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}
+
+class MedicationLogItem {
+  final String medicationLogId;
+  final String userId;
+  final String medicationId;
+  final String status;
+  final DateTime? medicationDate;
+  final String medicationTime;
+  final DateTime? createdAt;
+
+  const MedicationLogItem({
+    required this.medicationLogId,
+    required this.userId,
+    required this.medicationId,
+    required this.status,
+    required this.medicationDate,
+    required this.medicationTime,
+    required this.createdAt,
+  });
+
+  factory MedicationLogItem.fromJson(Map<String, dynamic> json) {
+    return MedicationLogItem(
+      medicationLogId: (json['medicationLogId'] ?? '').toString(),
+      userId: (json['userId'] ?? '').toString(),
+      medicationId: (json['medicationId'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      medicationDate:
+          DateTime.tryParse((json['medicationDate'] ?? '').toString()),
+      medicationTime: (json['medicationTime'] ?? '').toString(),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
     );
   }
 }

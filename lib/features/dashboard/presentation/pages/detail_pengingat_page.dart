@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_history_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/widgets/medication_consumption_tracking_card.dart';
 
 class DetailPengingatPage extends ConsumerStatefulWidget {
   const DetailPengingatPage({
@@ -85,6 +87,12 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: 'Detail Pengingat',
+        // subtitle: 'Tambahkan kontak darurat baru',
+        showBackButton: true,
+        onBackPressed: () => context.pop(),
+      ),
       body: SafeArea(
         child: detailAsync.when(
           loading: () => const Center(
@@ -101,7 +109,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeader(context),
+                // _buildHeader(context),
                 const SizedBox(height: 16),
                 _buildMainCard(item),
                 const SizedBox(height: 16),
@@ -140,7 +148,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                           child: const Text(
                             'Edit',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -172,7 +180,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                               : const Text(
                                   'Hapus',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -189,252 +197,358 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 18),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: IconButton(
-              onPressed: () => context.pop(),
-              icon: const Icon(
-                Icons.arrow_back,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-          const Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Detail',
-                  style: TextStyle(
-                    color: Color(0xFF4F5F7B),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
-                Text(
-                  'Pengingat',
-                  style: TextStyle(
-                    color: Color(0xFF4F5F7B),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
   Widget _buildMainCard(MedicationItem item) {
     final iconColor = _resolveColor(item.color);
+    final hasWeeklyDays =
+        item.frequency.toLowerCase() == 'weekly' && item.daysOfWeek.isNotEmpty;
+    final note = item.note?.trim();
+    final conditionTag = item.conditionTag?.trim();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: _MedicationFormIcon(form: item.form, color: iconColor),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: iconColor.withOpacity(0.16)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 26,
+            offset: Offset(0, 12),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _GreyChip(label: 'Obat'),
-                const SizedBox(height: 4),
-                Text(
-                  item.name,
-                  style: const TextStyle(
-                    color: Color(0xFF444444),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -28,
+              top: -34,
+              child: Container(
+                width: 170,
+                height: 170,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: iconColor.withOpacity(0.07),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_doseText(item)} • ${item.singleDoseUnit}',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+            ),
+            Positioned(
+              left: -30,
+              bottom: -30,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE64060).withOpacity(0.05),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _frequencyText(item),
-                  style: const TextStyle(
-                    color: Color(0xFF475569),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (item.frequency.toLowerCase() == 'weekly' &&
-                    item.daysOfWeek.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: item.daysOfWeek
-                        .map(
-                          (day) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFE7EE),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _dayLabel(day),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              iconColor.withOpacity(0.25),
+                              iconColor.withOpacity(0.12),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(26),
+                          border:
+                              Border.all(color: iconColor.withOpacity(0.18)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: _MedicationFormIcon(
+                            form: item.form,
+                            color: iconColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Wrap(
+                            //   spacing: 8,
+                            //   runSpacing: 8,
+                            //   children: [
+                            //     // const _GreyChip(label: 'Obat'),
+                            //     if (conditionTag != null &&
+                            //         conditionTag.isNotEmpty)
+                            //       _ColorChip(
+                            //         label: conditionTag,
+                            //         background: iconColor.withOpacity(0.12),
+                            //         foreground: iconColor,
+                            //       ),
+                            //   ],
+                            // ),
+                            // const SizedBox(height: 10),
+                            Text(
+                              item.name,
                               style: const TextStyle(
-                                color: Color(0xFFE64060),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                height: 1.05,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${_doseText(item)} ${item.singleDoseUnit}',
+                              style: TextStyle(
+                                color: iconColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _frequencyText(item),
+                              style: const TextStyle(
+                                color: Color(0xFF475569),
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                height: 1.25,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  // Row(
+                  //   children: [
+                  //     Expanded(
+                  //       child: _InfoStatCard(
+                  //         label: 'Dosis',
+                  //         value: '${_doseText(item)} ${item.singleDoseUnit}',
+                  //         // accentColor: Colors.white,
+                  //         compact: false,
+                  //       ),
+                  //     ),
+                  //     const SizedBox(width: 10),
+                  //     Expanded(
+                  //       child: _InfoStatCard(
+                  //         label: 'Reminder',
+                  //         value: '${item.reminders.length} aktif',
+                  //         // accentColor: const Color(0xFF0F766E),
+                  //         // accentColor: Colors.white,
+                  //         compact: false,
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
+                  // const SizedBox(height: 10),
+                  // _InfoStatCard(
+                  //   label: 'Jadwal',
+                  //   value: _frequencyText(item),
+                  //   // accentColor: const Color(0xFFE64060),
+                  //   compact: false,
+                  //   fullWidth: true,
+                  // ),
+                  // const SizedBox(height: 18),
+                  if (hasWeeklyDays) ...[
+                    const Text(
+                      'Hari Konsumsi',
+                      style: TextStyle(
+                        color: Color(0xFF334155),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: item.daysOfWeek
+                          .map(
+                            (day) => _ColorChip(
+                              label: _dayLabel(day),
+                              background: const Color(0xFFFFE7EE),
+                              foreground: const Color(0xFFE64060),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  const Text(
+                    'Waktu Minum',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: item.intakeTimes
+                        .map(
+                          (time) => _ColorChip(
+                            label: time,
+                            background: const Color(0xFFF1F5F9),
+                            foreground: const Color(0xFF334155),
                           ),
                         )
                         .toList(),
                   ),
-                ],
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: item.intakeTimes
-                      .map(
-                        (time) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            time,
-                            style: const TextStyle(
-                              color: Color(0xFF475569),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                  if (note != null && note.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: iconColor.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.sticky_note_2_outlined,
+                              size: 18,
+                              color: iconColor,
                             ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
-                if ((item.note ?? '').trim().isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    item.note!.trim(),
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 14,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              note,
+                              style: const TextStyle(
+                                color: Color(0xFF475569),
+                                fontSize: 20,
+                                height: 1.5,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTrackingCard(MedicationItem item) {
+    return MedicationConsumptionTrackingCard(
+      patientId: item.userId,
+      medicationId: item.medicationId,
+    );
+  }
+}
+
+class _ColorChip extends StatelessWidget {
+  const _ColorChip({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: foreground,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoStatCard extends StatelessWidget {
+  const _InfoStatCard({
+    required this.label,
+    required this.value,
+    // required this.accentColor,
+    required this.compact,
+    this.fullWidth = false,
+  });
+
+  final String label;
+  final String value;
+  // final Color accentColor;
+  final bool compact;
+  final bool fullWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      constraints: BoxConstraints(minWidth: compact ? 0 : 124),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.withOpacity(0.14)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tracking Konsumsi',
+          Text(
+            label.toUpperCase(),
             style: TextStyle(
-              color: Color(0xFF4F5F7B),
+              color: Colors.black.withOpacity(0.6),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              color: Colors.black,
               fontSize: 16,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
             ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Status Taken, Skipped, dan Missed masih tahap pengembangan. Untuk sekarang dibiarkan terbuka dulu.',
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: item.reminders
-                .map(
-                  (reminder) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F4),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${_reminderPrefix(reminder)}${reminder.scheduleTime} • Open',
-                      style: const TextStyle(
-                        color: Color(0xFFE64060),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
           ),
         ],
       ),
@@ -528,8 +642,8 @@ class _MedicationFormIcon extends StatelessWidget {
     return Center(
       child: SvgPicture.string(
         svg,
-        width: 28,
-        height: 28,
+        width: 40,
+        height: 40,
         colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
       ),
     );
@@ -589,14 +703,6 @@ String _frequencyText(MedicationItem item) {
     return 'Harian • setiap $every hari';
   }
   return 'Harian';
-}
-
-String _reminderPrefix(MedicationReminder reminder) {
-  final day = reminder.dayOfWeek;
-  if (day == null) {
-    return '';
-  }
-  return '${_dayLabel(day)} • ';
 }
 
 String _dayLabel(int value) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_history_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
@@ -91,22 +92,12 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: _isSaving ? null : () => context.pop(),
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF4F5F7B)),
-        ),
-        title: const Text(
-          'Edit Pengingat',
-          style: TextStyle(
-            color: Color(0xFF4F5F7B),
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+      appBar: CustomAppBar(
+          title: 'Edit Pengingat',
+          showBackButton: true,
+          onBackPressed: () {
+            context.pop();
+          }),
       body: FutureBuilder<MedicationItem>(
         future: _detailFuture,
         builder: (context, snapshot) {
