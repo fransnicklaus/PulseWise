@@ -15,6 +15,7 @@ import 'package:pulsewise/features/dashboard/presentation/pages/edit_pengingat_p
 import 'package:pulsewise/features/dashboard/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/update_profile_page.dart';
 // import 'package:pulsewise/features/dashboard/presentation/pages/patient_dashboard_page.dart';
@@ -190,6 +191,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'health-connect',
             builder: (context, state) => const HealthConnectPage(),
+          ),
+          GoRoute(
+            path: 'fcm-token',
+            builder: (context, state) => const FcmTokenPage(),
           ),
           GoRoute(
             path: 'diary',

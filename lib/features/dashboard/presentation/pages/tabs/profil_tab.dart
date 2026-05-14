@@ -728,7 +728,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildTopBar(),
-                      SizedBox(height: 35),
+                      const SizedBox(height: 35),
                       _buildAvatarSection(
                         (profile?.fullName.isNotEmpty ?? false)
                             ? profile!.fullName
@@ -879,6 +879,32 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         child: SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
+                            onPressed: () => context.push('/home/fcm-token'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0F766E),
+                              side: const BorderSide(color: Color(0xFF99F6E4)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(
+                                Icons.notifications_active_outlined,
+                                size: 22),
+                            label: const Text(
+                              'FCM Device Token',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
                             onPressed: () =>
                                 context.push('/home/health-connect'),
                             style: OutlinedButton.styleFrom(
@@ -892,7 +918,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             icon: const Icon(Icons.monitor_heart_outlined,
                                 size: 22),
                             label: const Text(
-                              'Test Health Connect',
+                              'Panduan Health Connect',
                               style: TextStyle(
                                   fontSize: 16, fontWeight: FontWeight.w700),
                             ),

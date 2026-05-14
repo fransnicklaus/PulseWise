@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:go_router/go_router.dart';
 
 import 'package:flutter/material.dart';
-import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:flutter_health_connect/flutter_health_connect.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
 
 class HealthConnectPage extends StatefulWidget {
   const HealthConnectPage({super.key});
@@ -76,441 +78,568 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
     83: 'Yoga',
   };
 
-  bool _showRaw = false;
-  String _lastAction = 'Belum ada aksi';
-  Map<String, dynamic>? _prettyData;
-  String _rawData = '-';
-
-  final List<HealthConnectDataType> _types = [
+  final List<HealthConnectDataType> _types = const [
     HealthConnectDataType.Steps,
     HealthConnectDataType.ExerciseSession,
     HealthConnectDataType.HeartRate,
     HealthConnectDataType.SleepSession,
   ];
 
+  bool _showRaw = false;
+  bool _isBusy = false;
+  String? _activeAction;
+  bool? _isApiSupported;
+  bool? _isInstalled;
+  bool? _hasPermissions;
+  String _lastAction = 'Belum ada aksi';
+  String _rawData = '-';
+  String _statusNote =
+      'Ikuti panduan ini agar PulseWise bisa membaca data kesehatan dari wearable Anda.';
+  Map<String, dynamic>? _prettyData;
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Health Connect',
-          style: TextStyle(
-            color: Color(0xFF334155),
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          child: Column(
-            children: [
-              _ActionButton(
-                label: 'isApiSupported',
-                onTap: _checkApiSupported,
-              ),
-              _ActionButton(
-                label: 'Check installed',
-                onTap: _checkInstalled,
-              ),
-              _ActionButton(
-                label: 'Install Health Connect',
-                onTap: _installHealthConnect,
-              ),
-              _ActionButton(
-                label: 'Open Health Connect Settings',
-                onTap: _openSettings,
-              ),
-              _ActionButton(
-                label: 'Has Permissions',
-                onTap: _hasPermissions,
-              ),
-              _ActionButton(
-                label: 'Request Permissions',
-                onTap: _requestPermissions,
-              ),
-              _ActionButton(
-                label: 'Get Record',
-                onTap: _getRecord,
-              ),
-              _ActionButton(
-                label: "Get Today's Steps",
-                onTap: _getTodaySteps,
-              ),
-              _ActionButton(
-                label: 'View Heart Rate Data',
-                onTap: _getHeartRateData,
-              ),
-              _ActionButton(
-                label: 'View Exercise Data',
-                onTap: _getExerciseData,
-              ),
-              _ActionButton(
-                label: 'View Sleep Data',
-                onTap: _getSleepData,
-              ),
-              const SizedBox(height: 18),
-              _buildResultSection(),
-            ],
-          ),
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _checkAll(
+        silent: true,
+        updateStatusNote: false,
+        updateResult: false,
+      );
+    });
   }
 
-  Widget _buildResultSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Result Viewer',
-            style: TextStyle(
-              color: Color(0xFF334155),
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _ModeButton(
-                  label: 'Beautiful',
-                  selected: !_showRaw,
-                  onTap: () => setState(() => _showRaw = false),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ModeButton(
-                  label: 'Raw',
-                  selected: _showRaw,
-                  onTap: () => setState(() => _showRaw = true),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_showRaw)
-            SelectableText(
-              _rawData,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 13,
-                height: 1.4,
-              ),
-            )
-          else
-            _BeautifulResult(data: _prettyData, lastAction: _lastAction),
-        ],
-      ),
-    );
+  Future<void> _runBusyAction(
+    String actionLabel,
+    Future<void> Function() action,
+  ) async {
+    if (_isBusy) return;
+
+    setState(() {
+      _isBusy = true;
+      _activeAction = actionLabel;
+    });
+
+    try {
+      await action();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isBusy = false;
+          _activeAction = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkAll({
+    bool silent = false,
+    bool updateStatusNote = true,
+    bool updateResult = true,
+  }) async {
+    await _runBusyAction('Memeriksa semua status', () async {
+      try {
+        final supported = await HealthConnectFactory.isApiSupported();
+        bool? installed;
+        bool? granted;
+
+        if (supported) {
+          installed = await HealthConnectFactory.isAvailable();
+          if (installed) {
+            granted = await HealthConnectFactory.hasPermissions(
+              _types,
+              readOnly: true,
+            );
+          }
+        }
+
+        final nextStatusNote = supported
+            ? installed == true
+                ? granted == true
+                    ? 'Health Connect sudah siap digunakan di PulseWise.'
+                    : 'Health Connect sudah terpasang, tetapi izin data belum diberikan.'
+                : 'Perangkat mendukung, tetapi aplikasi Health Connect belum terpasang.'
+            : 'Perangkat ini belum mendukung Health Connect.';
+
+        if (!mounted) return;
+        setState(() {
+          _isApiSupported = supported;
+          _isInstalled = installed;
+          _hasPermissions = granted;
+          if (updateStatusNote) {
+            _statusNote = nextStatusNote;
+          }
+        });
+        if (updateResult) {
+          _setResult(
+            action: 'Periksa Semua Status',
+            data: {
+              'supported': supported,
+              'installed': installed,
+              'permissionsGranted': granted,
+            },
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        if (updateStatusNote) {
+          setState(() {
+            _statusNote = 'Gagal memeriksa status: $e';
+          });
+        }
+        if (updateResult) {
+          _setResult(
+            action: 'Periksa Semua Status',
+            data: {'error': e.toString()},
+          );
+        }
+        if (!silent) {
+          AppToast.error(context, 'Gagal memeriksa status Health Connect');
+        }
+      }
+    });
   }
 
   Future<void> _checkApiSupported() async {
-    final result = await HealthConnectFactory.isApiSupported();
-    _setResult(action: 'isApiSupported', data: {'supported': result});
+    await _runBusyAction('Memeriksa dukungan perangkat', () async {
+      try {
+        final supported = await HealthConnectFactory.isApiSupported();
+        if (!mounted) return;
+        setState(() {
+          _isApiSupported = supported;
+          _statusNote = supported
+              ? 'Perangkat mendukung Health Connect.'
+              : 'Perangkat belum mendukung Health Connect.';
+        });
+        _setResult(
+          action: 'Periksa Dukungan Perangkat',
+          data: {'supported': supported},
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal memeriksa dukungan perangkat: $e';
+        });
+        _setResult(
+          action: 'Periksa Dukungan Perangkat',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, 'Gagal memeriksa dukungan perangkat');
+      }
+    });
   }
 
   Future<void> _checkInstalled() async {
-    final result = await HealthConnectFactory.isAvailable();
-    _setResult(action: 'Check installed', data: {'installed': result});
+    await _runBusyAction('Memeriksa aplikasi Health Connect', () async {
+      try {
+        final installed = await HealthConnectFactory.isAvailable();
+        if (!mounted) return;
+        setState(() {
+          _isInstalled = installed;
+          _statusNote = installed
+              ? 'Aplikasi Health Connect sudah terpasang.'
+              : 'Aplikasi Health Connect belum terpasang.';
+        });
+        _setResult(
+          action: 'Periksa Aplikasi Health Connect',
+          data: {'installed': installed},
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal memeriksa aplikasi Health Connect: $e';
+        });
+        _setResult(
+          action: 'Periksa Aplikasi Health Connect',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, 'Gagal memeriksa aplikasi Health Connect');
+      }
+    });
   }
 
   Future<void> _installHealthConnect() async {
-    try {
-      await HealthConnectFactory.installHealthConnect();
-      _setResult(
-        action: 'Install Health Connect',
-        data: {'message': 'Install activity started'},
-      );
-      if (mounted) {
+    await _runBusyAction('Membuka halaman instalasi', () async {
+      try {
+        await HealthConnectFactory.installHealthConnect();
+        if (!mounted) return;
+        setState(() {
+          _statusNote =
+              'Halaman instalasi Health Connect sedang dibuka. Silakan instal aplikasinya terlebih dahulu.';
+        });
+        _setResult(
+          action: 'Instal Health Connect',
+          data: {'message': 'Install activity started'},
+        );
         AppToast.info(context, 'Membuka halaman instalasi Health Connect...');
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal membuka halaman instalasi: $e';
+        });
+        _setResult(
+          action: 'Instal Health Connect',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, e.toString());
       }
-    } catch (e) {
-      _setResult(
-        action: 'Install Health Connect',
-        data: {'error': e.toString()},
-      );
-      if (mounted) AppToast.error(context, e.toString());
-    }
+    });
   }
 
   Future<void> _openSettings() async {
-    try {
-      await HealthConnectFactory.openHealthConnectSettings();
-      _setResult(
-        action: 'Open Health Connect Settings',
-        data: {'message': 'Settings activity started'},
-      );
-      if (mounted) {
-        AppToast.success(context, 'Membuka halaman pengaturan Health Connect');
+    await _runBusyAction('Membuka pengaturan Health Connect', () async {
+      try {
+        await HealthConnectFactory.openHealthConnectSettings();
+        if (!mounted) return;
+        setState(() {
+          _statusNote =
+              'Pengaturan Health Connect sedang dibuka. Silakan aktifkan izin yang diperlukan.';
+        });
+        _setResult(
+          action: 'Buka Pengaturan Health Connect',
+          data: {'message': 'Settings activity started'},
+        );
+        AppToast.success(context, 'Membuka pengaturan Health Connect');
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal membuka pengaturan Health Connect: $e';
+        });
+        _setResult(
+          action: 'Buka Pengaturan Health Connect',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, e.toString());
       }
-    } catch (e) {
-      _setResult(
-        action: 'Open Health Connect Settings',
-        data: {'error': e.toString()},
-      );
-      if (mounted) AppToast.error(context, e.toString());
-    }
+    });
   }
 
-  Future<void> _hasPermissions() async {
-    final granted = await HealthConnectFactory.hasPermissions(
-      _types,
-      readOnly: true,
-    );
-
-    _setResult(
-      action: 'Has Permissions',
-      data: {'granted': granted},
-    );
+  Future<void> _checkPermissions() async {
+    await _runBusyAction('Memeriksa izin data', () async {
+      try {
+        final granted = await HealthConnectFactory.hasPermissions(
+          _types,
+          readOnly: true,
+        );
+        if (!mounted) return;
+        setState(() {
+          _hasPermissions = granted;
+          _statusNote = granted
+              ? 'Izin data sudah diberikan.'
+              : 'Izin data belum diberikan.';
+        });
+        _setResult(
+          action: 'Periksa Izin Data',
+          data: {'granted': granted},
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal memeriksa izin data: $e';
+        });
+        _setResult(
+          action: 'Periksa Izin Data',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, 'Gagal memeriksa izin data');
+      }
+    });
   }
 
   Future<void> _requestPermissions() async {
-    try {
-      final granted = await HealthConnectFactory.requestPermissions(
-        _types,
-        readOnly: true,
-      );
-      _setResult(
-        action: 'Request Permissions',
-        data: {'granted': granted},
-      );
-    } catch (e) {
-      _setResult(
-        action: 'Request Permissions',
-        data: {'error': e.toString()},
-      );
-    }
+    await _runBusyAction('Meminta izin data', () async {
+      try {
+        final granted = await HealthConnectFactory.requestPermissions(
+          _types,
+          readOnly: true,
+        );
+        if (!mounted) return;
+        setState(() {
+          _hasPermissions = granted;
+          _statusNote = granted
+              ? 'Izin data berhasil diberikan.'
+              : 'Izin data belum diberikan. Silakan coba lagi.';
+        });
+        _setResult(
+          action: 'Minta Izin Data',
+          data: {'granted': granted},
+        );
+        if (granted) {
+          AppToast.success(context, 'Izin Health Connect berhasil diberikan');
+        } else {
+          AppToast.info(context, 'Izin belum diberikan');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _statusNote = 'Gagal meminta izin data: $e';
+        });
+        _setResult(
+          action: 'Minta Izin Data',
+          data: {'error': e.toString()},
+        );
+        AppToast.error(context, e.toString());
+      }
+    });
   }
 
   Future<void> _getRecord() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 1));
-    try {
-      final requests = <Future>[];
-      final typePoints = <String, dynamic>{};
-      for (final type in _types) {
-        requests.add(
-          HealthConnectFactory.getRecord(
-            type: type,
-            startTime: start,
-            endTime: now,
-          ).then((value) => typePoints[type.name] = value),
+    await _runBusyAction('Mengambil semua data', () async {
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(days: 1));
+
+      try {
+        final requests = <Future>[];
+        final typePoints = <String, dynamic>{};
+
+        for (final type in _types) {
+          requests.add(
+            HealthConnectFactory.getRecord(
+              type: type,
+              startTime: start,
+              endTime: now,
+            ).then((value) => typePoints[type.name] = value),
+          );
+        }
+
+        await Future.wait(requests);
+        _setResult(action: 'Ambil Semua Data', data: typePoints);
+      } catch (e, s) {
+        _setResult(
+          action: 'Ambil Semua Data',
+          data: {'error': e.toString(), 'stack': s.toString()},
         );
       }
-      await Future.wait(requests);
-      _setResult(action: 'Get Record', data: typePoints);
-    } catch (e, s) {
-      _setResult(
-        action: 'Get Record',
-        data: {'error': e.toString(), 'stack': s.toString()},
-      );
-    }
+    });
   }
 
   Future<void> _getTodaySteps() async {
-    final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day);
-    try {
-      final result = await HealthConnectFactory.getRecord(
-        type: HealthConnectDataType.Steps,
-        startTime: start,
-        endTime: now,
-      );
+    await _runBusyAction('Mengambil langkah hari ini', () async {
+      final now = DateTime.now();
+      final start = DateTime(now.year, now.month, now.day);
 
-      final records = (result['records'] as List?) ?? const [];
-      num total = 0;
-      for (final record in records) {
-        final dynamic count = (record as Map?)?['count'];
-        if (count is num) total += count;
+      try {
+        final result = await HealthConnectFactory.getRecord(
+          type: HealthConnectDataType.Steps,
+          startTime: start,
+          endTime: now,
+        );
+
+        final records = (result['records'] as List?) ?? const [];
+        num total = 0;
+        for (final record in records) {
+          final dynamic count = (record as Map?)?['count'];
+          if (count is num) total += count;
+        }
+
+        _setResult(
+          action: 'Lihat Langkah Hari Ini',
+          data: {
+            'recordCount': records.length,
+            'totalSteps': total,
+            'start': start.toIso8601String(),
+            'end': now.toIso8601String(),
+          },
+        );
+      } catch (e, s) {
+        _setResult(
+          action: 'Lihat Langkah Hari Ini',
+          data: {'error': e.toString(), 'stack': s.toString()},
+        );
       }
-
-      _setResult(
-        action: "Get Today's Steps",
-        data: {
-          'recordCount': records.length,
-          'totalSteps': total,
-          'start': start.toIso8601String(),
-          'end': now.toIso8601String(),
-        },
-      );
-    } catch (e, s) {
-      _setResult(
-        action: "Get Today's Steps",
-        data: {'error': e.toString(), 'stack': s.toString()},
-      );
-    }
+    });
   }
 
   Future<void> _getHeartRateData() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(hours: 24));
+    await _runBusyAction('Mengambil data detak jantung', () async {
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(hours: 24));
 
-    try {
-      final result = await HealthConnectFactory.getRecord(
-        type: HealthConnectDataType.HeartRate,
-        startTime: start,
-        endTime: now,
-      );
+      try {
+        final result = await HealthConnectFactory.getRecord(
+          type: HealthConnectDataType.HeartRate,
+          startTime: start,
+          endTime: now,
+        );
 
-      final records = (result['records'] as List?) ?? const [];
-      final bpmValues = <num>[];
+        final records = (result['records'] as List?) ?? const [];
+        final bpmValues = <num>[];
 
-      for (final record in records) {
-        if (record is! Map) continue;
+        for (final record in records) {
+          if (record is! Map) continue;
 
-        final directValue = _toNum(record['beatsPerMinute'] ?? record['bpm']);
-        if (directValue != null) bpmValues.add(directValue);
+          final directValue = _toNum(record['beatsPerMinute'] ?? record['bpm']);
+          if (directValue != null) bpmValues.add(directValue);
 
-        final samples = record['samples'];
-        if (samples is List) {
-          for (final sample in samples) {
-            if (sample is! Map) continue;
-            final sampleValue = _toNum(
-                sample['beatsPerMinute'] ?? sample['bpm'] ?? sample['value']);
-            if (sampleValue != null) bpmValues.add(sampleValue);
+          final samples = record['samples'];
+          if (samples is List) {
+            for (final sample in samples) {
+              if (sample is! Map) continue;
+              final sampleValue = _toNum(
+                sample['beatsPerMinute'] ?? sample['bpm'] ?? sample['value'],
+              );
+              if (sampleValue != null) bpmValues.add(sampleValue);
+            }
           }
         }
+
+        num? minBpm;
+        num? maxBpm;
+        num avgBpm = 0;
+
+        if (bpmValues.isNotEmpty) {
+          minBpm = bpmValues.reduce((a, b) => a < b ? a : b);
+          maxBpm = bpmValues.reduce((a, b) => a > b ? a : b);
+          final total = bpmValues.fold<num>(0, (sum, value) => sum + value);
+          avgBpm = total / bpmValues.length;
+        }
+
+        _setResult(
+          action: 'Lihat Data Detak Jantung',
+          data: {
+            'recordCount': records.length,
+            'sampleCount': bpmValues.length,
+            'minBpm': minBpm,
+            'maxBpm': maxBpm,
+            'avgBpm': bpmValues.isEmpty ? null : avgBpm.toStringAsFixed(1),
+            'start': start.toIso8601String(),
+            'end': now.toIso8601String(),
+            'records': records,
+          },
+        );
+      } catch (e, s) {
+        _setResult(
+          action: 'Lihat Data Detak Jantung',
+          data: {'error': e.toString(), 'stack': s.toString()},
+        );
       }
-
-      num? minBpm;
-      num? maxBpm;
-      num avgBpm = 0;
-
-      if (bpmValues.isNotEmpty) {
-        minBpm = bpmValues.reduce((a, b) => a < b ? a : b);
-        maxBpm = bpmValues.reduce((a, b) => a > b ? a : b);
-        final total = bpmValues.fold<num>(0, (sum, value) => sum + value);
-        avgBpm = total / bpmValues.length;
-      }
-
-      _setResult(
-        action: 'View Heart Rate Data',
-        data: {
-          'recordCount': records.length,
-          'sampleCount': bpmValues.length,
-          'minBpm': minBpm,
-          'maxBpm': maxBpm,
-          'avgBpm': bpmValues.isEmpty ? null : avgBpm.toStringAsFixed(1),
-          'start': start.toIso8601String(),
-          'end': now.toIso8601String(),
-          'records': records,
-        },
-      );
-    } catch (e, s) {
-      _setResult(
-        action: 'View Heart Rate Data',
-        data: {'error': e.toString(), 'stack': s.toString()},
-      );
-    }
+    });
   }
 
   Future<void> _getSleepData() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 7));
+    await _runBusyAction('Mengambil data tidur', () async {
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(days: 7));
 
-    try {
-      final result = await HealthConnectFactory.getRecord(
-        type: HealthConnectDataType.SleepSession,
-        startTime: start,
-        endTime: now,
-      );
+      try {
+        final result = await HealthConnectFactory.getRecord(
+          type: HealthConnectDataType.SleepSession,
+          startTime: start,
+          endTime: now,
+        );
 
-      final records = (result['records'] as List?) ?? const [];
-      final sleepDetails = <Map<String, dynamic>>[];
+        final records = (result['records'] as List?) ?? const [];
+        final sleepDetails = <Map<String, dynamic>>[];
 
-      for (final record in records) {
-        if (record is! Map) continue;
+        for (final record in records) {
+          if (record is! Map) continue;
 
-        sleepDetails.add({
-          'title': record['title'],
-          'notes': record['notes'],
-          'startTime': record['startTime'],
-          'endTime': record['endTime'],
-        });
+          sleepDetails.add({
+            'title': record['title'],
+            'notes': record['notes'],
+            'startTime': record['startTime'],
+            'endTime': record['endTime'],
+          });
+        }
+
+        _setResult(
+          action: 'Lihat Data Tidur',
+          data: {
+            'recordCount': records.length,
+            'sleepDetails': sleepDetails,
+            'start': start.toIso8601String(),
+            'end': now.toIso8601String(),
+            'records': records,
+          },
+        );
+      } catch (e, s) {
+        _setResult(
+          action: 'Lihat Data Tidur',
+          data: {'error': e.toString(), 'stack': s.toString()},
+        );
       }
-
-      _setResult(
-        action: 'View Sleep Data',
-        data: {
-          'recordCount': records.length,
-          'sleepDetails': sleepDetails,
-          'start': start.toIso8601String(),
-          'end': now.toIso8601String(),
-          'records': records,
-        },
-      );
-    } catch (e, s) {
-      _setResult(
-        action: 'View Sleep Data',
-        data: {'error': e.toString(), 'stack': s.toString()},
-      );
-    }
+    });
   }
 
   Future<void> _getExerciseData() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 7));
+    await _runBusyAction('Mengambil data aktivitas', () async {
+      final now = DateTime.now();
+      final start = now.subtract(const Duration(days: 7));
 
-    try {
-      final result = await HealthConnectFactory.getRecord(
-        type: HealthConnectDataType.ExerciseSession,
-        startTime: start,
-        endTime: now,
-      );
+      try {
+        final result = await HealthConnectFactory.getRecord(
+          type: HealthConnectDataType.ExerciseSession,
+          startTime: start,
+          endTime: now,
+        );
 
-      final records = (result['records'] as List?) ?? const [];
-      final exerciseTypes = <String>{};
-      final exerciseDetails = <Map<String, dynamic>>[];
+        final records = (result['records'] as List?) ?? const [];
+        final exerciseTypes = <String>{};
+        final exerciseDetails = <Map<String, dynamic>>[];
 
-      for (final record in records) {
-        if (record is! Map) continue;
+        for (final record in records) {
+          if (record is! Map) continue;
 
-        final typeRaw = record['exerciseType'];
-        final typeLabel = _formatExerciseType(typeRaw);
-        exerciseTypes.add(typeLabel);
+          final typeRaw = record['exerciseType'];
+          final typeLabel = _formatExerciseType(typeRaw);
+          exerciseTypes.add(typeLabel);
 
-        exerciseDetails.add({
-          'exerciseType': typeLabel,
-          'exerciseTypeRaw': typeRaw,
-          'title': record['title'],
-          'notes': record['notes'],
-          'startTime': record['startTime'],
-          'endTime': record['endTime'],
-        });
+          exerciseDetails.add({
+            'exerciseType': typeLabel,
+            'exerciseTypeRaw': typeRaw,
+            'title': record['title'],
+            'notes': record['notes'],
+            'startTime': record['startTime'],
+            'endTime': record['endTime'],
+          });
+        }
+
+        _setResult(
+          action: 'Lihat Data Aktivitas',
+          data: {
+            'recordCount': records.length,
+            'uniqueExerciseTypes': exerciseTypes.toList(),
+            'exerciseDetails': exerciseDetails,
+            'start': start.toIso8601String(),
+            'end': now.toIso8601String(),
+            'records': records,
+          },
+        );
+      } catch (e, s) {
+        _setResult(
+          action: 'Lihat Data Aktivitas',
+          data: {'error': e.toString(), 'stack': s.toString()},
+        );
       }
+    });
+  }
 
-      _setResult(
-        action: 'View Exercise Data',
-        data: {
-          'recordCount': records.length,
-          'uniqueExerciseTypes': exerciseTypes.toList(),
-          'exerciseDetails': exerciseDetails,
-          'start': start.toIso8601String(),
-          'end': now.toIso8601String(),
-          'records': records,
-        },
-      );
-    } catch (e, s) {
-      _setResult(
-        action: 'View Exercise Data',
-        data: {'error': e.toString(), 'stack': s.toString()},
-      );
+  String _statusLabel(bool? value, String positive, String negative) {
+    if (value == null) return 'Belum dicek';
+    return value ? positive : negative;
+  }
+
+  Color _statusColor(bool? value) {
+    if (value == null) return const Color(0xFF64748B);
+    return value ? const Color(0xFF15803D) : const Color(0xFFB91C1C);
+  }
+
+  Color _statusBackground(bool? value) {
+    if (value == null) return const Color(0xFFF1F5F9);
+    return value ? const Color(0xFFECFDF3) : const Color(0xFFFEF2F2);
+  }
+
+  bool? _readyStatus() {
+    if (_isApiSupported == null &&
+        _isInstalled == null &&
+        _hasPermissions == null) {
+      return null;
     }
+
+    return _isApiSupported == true &&
+        _isInstalled == true &&
+        _hasPermissions == true;
   }
 
   String _formatExerciseType(dynamic type) {
@@ -545,44 +674,851 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
     return null;
   }
 
-  void _setResult(
-      {required String action, required Map<String, dynamic> data}) {
+  void _setResult({
+    required String action,
+    required Map<String, dynamic> data,
+  }) {
     setState(() {
       _lastAction = action;
       _prettyData = data;
       _rawData = const JsonEncoder.withIndent('  ').convert(data);
     });
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: 'Koneksi Wearable',
+        subtitle: 'Hubungkan PulseWise dengan smartwatch Anda',
+        showBackButton: true,
+        onBackPressed: () => context.pop(),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _GuideOverviewCard(
+                isBusy: _isBusy,
+                activeAction: _activeAction,
+                statusNote: _statusNote,
+                onCheckAll: _checkAll,
+              ),
+              const SizedBox(height: 16),
+              _GuideStepCard(
+                number: '1',
+                title: 'Periksa apakah perangkat mendukung',
+                description:
+                    'Mulai dengan memastikan ponsel Anda mendukung Health Connect.',
+                statusLabel: _statusLabel(
+                  _isApiSupported,
+                  'Didukung',
+                  'Tidak didukung',
+                ),
+                statusColor: _statusColor(_isApiSupported),
+                statusBackground: _statusBackground(_isApiSupported),
+                actions: [
+                  _GuideActionButton(
+                    label: 'Periksa Dukungan',
+                    onPressed: _isBusy ? null : _checkApiSupported,
+                  ),
+                ],
+                expandableDetails: null,
+              ),
+              const SizedBox(height: 12),
+              _GuideStepCard(
+                number: '2',
+                title: 'Pastikan aplikasi Health Connect sudah ada',
+                description:
+                    'Jika belum terpasang, buka halaman instalasi lalu pasang aplikasinya terlebih dahulu.',
+                statusLabel: _statusLabel(
+                  _isInstalled,
+                  'Sudah terpasang',
+                  'Belum terpasang',
+                ),
+                statusColor: _statusColor(_isInstalled),
+                statusBackground: _statusBackground(_isInstalled),
+                actions: [
+                  _GuideActionButton(
+                    label: 'Periksa Aplikasi',
+                    onPressed: _isBusy ? null : _checkInstalled,
+                    isPrimary: false,
+                  ),
+                  _GuideActionButton(
+                    label: 'Instal Health Connect',
+                    onPressed: _isBusy ? null : _installHealthConnect,
+                  ),
+                ],
+                expandableDetails: null,
+              ),
+              const SizedBox(height: 12),
+              _GuideStepCard(
+                number: '3',
+                title: 'Buka pengaturan Health Connect',
+                description:
+                    'Masuk ke pengaturan Health Connect untuk melihat izin yang tersedia untuk PulseWise.',
+                actions: [
+                  _GuideActionButton(
+                    label: 'Buka Pengaturan',
+                    onPressed: _isBusy ? null : _openSettings,
+                  ),
+                ],
+                statusLabel: null,
+                statusColor: null,
+                statusBackground: null,
+                expandableDetails: null,
+              ),
+              const SizedBox(height: 12),
+              const _GuideStepCard(
+                number: '4',
+                title: 'Pastikan aplikasi wearable dapat mengirim data',
+                description:
+                    'Periksa aplikasi wearable Anda dan pastikan aplikasi tersebut diizinkan menulis atau menyinkronkan data ke Health Connect.',
+                statusLabel: null,
+                statusColor: null,
+                statusBackground: null,
+                actions: [],
+                expandableDetails: _GuideExpandableDetailsContent(
+                  hint:
+                      'Detail ini masih contoh sementara dan nanti bisa kita sesuaikan dengan alur yang benar.',
+                  steps: [
+                    'Buka aplikasi wearable yang Anda gunakan, misalnya Samsung Health, Huawei Health, Garmin Connect, atau aplikasi jam tangan lainnya.',
+                    'Masuk ke menu pengaturan, integrasi, atau izin sinkronisasi di aplikasi tersebut.',
+                    'Cari opsi yang berkaitan dengan Health Connect, sinkronisasi kesehatan, atau berbagi data kesehatan.',
+                    'Pastikan kategori seperti langkah, detak jantung, tidur, dan aktivitas diizinkan untuk dikirim ke Health Connect.',
+                    'Setelah selesai, kembali ke PulseWise lalu lanjutkan ke langkah berikutnya.',
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _GuideStepCard(
+                number: '5',
+                title: 'Berikan izin akses data',
+                description:
+                    'Izinkan PulseWise membaca langkah, detak jantung, tidur, dan aktivitas agar sinkronisasi berjalan.',
+                statusLabel: _statusLabel(
+                  _hasPermissions,
+                  'Sudah diizinkan',
+                  'Belum diizinkan',
+                ),
+                statusColor: _statusColor(_hasPermissions),
+                statusBackground: _statusBackground(_hasPermissions),
+                actions: [
+                  _GuideActionButton(
+                    label: 'Cek Izin',
+                    onPressed: _isBusy ? null : _checkPermissions,
+                    isPrimary: false,
+                  ),
+                  _GuideActionButton(
+                    label: 'Berikan Izin',
+                    onPressed: _isBusy ? null : _requestPermissions,
+                  ),
+                ],
+                expandableDetails: const _GuideExpandableDetailsContent(
+                  hint:
+                      'Detail ini juga masih placeholder dan bisa kita ganti setelah alur finalnya sudah kita cek.',
+                  steps: [
+                    'Di halaman Health Connect, cari menu izin aplikasi atau App permissions.',
+                    'Temukan PulseWise pada daftar aplikasi yang meminta akses.',
+                    'Pilih jenis data yang ingin diizinkan untuk dibaca oleh PulseWise.',
+                    'Aktifkan akses baca untuk langkah, detak jantung, tidur, dan aktivitas atau olahraga.',
+                    'Simpan perubahan, lalu kembali ke PulseWise dan tekan Cek Izin untuk memastikan akses sudah aktif.',
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _GuideStepCard(
+                number: '6',
+                title: 'Kembali ke PulseWise',
+                description:
+                    'Jika semua status sudah hijau, PulseWise siap membaca data dari wearable Anda melalui Health Connect.',
+                statusLabel: _statusLabel(
+                  _readyStatus(),
+                  'Siap digunakan',
+                  'Belum siap',
+                ),
+                statusColor: _statusColor(_readyStatus()),
+                statusBackground: _statusBackground(_readyStatus()),
+                actions: const [],
+                expandableDetails: null,
+              ),
+              const SizedBox(height: 24),
+              _DataViewerCard(
+                isBusy: _isBusy,
+                onGetRecord: _getRecord,
+                onGetTodaySteps: _getTodaySteps,
+                onGetHeartRateData: _getHeartRateData,
+                onGetExerciseData: _getExerciseData,
+                onGetSleepData: _getSleepData,
+                showRaw: _showRaw,
+                rawData: _rawData,
+                prettyData: _prettyData,
+                lastAction: _lastAction,
+                onSelectPretty: () => setState(() => _showRaw = false),
+                onSelectRaw: () => setState(() => _showRaw = true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideOverviewCard extends StatelessWidget {
+  final bool isBusy;
+  final String? activeAction;
+  final String statusNote;
+  final Future<void> Function() onCheckAll;
+
+  const _GuideOverviewCard({
+    required this.isBusy,
+    required this.activeAction,
+    required this.statusNote,
+    required this.onCheckAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _GuideIconBox(),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Koneksi Wearable',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFE64060),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Hubungkan PulseWise dengan smartwatch Anda',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF334155),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'PulseWise dapat membaca data langkah, detak jantung, tidur, dan aktivitas dari wearable yang terhubung ke Health Connect.',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(label: 'Langkah'),
+              _InfoChip(label: 'Detak Jantung'),
+              _InfoChip(label: 'Tidur'),
+              _InfoChip(label: 'Aktivitas'),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: isBusy ? null : onCheckAll,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE64060),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Text(
+                isBusy && activeAction != null
+                    ? activeAction!
+                    : 'Periksa Semua Sekarang',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Text(
+              statusNote,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF475569),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideIconBox extends StatelessWidget {
+  const _GuideIconBox();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE7E7),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Icon(
+        Icons.watch_outlined,
+        size: 30,
+        color: Color(0xFFE64060),
+      ),
+    );
+  }
+}
+
+class _GuideStepCard extends StatelessWidget {
+  final String number;
+  final String title;
+  final String description;
+  final String? statusLabel;
+  final Color? statusColor;
+  final Color? statusBackground;
+  final List<Widget> actions;
+  final _GuideExpandableDetailsContent? expandableDetails;
+
+  const _GuideStepCard({
+    required this.number,
+    required this.title,
+    required this.description,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.statusBackground,
+    required this.actions,
+    required this.expandableDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE7E7),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    number,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFE64060),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF334155),
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                        if (statusLabel != null &&
+                            statusColor != null &&
+                            statusBackground != null) ...[
+                          const SizedBox(width: 10),
+                          _StepStatusChip(
+                            label: statusLabel!,
+                            textColor: statusColor!,
+                            backgroundColor: statusBackground!,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: actions,
+            ),
+          ],
+          if (expandableDetails != null) ...[
+            const SizedBox(height: 14),
+            _ExpandableGuideDetails(content: expandableDetails!),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onPressed;
+  final bool isPrimary;
+
+  const _GuideActionButton({
+    required this.label,
+    required this.onPressed,
+    this.isPrimary = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foregroundColor = isPrimary ? Colors.white : const Color(0xFF475569);
+    final backgroundColor = isPrimary ? const Color(0xFFE64060) : Colors.white;
+    final sideColor =
+        isPrimary ? const Color(0xFFE64060) : const Color(0xFFD9E2EC);
+
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          disabledForegroundColor: const Color(0xFF94A3B8),
+          disabledBackgroundColor: const Color(0xFFF1F5F9),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          side: BorderSide(color: sideColor),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StepStatusChip extends StatelessWidget {
+  final String label;
+  final Color textColor;
+  final Color backgroundColor;
+
+  const _StepStatusChip({
+    required this.label,
+    required this.textColor,
+    required this.backgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+          height: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideExpandableDetailsContent {
+  final String hint;
+  final List<String> steps;
+
+  const _GuideExpandableDetailsContent({
+    required this.hint,
+    required this.steps,
+  });
+}
+
+class _ExpandableGuideDetails extends StatefulWidget {
+  final _GuideExpandableDetailsContent content;
+
+  const _ExpandableGuideDetails({required this.content});
+
+  @override
+  State<_ExpandableGuideDetails> createState() =>
+      _ExpandableGuideDetailsState();
+}
+
+class _ExpandableGuideDetailsState extends State<_ExpandableGuideDetails> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_isExpanded) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+              child: Text(
+                widget.content.hint,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...widget.content.steps.asMap().entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE7E7),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${entry.key + 1}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFFE64060),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            entry.value,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF475569),
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          ],
+          InkWell(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _isExpanded ? 'Sembunyikan detail' : 'Lihat detail langkah',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF475569),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: const Color(0xFF64748B),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataViewerCard extends StatelessWidget {
+  final bool isBusy;
+  final VoidCallback onGetRecord;
+  final VoidCallback onGetTodaySteps;
+  final VoidCallback onGetHeartRateData;
+  final VoidCallback onGetExerciseData;
+  final VoidCallback onGetSleepData;
+  final bool showRaw;
+  final String rawData;
+  final Map<String, dynamic>? prettyData;
+  final String lastAction;
+  final VoidCallback onSelectPretty;
+  final VoidCallback onSelectRaw;
+
+  const _DataViewerCard({
+    required this.isBusy,
+    required this.onGetRecord,
+    required this.onGetTodaySteps,
+    required this.onGetHeartRateData,
+    required this.onGetExerciseData,
+    required this.onGetSleepData,
+    required this.showRaw,
+    required this.rawData,
+    required this.prettyData,
+    required this.lastAction,
+    required this.onSelectPretty,
+    required this.onSelectRaw,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Cek Data yang Sudah Tersambung',
+            style: TextStyle(
+              color: Color(0xFF334155),
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Setelah izin diberikan, gunakan tombol di bawah ini untuk melihat apakah data wearable Anda sudah terbaca di PulseWise.',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _ActionButton(
+                label: 'Ambil Semua Data',
+                onTap: isBusy ? null : onGetRecord,
+              ),
+              _ActionButton(
+                label: 'Langkah Hari Ini',
+                onTap: isBusy ? null : onGetTodaySteps,
+              ),
+              _ActionButton(
+                label: 'Detak Jantung',
+                onTap: isBusy ? null : onGetHeartRateData,
+              ),
+              _ActionButton(
+                label: 'Aktivitas',
+                onTap: isBusy ? null : onGetExerciseData,
+              ),
+              _ActionButton(
+                label: 'Tidur',
+                onTap: isBusy ? null : onGetSleepData,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hasil Pemeriksaan',
+                  style: TextStyle(
+                    color: Color(0xFF334155),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ModeButton(
+                        label: 'Ringkas',
+                        selected: !showRaw,
+                        onTap: onSelectPretty,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _ModeButton(
+                        label: 'Raw',
+                        selected: showRaw,
+                        onTap: onSelectRaw,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (showRaw)
+                  SelectableText(
+                    rawData,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  )
+                else
+                  _BeautifulResult(data: prettyData, lastAction: lastAction),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ActionButton extends StatelessWidget {
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _ActionButton({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton(
-          onPressed: onTap,
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF5B4A96),
-            side: const BorderSide(color: Color(0xFFE2E8F0)),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
+    return SizedBox(
+      height: 46,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF334155),
+          side: const BorderSide(color: Color(0xFFE2E8F0)),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -635,7 +1571,7 @@ class _BeautifulResult extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data == null) {
       return const Text(
-        'Belum ada data. Coba salah satu aksi di atas.',
+        'Belum ada data. Coba salah satu tombol di atas.',
         style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
       );
     }
@@ -657,7 +1593,7 @@ class _BeautifulResult extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
@@ -693,6 +1629,32 @@ class _BeautifulResult extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+
+  const _InfoChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7F8),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFBCDD6)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF475569),
+        ),
+      ),
     );
   }
 }

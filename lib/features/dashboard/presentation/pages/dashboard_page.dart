@@ -1,6 +1,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 
 import '../providers/current_diary_provider.dart';
 import '../providers/dashboard_provider.dart';
@@ -24,14 +25,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ReminderNotificationCoordinator.instance
+        .addListener(_handleReminderNotification);
     // Sync on first open
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleReminderNotification();
       _triggerHealthConnectSync();
     });
   }
 
   @override
   void dispose() {
+    ReminderNotificationCoordinator.instance
+        .removeListener(_handleReminderNotification);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -52,6 +58,28 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     } catch (e) {
       debugPrint('[DashboardPage] HC sync error: $e');
     }
+  }
+
+  void _handleReminderNotification() {
+    final pending = ReminderNotificationCoordinator.instance.pendingPayload;
+    if (pending == null) return;
+
+    final navNotifier = ref.read(dashboardNavIndexProvider.notifier);
+    debugPrint(
+      '[ReminderNotification][Dashboard] currentIndex=${navNotifier.state} '
+      'pending=${pending.debugSummary}',
+    );
+    if (navNotifier.state != 3) {
+      debugPrint(
+        '[ReminderNotification][Dashboard] Switching to Pengingat tab.',
+      );
+      navNotifier.state = 3;
+      return;
+    }
+
+    debugPrint(
+      '[ReminderNotification][Dashboard] Pengingat tab already active.',
+    );
   }
 
   @override

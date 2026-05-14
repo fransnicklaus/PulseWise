@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class EdukasiTab extends StatelessWidget {
   const EdukasiTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    double topPadding = MediaQuery.of(context).padding.top;
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 120),
       child: Column(
         children: [
           SizedBox(height: topPadding),
-          // Header with title and bookmark
           Padding(
             padding:
                 const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
@@ -42,8 +43,6 @@ class EdukasiTab extends StatelessWidget {
               ],
             ),
           ),
-
-          // Search Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: SizedBox(
@@ -68,8 +67,10 @@ class EdukasiTab extends StatelessWidget {
               ),
             ),
           ),
-
-          // Categories Section
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: _WearableConnectionCard(),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
             child: Column(
@@ -90,44 +91,42 @@ class EdukasiTab extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  children: [
+                  children: const [
                     _CategoryCard(
                       icon: Icons.favorite,
                       label: 'Penyakit\nJantung',
-                      backgroundColor: const Color(0xFFFFE7E7),
-                      iconColor: const Color(0xFFE64060),
+                      backgroundColor: Color(0xFFFFE7E7),
+                      iconColor: Color(0xFFE64060),
                     ),
                     _CategoryCard(
                       icon: Icons.circle_outlined,
                       label: 'Gejala',
-                      backgroundColor: const Color(0xFFFFEDD5),
-                      iconColor: const Color(0xFFE08B3D),
+                      backgroundColor: Color(0xFFFFEDD5),
+                      iconColor: Color(0xFFE08B3D),
                     ),
                     _CategoryCard(
                       icon: Icons.music_note,
                       label: 'Nutrisi',
-                      backgroundColor: const Color(0xFFE8F5E9),
-                      iconColor: const Color(0xFF2D9744),
+                      backgroundColor: Color(0xFFE8F5E9),
+                      iconColor: Color(0xFF2D9744),
                     ),
                     _CategoryCard(
                       icon: Icons.trending_up,
                       label: 'Aktivitas',
-                      backgroundColor: const Color(0xFFE3F2FD),
-                      iconColor: const Color(0xFF285DBE),
+                      backgroundColor: Color(0xFFE3F2FD),
+                      iconColor: Color(0xFF285DBE),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-
-          // Articles Section
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 16, 24, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Artikel Terbaru',
                   style: TextStyle(
                     fontSize: 16,
@@ -135,35 +134,35 @@ class EdukasiTab extends StatelessWidget {
                     color: Color(0xFF525252),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _ArticleCard(
                   category: 'Aktivitas',
-                  categoryColor: const Color(0xFF285DBE),
+                  categoryColor: Color(0xFF285DBE),
                   readTime: '7 Menit',
                   title: 'Olahraga Aman untuk Pasien Jantung',
                   description: 'Panduan berolahraga yang aman bagi pasien ...',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _ArticleCard(
                   category: 'Penyakit Jantung',
-                  categoryColor: const Color(0xFFE64060),
+                  categoryColor: Color(0xFFE64060),
                   readTime: '5 Menit',
                   title: 'Mengenal Penyakit Jantung Koroner',
                   description: 'Pelajari tentang penyebab, gejala, dan ...',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _ArticleCard(
                   category: 'Gejala',
-                  categoryColor: const Color(0xFFE08B3D),
+                  categoryColor: Color(0xFFE08B3D),
                   readTime: '4 Menit',
                   title: 'Kenali Gejala Serangan Jantung',
                   description:
                       'Tanda-tanda serangan jantung yang harus Anda...',
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _ArticleCard(
                   category: 'Nutrisi',
-                  categoryColor: const Color(0xFF2D9744),
+                  categoryColor: Color(0xFF2D9744),
                   readTime: '7 Menit',
                   title: 'Makanan Sehat untuk Jantung',
                   description: 'Daftar makanan yang baik untuk kesehatan ...',
@@ -172,6 +171,143 @@ class EdukasiTab extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WearableConnectionCard extends StatelessWidget {
+  const _WearableConnectionCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7F8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFBCDD6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE7E7),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.watch_outlined,
+                  color: Color(0xFFE64060),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Koneksi Wearable',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFE64060),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Hubungkan PulseWise dengan smartwatch Anda',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF334155),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Sambungkan PulseWise ke Health Connect agar aplikasi bisa membaca data langkah, detak jantung, tidur, dan aktivitas dari wearable Anda.',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _InfoChip(label: 'Langkah'),
+              _InfoChip(label: 'Detak Jantung'),
+              _InfoChip(label: 'Tidur'),
+              _InfoChip(label: 'Aktivitas'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: () => context.push('/home/health-connect'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE64060),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text(
+                'Lihat Panduan Health Connect',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final String label;
+
+  const _InfoChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFBCDD6)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF475569),
+        ),
       ),
     );
   }

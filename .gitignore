@@ -31,9 +31,14 @@ migrate_working_dir/
 .pub/
 /build/
 /build_android/
+/node_modules/
+/scripts
+
 
 # Environment variables
 .env
+pulse-wise-app-firebase-adminsdk-fbsvc-860a6d04cb.json
+android/app/google-services.json
 
 # Symbolication related
 app.*.symbols

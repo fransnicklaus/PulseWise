@@ -1,153 +1,386 @@
-# Project Context & Tech Stack
+# PulseWise Context
 
-This document outlines the technology stack and architectural structure used in this Flutter project. It can serve as a reference for setting up or structuring new Flutter applications with a similar architecture.
+This document is the working source of truth for PulseWise.
 
-## 🛠️ Tech Stack
+It describes:
+- the real state of the codebase today
+- the target architecture we want to move toward
+- the rules future refactors should follow
 
-### SDKs & Core
-*   **Flutter**: Framework for building the UI and application logic.
-*   **Dart**: Programming language used.
+Important: PulseWise is not fully clean architecture yet. This repository is in a transitional state. We are documenting the target architecture now so future refactors can move toward it feature by feature instead of doing one risky rewrite.
 
-### State Management & Dependency Injection
-*   **[flutter_riverpod](https://pub.dev/packages/flutter_riverpod)**: The primary state management and dependency injection solution. It's used for providing data sources, repositories, use cases, and managing UI state (e.g., `StateNotifier`, `Notifier`).
+## Current Reality
 
-### Routing
-*   **[go_router](https://pub.dev/packages/go_router)**: Used for declarative routing and deep linking. Routes are typically defined centrally (e.g., `lib/core/config/routes.dart`).
+The project already uses Flutter + Riverpod + go_router and is partially organized by feature, but most non-auth business logic is still concentrated inside the `dashboard` area.
 
-### Networking & API
-*   **[dio](https://pub.dev/packages/dio)**: HTTP client for making API requests. Usually enveloped in an interceptor or customized client (`lib/core/network/api_client.dart`) to handle tokens, logging, and error catching.
-*   **[flutter_dotenv](https://pub.dev/packages/flutter_dotenv)**: For managing environment variables (like Base URL) via `.env` files.
+Today:
+- `lib/features/auth` is already a real feature module.
+- `lib/features/dashboard` is overloaded and currently contains many unrelated concerns.
+- `lib/features/dashboard/presentation/providers/profile_provider.dart` acts as a large shared API/provider hub.
+- many screens outside "profile" still import `profile_provider.dart`
+- shared Dio setup is also currently defined inside `profile_provider.dart`
 
-### Data Modeling & Serialization
-*   **[json_serializable](https://pub.dev/packages/json_annotation)**:
+That means the current structure looks feature-first on the surface, but in practice it is still too centralized.
 
-### Local Storage & Caching
-*   **[hive](https://pub.dev/packages/hive) & hive_flutter**: A lightweight, fast, NoSQL local database used for caching responses and storing light user data/preferences.
-*   **[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)** (implied via `secure_storage_service.dart`): Typically used for storing sensitive data like JWT tokens.
+## Main Problem To Fix Later
 
-### UI & Styling
-*   **Material Design 3**: Core Flutter widgets.
-*   **Fonts**: Custom font implementation
-*   **Icons**: [heroicons](https://pub.dev/packages/heroicons), [fluentui_system_icons](https://pub.dev/packages/fluentui_system_icons).
-*   **Notifications/Toasts**: [another_flushbar](https://pub.dev/packages/another_flushbar) for custom toast notifications.
+The biggest architectural issue right now is this:
 
-### Utility Plugins
-*   **File Handling**: [file_picker](https://pub.dev/packages/file_picker), [open_file](https://pub.dev/packages/open_file).
-*   **Viewing Documents**: [flutter_pdfview](https://pub.dev/packages/flutter_pdfview), [syncfusion_flutter_pdfviewer](https://pub.dev/packages/syncfusion_flutter_pdfviewer).
-*   **Device Info & Permissions**: `device_info_plus`, `permission_handler`.
+- almost every patient-facing API call is routed through `lib/features/dashboard/presentation/providers/profile_provider.dart`
 
----
+That file currently mixes responsibilities such as:
+- profile
+- avatar upload
+- auth-me
+- dashboard vitals / quick dashboard
+- ML profile questionnaire
+- ML assessment
+- ML recommendations and recommendation history
+- diary
+- medications / reminders / logs / calendar
 
-## 🏗️ Project Architecture (Feature-First Clean Architecture)
+This is exactly what we do not want going forward.
 
-The project follows a modular, feature-based "Clean Architecture" variation. The `lib/` directory is structured to group code by feature rather than by layer, ensuring better scalability.
+## Target Architecture
+
+The target is a real feature-first clean architecture:
+
+- every feature owns its own folder
+- every feature owns its own providers
+- every feature owns its own API/data access layer
+- `dashboard` stops being a catch-all folder
+- `core` only contains shared cross-feature infrastructure
+
+We are not doing the full refactor yet. From this point on, this is the architecture future work should move toward.
+
+## Architecture Rules
+
+### 1. Feature ownership
+
+Each feature should be self-contained.
+
+A feature should own:
+- its pages
+- its widgets
+- its providers
+- its models / entities
+- its repositories
+- its datasources / API layer
+
+Another feature should not depend on that feature's presentation provider just to make an API call.
+
+### 2. Provider ownership
+
+Each feature must have its own provider layer.
+
+Examples:
+- `profile` owns profile providers
+- `diary` owns diary providers
+- `medication` owns medication providers
+- `ml_questionnaire` owns ML questionnaire providers
+- `ml_assessment` owns ML assessment providers
+- `ml_recommendation` owns ML recommendation providers
+
+Rule:
+- do not put unrelated API methods into one giant provider file
+
+### 3. Shared infrastructure stays in `core`
+
+Only truly shared code belongs in `core`, such as:
+- API client / Dio base configuration
+- interceptors / logging
+- storage helpers
+- app-wide constants
+- routing config
+- shared UI primitives
+- generic utilities
+
+Important:
+- `dioProvider` should eventually live in `core`, not inside a feature provider file
+
+### 4. Dashboard is a shell, not a domain dump
+
+The `dashboard` feature should eventually become mostly:
+- app shell
+- tab scaffolding
+- home composition
+- navigation entry points
+
+It should not own the data layer for profile, diary, medication, ML, and other unrelated domains.
+
+## Recommended Target Folder Structure
 
 ```text
 lib/
-├── core/                   # Shared utilities, configs, and base classes applicable app-wide
-│   ├── config/             # App configs (routing, styling/themes)
-│   ├── constants/          # App constants, API endpoints
-│   ├── network/            # ApiClient, Interceptors
-│   ├── storage/            # Local DB / Secure Storage setups
-│   ├── ui/                 # Reusable widgets, icon mappers, colors
-│   └── utils/              # Helper functions (date formatting, validators)
-│
-├── features/               # Contains individual domains/features
-│   ├── auth/               # Example Feature: Authentication
-│   │   ├── data/
-│   │   │   ├── datasources/   # Remote (Dio) and Local (Hive) data sources
-│   │   │   ├── models/        # DTOs (Data Transfer Objects), JSON models
-│   │   │   └── repositories/  # Repository implementations calling data sources
-│   │   │
-│   │   ├── domain/
-│   │   │   ├── entities/      # Core business objects
-│   │   │   ├── repositories/  # Abstract repository interfaces contracts
-│   │   │   └── usecases/      # Business logic handlers (optional but used)
-│   │   │
-│   │   └── presentation/   
-│   │       ├── bloc/          # Riverpod State Notifiers/Providers for this feature
-│   │       ├── pages/         # UI Screens/Pages
-│   │       └── widgets/       # UI Widgets specific to this feature
-│   │
-│   ├── dashboard/          # Another Feature
-│   ├── draft/              # Another Feature
-│   └── ...
-│
-├── injection_container.dart # Centralized place defining Riverpod Providers (DI context)
-└── main.dart                # App entry point, ProviderScope initialization
+|-- core/
+|   |-- config/
+|   |-- constants/
+|   |-- network/
+|   |-- storage/
+|   |-- ui/
+|   |-- utils/
+|   `-- widgets/
+|
+|-- features/
+|   |-- auth/
+|   |   |-- data/
+|   |   |   |-- datasources/
+|   |   |   |-- models/
+|   |   |   `-- repositories/
+|   |   |-- domain/
+|   |   |   |-- entities/
+|   |   |   |-- repositories/
+|   |   |   `-- usecases/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- dashboard_shell/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- home_dashboard/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- profile/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- emergency_contacts/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- diary/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- medication/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- ml_questionnaire/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- ml_assessment/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- ml_recommendation/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- reports/
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   `-- health_connect/
+|       |-- data/
+|       |-- domain/
+|       `-- presentation/
+|           |-- pages/
+|           |-- providers/
+|           `-- widgets/
+|
+|-- injection_container.dart
+`-- main.dart
 ```
 
-### 🔁 The Data Flow
-1. **Presentation Layer (UI)** listens to **Riverpod Providers** (`StateNotifier` / `AsyncNotifier`).
-2. **Provider** triggers a **Use Case** (or directly calls a Repository interface) when an action occurs.
-3. **Repository Definition (Domain)** is an abstraction. Its implementation is in the Data Layer.
-4. **Repository Implementation (Data)** decides whether to fetch data from the **Remote Data Source** (API) or **Local Data Source** (Hive/Cache).
-5. **Data Source** returns a **Model** (JSON mapping), which the Repository maps to a Domain **Entity**.
-6. The Provider updates its state with the new Entity or Error, and the UI reacts immediately.
+This structure is the target direction. We can adjust feature names slightly during the refactor if a better boundary becomes obvious, but the rule stays the same: one feature, one ownership boundary.
 
----
+## How Current Code Maps To Future Features
 
-## 📌 App-Specific Implementation Notes (Current)
+The current `dashboard` folder should eventually be split roughly like this:
 
-These notes describe real, current behavior in this repository and should be treated as the default reference for future agent changes.
+- profile-related pages/providers -> `features/profile`
+- emergency contact pages/providers -> `features/emergency_contacts`
+- diary pages/providers -> `features/diary`
+- medication reminder pages/providers -> `features/medication`
+- ML questionnaire flow -> `features/ml_questionnaire`
+- ML assessment flow -> `features/ml_assessment`
+- ML recommendation history/detail -> `features/ml_recommendation`
+- report / print pages -> `features/reports`
+- Health Connect integration -> `features/health_connect`
+- tab shell / home shell -> `features/dashboard_shell`
 
-### Authentication Session Keys
-- SharedPreferences keys used across features:
-	- `auth_token`
-	- `auth_user_id`
-- App start decides initial route from those keys in `main.dart` (`/login` vs `/home`) and checks token expiration.
+If a screen mostly exists to compose data from multiple features, it can stay in a shell/composition feature, but the underlying providers should still live with their own domains.
 
-### Routing Details (go_router)
-- Main route tree is in `lib/core/config/routes.dart`.
-- Important auth flow paths:
-	- `/login/register/profile-setup`
-	- `/login/register/ml-questionnaire`
-- `profile-setup` and `ml-questionnaire` expect `state.extra` map with:
-	- `auth_token`
-	- `auth_user_id`
-	If either is missing, route falls back to `LoginPage`.
+## Data Flow We Want
 
-### ML Questionnaire (Dynamic + Editable)
-- Core mapping source: `lib/core/data/ml_mapping.dart`.
-- Form fields are rendered dynamically from `MlMapping.form_mapping`.
-- Field key format is composite: `<group>_<codeId>` (example: `demog1_riagendr`).
-- `MlMapping` includes helpers for parsing and validation:
-	- `getGroupFromFieldKey`
-	- `getCodeIdFromFieldKey`
-	- `isValidFieldKey`
-	- `getOptions`
-- `codeMaps` contains alias `demog1` for demographic keys used by ML form.
+The intended flow for each feature is:
 
-### ML Profile API Integration
-- Provider/API location: `lib/features/dashboard/presentation/providers/profile_provider.dart`.
-- Existing APIs in use:
-	- `fetchMlProfile(token, patientId)` → `GET /patients/{patientId}/ml-profile`
-	- `submitMlProfile(token, patientId, payload)` → `PUT /patients/{patientId}/ml-profile`
-- `fetchMlProfile` returns empty map on 404 so first-time users can still fill the form.
+1. UI listens to feature providers in `presentation/providers/`
+2. provider calls a feature use case or repository contract
+3. repository implementation lives in the feature `data/` layer
+4. datasource talks to API / storage
+5. models map raw data
+6. domain entities move back up to presentation
 
-### ML Questionnaire Screen Behavior
-- Screen file: `lib/features/auth/presentation/pages/ml_questionnaire_page.dart`.
-- On open:
-	1. Calls `fetchMlProfile`.
-	2. Prefills dropdown answers from API data when valid.
-	3. Shows full loading screen while initial fetch is in progress.
-- On submit:
-	- Validates all dynamic fields are answered.
-	- Sends payload with dynamic keys from `MlMapping.form_mapping`.
+Short version:
 
-### Navigation Safety Pattern (Important)
-- To avoid navigator lifecycle assertion errors during modal/route transitions, some flows defer navigation using `WidgetsBinding.instance.addPostFrameCallback` (for example in profile/logout and post-submit flows).
-- When adjusting modal + navigation logic, keep this safety pattern.
+`page -> provider -> usecase/repository -> datasource -> API/storage`
 
-### Profile Area Notes
-- Profile tab file: `lib/features/dashboard/presentation/pages/tabs/profil_tab.dart`.
-- Includes:
-	- Pull-to-refresh for profile and emergency contacts.
-	- Avatar upload with `file_picker` + `image_cropper` (circle crop).
-	- Logout confirmation bottom sheet.
-	- Shortcut button to ML questionnaire.
+Not this:
 
-### Practical Agent Guidance For This Repo
-- Prefer reusing Riverpod providers/APIs from feature providers before adding local `Dio` instances in UI pages.
-- Keep existing Indonesian UI copy tone and current red-pink color direction unless explicitly asked to redesign.
-- Before changing ML fields/options, update `MlMapping.form_mapping` and verify group/code keys exist in `codeMaps`.
+`random page -> dashboard/profile_provider.dart -> everything`
+
+## Current App Notes That Still Matter
+
+These are real implementation details that still matter right now, even before the refactor.
+
+### Session keys
+
+SharedPreferences keys currently used across the app:
+- `auth_token`
+- `auth_user_id`
+
+App start logic in `lib/main.dart` uses those keys to choose:
+- `/login`
+- `/home`
+
+It also clears the session if the JWT is expired.
+
+### Routing
+
+Routing is currently centralized in:
+- `lib/core/config/routes.dart`
+
+Important auth flow paths:
+- `/login/register/profile-setup`
+- `/login/register/ml-questionnaire`
+
+For now, centralized routing is acceptable. The main architectural problem is provider/data ownership, not the route file itself.
+
+### ML questionnaire mapping
+
+The dynamic questionnaire mapping currently lives in:
+- `lib/core/data/ml_mapping.dart`
+
+Important behavior:
+- fields are generated from `MlMapping.form_mapping`
+- field keys use `<group>_<codeId>`
+- `demog1` is used as an alias group for demographic keys
+
+If ML questionnaire fields change in the future, this mapping must stay in sync.
+
+### Navigation safety
+
+Some flows already use:
+- `WidgetsBinding.instance.addPostFrameCallback`
+
+This is important for modal-dismiss + navigation flows to avoid lifecycle assertion issues. Keep that pattern where needed during future refactors.
+
+### Audience and UX tone
+
+PulseWise is a health app for older adults, so UI changes should favor clarity over novelty.
+
+Design guidance:
+- prefer calm, readable layouts over flashy or high-stimulation UI
+- keep contrast clear, spacing generous, and text hierarchy obvious
+- avoid overly eye-popping colors, dense information walls, or clever interactions that reduce usability
+- prioritize larger touch targets and easy scanning, especially on health-related screens
+
+### Local quality workflow
+
+After every code edit:
+- run `dart analyze`
+- report whether the edit introduced any new issues
+- if unrelated analyzer warnings already exist elsewhere in the repo, do not silently ignore them; mention that they are pre-existing
+
+## Tech Stack
+
+Current core stack in this repository:
+
+- Flutter
+- Dart
+- flutter_riverpod
+- go_router
+- dio
+- flutter_dotenv
+- hive / hive_flutter
+- shared_preferences
+- another_flushbar
+- file_picker
+- open_file
+- flutter_pdfview
+- syncfusion_flutter_pdfviewer
+- permission_handler
+- device_info_plus
+- google_sign_in
+- image_cropper
+- jwt_decoder
+
+## Refactor Guidance For Future Work
+
+When we start the actual refactor later, follow this order:
+
+1. move shared networking setup out of `profile_provider.dart` into `core`
+2. split `profile_provider.dart` by domain responsibility
+3. move pages/widgets/providers into their feature folders
+4. keep refactors incremental and working at every step
+5. do not rewrite the whole app in one pass
+
+## Rules For Future Agents
+
+- do not add new unrelated API methods into `features/dashboard/presentation/providers/profile_provider.dart`
+- prefer creating or using a provider inside the correct feature instead
+- if a new feature is introduced, give it its own folder with its own layers
+- if something is truly shared, move it to `core`, not to `dashboard`
+- preserve existing app behavior unless the task explicitly asks for product changes
+
+## Summary
+
+PulseWise is currently in a transitional architecture.
+
+What it is now:
+- partially feature-based
+- still too centralized around `dashboard/profile_provider.dart`
+
+What it should become:
+- truly feature-first
+- clean provider ownership
+- clean data ownership
+- shared infra in `core`
+- one feature folder per domain

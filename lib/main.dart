@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:pulsewise/core/notifications/fcm_service.dart';
+import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
@@ -18,6 +20,7 @@ void main() async {
 
   // Initialize DI / Services
   await di.init();
+  await AppFcmService.instance.initialize();
 
   final initialLocation = await _resolveInitialLocation();
 
@@ -70,9 +73,47 @@ class _MyAppState extends State<MyApp> {
       buildRouterConfig(initialLocation: widget.initialLocation);
 
   @override
+  void initState() {
+    super.initState();
+    ReminderNotificationCoordinator.instance
+        .addListener(_handleReminderNotificationNavigation);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleReminderNotificationNavigation();
+    });
+  }
+
+  @override
   void dispose() {
+    ReminderNotificationCoordinator.instance
+        .removeListener(_handleReminderNotificationNavigation);
     router.dispose();
     super.dispose();
+  }
+
+  void _handleReminderNotificationNavigation() {
+    final pending = ReminderNotificationCoordinator.instance.pendingPayload;
+    if (pending == null) return;
+
+    final currentPath =
+        router.routeInformationProvider.value.uri.toString().trim();
+    debugPrint(
+      '[ReminderNotification][Router] currentPath=$currentPath '
+      'pending=${pending.debugSummary}',
+    );
+    if (currentPath.startsWith('/login')) {
+      debugPrint(
+        '[ReminderNotification][Router] Still on login flow, keeping payload queued.',
+      );
+      return;
+    }
+
+    if (currentPath != '/home') {
+      debugPrint('[ReminderNotification][Router] Navigating to /home');
+      router.go('/home');
+      return;
+    }
+
+    debugPrint('[ReminderNotification][Router] Already at /home');
   }
 
   @override
