@@ -286,8 +286,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           : (latestMetric?.latestHeartRate?.toString() ?? '-');
     }
 
-    final oxygenSatDisplay =
-        isSkeleton ? '98' : (diary?.latestOxygenSaturation?.toString() ?? '-');
+    final oxygenSatDisplay = isSkeleton
+        ? '98'
+        : (latestMetric?.latestOxygenSaturation?.toString() ?? '-');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),

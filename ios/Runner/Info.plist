@@ -46,7 +46,7 @@
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Camera is used to scan QR codes for user identification.</string>
+		<string>Camera is used to scan QR codes and take food photos for macro analysis.</string>
 		<key>NSContactsUsageDescription</key>
 		<string>Kontak digunakan untuk memilih nomor darurat dengan lebih cepat.</string>
 		<key>CFBundleURLTypes</key>

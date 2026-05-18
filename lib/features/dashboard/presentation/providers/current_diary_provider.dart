@@ -168,6 +168,12 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
     final type = (payload['type'] ?? '').toString().trim();
     final name = (payload['name'] ?? '').toString().trim();
     final portion = (payload['portion'] ?? '').toString().trim();
+    final nutritionPayloadRaw = payload['nutritionPayload'];
+    final nutritionPayload = nutritionPayloadRaw is Map
+        ? nutritionPayloadRaw.map(
+            (key, value) => MapEntry(key.toString(), value),
+          )
+        : null;
     if (type.isEmpty || name.isEmpty || portion.isEmpty) return;
 
     final now = DateTime.now();
@@ -183,6 +189,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       portion: portion,
       time: time,
       note: note,
+      nutritionPayload: nutritionPayload,
     );
   }
 

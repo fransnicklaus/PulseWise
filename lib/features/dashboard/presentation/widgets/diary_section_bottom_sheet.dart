@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
+import 'package:pulsewise/features/food_analysis/presentation/pages/food_macro_camera_page.dart';
 
 typedef GejalaSubmitCallback = Future<void> Function(
     Map<String, dynamic> payload);
@@ -193,6 +196,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   String? _selectedConsumptionTypeLabel;
   String? _selectedActivity;
   String? _selectedActivityFeeling;
+  FoodMacroAnalysis? _foodMacroAnalysis;
 
   // NEW ML ACTIVITY FIELDS
   String _activityCategory = 'recreation';
@@ -636,13 +640,18 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     final missingType = typeLabel == null || typeLabel.isEmpty;
     final missingName = name.isEmpty;
     final missingPortion = portion.isEmpty;
-    if (missingType || missingName || missingPortion) {
+    final portionTooLong =
+        portion.length > FoodMacroAnalysis.maxPortionEstimateLength;
+    if (missingType || missingName || missingPortion || portionTooLong) {
       setState(() {
         _konsumsiSubmitError = null;
         _konsumsiTypeError = missingType ? 'Pilih satu tipe konsumsi.' : null;
         _konsumsiNameError = missingName ? 'Mohon isi nama konsumsi.' : null;
-        _konsumsiPortionError =
-            missingPortion ? 'Mohon isi porsi konsumsi.' : null;
+        _konsumsiPortionError = missingPortion
+            ? 'Mohon isi porsi konsumsi.'
+            : portionTooLong
+                ? 'Porsi maksimal ${FoodMacroAnalysis.maxPortionEstimateLength} karakter.'
+                : null;
       });
       return;
     }
@@ -663,6 +672,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       'time': _formatTime(_selectedTime),
       'useCurrentTime': _useCurrentTime,
       'note': note,
+      'foodMacroAnalysis': _foodMacroAnalysis?.toJson(),
+      'nutritionPayload': _foodMacroAnalysis?.toDiaryNutritionPayload(),
     };
 
     final submitKonsumsi = widget.onSubmitKonsumsi;
@@ -689,6 +700,53 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
         setState(() => _isSavingKonsumsi = false);
       }
     }
+  }
+
+  Future<void> _openFoodMacroCameraPage() async {
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => const FoodMacroCameraPage(),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    final userFoodName = (result['user_food_name'] ?? '').toString().trim();
+    final userDescription =
+        (result['user_description'] ?? '').toString().trim();
+    final analysis = FoodMacroAnalysis.fromJson(result);
+    final suggestedName = analysis.suggestedName;
+    final analysisNotes = analysis.notes.trim();
+    final existingNote = _mealDescriptionController.text.trim();
+    final noteParts = <String>[
+      if (existingNote.isNotEmpty) existingNote,
+      if (userDescription.isNotEmpty) userDescription,
+      if (analysisNotes.isNotEmpty) 'Analisis foto: $analysisNotes',
+    ];
+
+    setState(() {
+      _foodMacroAnalysis = analysis;
+      if (_selectedConsumptionTypeLabel == null ||
+          _selectedConsumptionTypeLabel == 'Obat') {
+        _selectedConsumptionTypeLabel = 'Makanan';
+      }
+      if (userFoodName.isNotEmpty) {
+        _mealNameController.text = userFoodName;
+      } else if (suggestedName.isNotEmpty) {
+        _mealNameController.text = suggestedName;
+      }
+      if (analysis.portionEstimate.isNotEmpty) {
+        _mealPortionController.text =
+            FoodMacroAnalysis.truncatePortionText(analysis.portionEstimate);
+      }
+      if (noteParts.isNotEmpty) {
+        _mealDescriptionController.text = noteParts.join('\n\n');
+      }
+      _konsumsiTypeError = null;
+      _konsumsiNameError = null;
+      _konsumsiPortionError = null;
+      _konsumsiSubmitError = null;
+    });
   }
 
   Future<void> _pickActivityTime({required bool isStart}) async {
@@ -2820,6 +2878,9 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                     onSelected: (_) {
                       setState(() {
                         _selectedConsumptionTypeLabel = label;
+                        if (label == 'Obat') {
+                          _foodMacroAnalysis = null;
+                        }
                         _konsumsiTypeError = null;
                         _konsumsiSubmitError = null;
                       });
@@ -2839,6 +2900,70 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               ),
             ),
           ],
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFED7AA)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Analisis Foto Makanan',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF9A3412),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _selectedConsumptionTypeLabel == 'Obat'
+                      ? 'Fitur ini dipakai untuk makanan atau minuman. Ubah tipe konsumsi jika ingin analisis makro dari foto.'
+                      : 'Buka kamera, isi nama makanan dan deskripsi opsional, lalu ambil foto. Hasil nutrisi akan tampil di halaman terpisah dan bisa dipakai untuk mengganti data dummy nutrisi.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF9A3412),
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _selectedConsumptionTypeLabel == 'Obat'
+                        ? null
+                        : _openFoodMacroCameraPage,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Color(0xFFF59E0B)),
+                      foregroundColor: const Color(0xFF9A3412),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.camera_alt_rounded),
+                    label: const Text(
+                      'Buka Kamera Makanan',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                if (_foodMacroAnalysis != null) ...[
+                  const SizedBox(height: 14),
+                  _FoodMacroSummaryCard(analysis: _foodMacroAnalysis!),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 18),
           const Text(
             'Nama Konsumsi',
@@ -2901,6 +3026,12 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
           const SizedBox(height: 10),
           TextField(
             controller: _mealPortionController,
+            inputFormatters: [
+              LengthLimitingTextInputFormatter(
+                FoodMacroAnalysis.maxPortionEstimateLength,
+              ),
+            ],
+            maxLength: FoodMacroAnalysis.maxPortionEstimateLength,
             onChanged: (_) {
               if (_konsumsiPortionError == null &&
                   _konsumsiSubmitError == null) {
@@ -3079,6 +3210,153 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FoodMacroSummaryCard extends StatelessWidget {
+  const _FoodMacroSummaryCard({
+    required this.analysis,
+  });
+
+  final FoodMacroAnalysis analysis;
+
+  String _formatNumber(double value) {
+    if (value == value.roundToDouble()) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _FoodMacroSummaryRow(
+            label: 'Makanan',
+            value: analysis.detectedFoods.isEmpty
+                ? '-'
+                : analysis.detectedFoods.join(', '),
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Porsi',
+            value: analysis.portionEstimate.isEmpty
+                ? '-'
+                : analysis.portionEstimate,
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Estimasi Gram',
+            value: '${_formatNumber(analysis.portionGramsEstimate)} g',
+          ),
+          if (analysis.fdcFoodId.isNotEmpty)
+            _FoodMacroSummaryRow(
+              label: 'FDC Food ID',
+              value: analysis.fdcFoodId,
+            ),
+          _FoodMacroSummaryRow(
+            label: 'Kalori',
+            value: '${_formatNumber(analysis.caloriesKcal)} kkal',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Protein',
+            value: '${_formatNumber(analysis.proteinG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Karbohidrat',
+            value: '${_formatNumber(analysis.carbsG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Gula',
+            value: '${_formatNumber(analysis.sugarG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Serat',
+            value: '${_formatNumber(analysis.fiberG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Lemak',
+            value: '${_formatNumber(analysis.fatG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Lemak Jenuh',
+            value: '${_formatNumber(analysis.saturatedFatG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Lemak Tak Jenuh Tunggal',
+            value: '${_formatNumber(analysis.monounsaturatedFatG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Lemak Tak Jenuh Ganda',
+            value: '${_formatNumber(analysis.polyunsaturatedFatG)} g',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Kolesterol',
+            value: '${_formatNumber(analysis.cholesterolMg)} mg',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Kalsium',
+            value: '${_formatNumber(analysis.calciumMg)} mg',
+          ),
+          _FoodMacroSummaryRow(
+            label: 'Confidence',
+            value: analysis.confidence.isEmpty ? '-' : analysis.confidence,
+          ),
+          if (analysis.notes.isNotEmpty)
+            _FoodMacroSummaryRow(
+              label: 'Catatan',
+              value: analysis.notes,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FoodMacroSummaryRow extends StatelessWidget {
+  const _FoodMacroSummaryRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF9A3412),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF7C2D12),
+              height: 1.35,
+            ),
+          ),
+        ],
       ),
     );
   }

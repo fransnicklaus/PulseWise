@@ -533,18 +533,48 @@ class QuickDashboardResponse {
 class QuickDashboardData {
   final DashboardPatient patient;
   final DashboardLatestVitals? latestVitals;
+  final Map<String, DashboardFieldMeasurement> latestVitalsByField;
 
   QuickDashboardData({
     required this.patient,
     this.latestVitals,
+    required this.latestVitalsByField,
   });
 
   factory QuickDashboardData.fromJson(Map<String, dynamic> json) {
+    final latestVitalsByFieldJson =
+        (json['latestVitalsByField'] as Map<String, dynamic>?) ?? const {};
+
     return QuickDashboardData(
       patient: DashboardPatient.fromJson(json['patient'] ?? {}),
       latestVitals: json['latestVitals'] != null
           ? DashboardLatestVitals.fromJson(json['latestVitals'])
           : null,
+      latestVitalsByField: latestVitalsByFieldJson.map(
+        (key, value) => MapEntry(
+          key,
+          DashboardFieldMeasurement.fromJson(
+            (value as Map<String, dynamic>?) ?? const {},
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DashboardFieldMeasurement {
+  final num? value;
+  final String? measuredAt;
+
+  const DashboardFieldMeasurement({
+    required this.value,
+    required this.measuredAt,
+  });
+
+  factory DashboardFieldMeasurement.fromJson(Map<String, dynamic> json) {
+    return DashboardFieldMeasurement(
+      value: json['value'] as num?,
+      measuredAt: json['measuredAt']?.toString(),
     );
   }
 }
@@ -553,6 +583,7 @@ class ProfileApi {
   final Dio _dio;
   static const _tokenKey = 'auth_token';
   static const _userIdKey = 'auth_user_id';
+  static const Object _unsetValue = Object();
 
   ProfileApi(this._dio);
 
@@ -759,6 +790,8 @@ class ProfileApi {
           sex: '',
           bodyHeightCm: '',
           bloodType: '',
+          healthConnectPreference: null,
+          healthConnectStatus: null,
           isSmoking: false,
           isElectricSmoking: false,
         );
@@ -822,6 +855,52 @@ class ProfileApi {
     if (body == null || body['success'] != true) {
       throw Exception(
           (body?['message'] ?? 'Gagal memperbarui profil').toString());
+    }
+  }
+
+  Future<void> updateHealthConnectSetup({
+    required String healthConnectPreference,
+    Object? healthConnectStatus = _unsetValue,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey) ??
+        dotenv.env['AUTH_TOKEN'] ??
+        dotenv.env['BEARER_TOKEN'] ??
+        '';
+    if (token.isEmpty) {
+      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
+    }
+
+    final patientId =
+        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
+    if (patientId.isEmpty) {
+      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
+    }
+
+    final payload = <String, dynamic>{
+      'healthConnectPreference': healthConnectPreference,
+    };
+
+    if (!identical(healthConnectStatus, _unsetValue)) {
+      payload['healthConnectStatus'] = healthConnectStatus;
+    }
+
+    final response = await _dio.put<Map<String, dynamic>>(
+      '/patients/$patientId/profile',
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal memperbarui status Health Connect')
+            .toString(),
+      );
     }
   }
 
@@ -1784,6 +1863,7 @@ class ProfileApi {
     required String portion,
     required String time,
     required String note,
+    Map<String, dynamic>? nutritionPayload,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(_tokenKey) ??
@@ -1800,31 +1880,26 @@ class ProfileApi {
       throw Exception('userId tidak ditemukan. Silakan login ulang.');
     }
 
+    final requestBody = <String, dynamic>{
+      'diaryDate': diaryDate,
+      'type': type,
+      'name': name,
+      'portion': portion,
+      'time': time,
+      'note': note,
+    };
+    if (nutritionPayload != null) {
+      for (final entry in nutritionPayload.entries) {
+        final value = entry.value;
+        if (value == null) continue;
+        if (value is String && value.trim().isEmpty) continue;
+        requestBody[entry.key] = value;
+      }
+    }
+
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$userId/diaries/by-date/consumptions',
-      data: {
-        'diaryDate': diaryDate,
-        'type': type,
-        'name': name,
-        'portion': portion,
-        'time': time,
-        'note': note,
-        // DUMMY DATA FOR ML
-        'portionGrams': 150,
-        'fdcFoodId': '123456',
-        'nutritionSource': 'dummy',
-        'energyKcal': 250,
-        'proteinG': 10,
-        'carbohydrateG': 30,
-        'sugarG': 5,
-        'fiberG': 3,
-        'totalFatG': 8,
-        'saturatedFatG': 2,
-        'monounsaturatedFatG': 3,
-        'polyunsaturatedFatG': 1,
-        'cholesterolMg': 20,
-        'calciumMg': 50,
-      },
+      data: requestBody,
       options: Options(
         headers: {
           'Authorization': 'Bearer $token',
@@ -2756,6 +2831,8 @@ class PatientProfile {
   final String sex;
   final String bodyHeightCm;
   final String bloodType;
+  final String? healthConnectPreference;
+  final String? healthConnectStatus;
   final bool isSmoking;
   final bool isElectricSmoking;
 
@@ -2769,11 +2846,20 @@ class PatientProfile {
     required this.sex,
     required this.bodyHeightCm,
     required this.bloodType,
+    required this.healthConnectPreference,
+    required this.healthConnectStatus,
     required this.isSmoking,
     required this.isElectricSmoking,
   });
 
   String get fullName => '$firstName $lastName'.trim();
+  bool get isHealthConnectConnected => healthConnectStatus == 'connected';
+  bool get shouldActivateHealthConnectSync =>
+      healthConnectPreference == 'connect_now' &&
+      healthConnectStatus == 'connected';
+  bool get hasNoHealthConnectDevice => healthConnectPreference == 'no_device';
+  bool get shouldPromptForHealthConnectOnLogin =>
+      !hasNoHealthConnectDevice && !isHealthConnectConnected;
 
   factory PatientProfile.fromJson(Map<String, dynamic> json) {
     return PatientProfile(
@@ -2787,6 +2873,8 @@ class PatientProfile {
         sex: (json['sex'] ?? '').toString(),
         bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
         bloodType: (json['blood_type'] ?? '').toString(),
+        healthConnectPreference: json['healthConnectPreference']?.toString(),
+        healthConnectStatus: json['healthConnectStatus']?.toString(),
         isSmoking: (json['is_smoking'] as bool?) ?? false,
         isElectricSmoking: (json['is_electric_smoking'] as bool?) ?? false);
   }
