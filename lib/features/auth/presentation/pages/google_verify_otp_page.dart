@@ -101,6 +101,7 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
     if (result.nextStep == GoogleAuthNextStep.home) {
       ref.read(previousNavIndexProvider.notifier).state = 0;
       ref.read(dashboardNavIndexProvider.notifier).state = 0;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
       AppToast.success(context, 'Email berhasil diverifikasi');
       context.go('/home');
       return;

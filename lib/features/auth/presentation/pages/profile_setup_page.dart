@@ -2,13 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ProfileSetupPage extends StatefulWidget {
+class ProfileSetupPage extends ConsumerStatefulWidget {
   final String token;
   final String patientId;
 
@@ -19,12 +22,13 @@ class ProfileSetupPage extends StatefulWidget {
   });
 
   @override
-  State<ProfileSetupPage> createState() => _ProfileSetupPageState();
+  ConsumerState<ProfileSetupPage> createState() => _ProfileSetupPageState();
 }
 
-class _ProfileSetupPageState extends State<ProfileSetupPage> {
+class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   static const _fieldRadius = 15.0;
   static const _fieldMinHeight = 68.0;
+  static const _fieldFillColor = Color(0xFFF9FBFD);
 
   final _formKey = GlobalKey<FormState>();
   final _addressController = TextEditingController();
@@ -92,24 +96,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return InputDecoration(
       constraints: const BoxConstraints(minHeight: _fieldMinHeight),
       hintText: hint,
-      hintStyle: const TextStyle(
-        color: Color(0xFF64748B),
-        fontSize: 17,
-        fontWeight: FontWeight.w500,
-      ),
-      prefixIcon: SizedBox(
-        width: 56,
-        height: _fieldMinHeight,
-        child: Center(
-          child: Icon(icon, color: const Color(0xFF536278), size: 26),
-        ),
-      ),
+      hintStyle: _fieldHintTextStyle,
+      prefixIcon: _buildFieldIcon(icon),
       prefixIconConstraints: const BoxConstraints(
         minWidth: 56,
         minHeight: _fieldMinHeight,
       ),
       filled: true,
-      fillColor: const Color(0xFFF9FBFD),
+      fillColor: _fieldFillColor,
+      focusColor: _fieldFillColor,
+      hoverColor: _fieldFillColor,
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
       errorStyle: const TextStyle(fontSize: 14),
       border: OutlineInputBorder(
@@ -127,8 +123,47 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     );
   }
 
-  TextStyle get _dropdownTextStyle =>
-      const TextStyle(fontSize: 18, color: Color(0xFF1F2937), height: 1.1);
+  Widget _buildFieldIcon(IconData icon) {
+    return SizedBox(
+      width: 56,
+      height: _fieldMinHeight,
+      child: Center(
+        child: Icon(icon, color: const Color(0xFF536278), size: 26),
+      ),
+    );
+  }
+
+  InputDecoration _selectionDecoration({
+    required IconData icon,
+  }) {
+    return _inputDecoration(
+      hint: '',
+      icon: icon,
+    ).copyWith(
+      hintText: null,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      suffixIconConstraints: const BoxConstraints(
+        minWidth: 52,
+        minHeight: _fieldMinHeight,
+      ),
+    );
+  }
+
+  TextStyle get _fieldHintTextStyle => const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+        height: 1.1,
+      );
+
+  TextStyle get _fieldValueTextStyle => const TextStyle(
+        fontSize: 18,
+        color: Color(0xFF1F2937),
+        fontWeight: FontWeight.w500,
+        height: 1.1,
+      );
+
+  TextStyle get _dropdownTextStyle => _fieldValueTextStyle;
 
   DropdownMenuItem<String> _dropdownItem(String value) {
     return DropdownMenuItem<String>(
@@ -156,43 +191,24 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     return InkWell(
       borderRadius: BorderRadius.circular(_fieldRadius),
       onTap: _pickBirthDate,
-      child: Ink(
-        height: _fieldMinHeight,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9FBFD),
-          borderRadius: BorderRadius.circular(_fieldRadius),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+      child: InputDecorator(
+        isEmpty: _selectedBirthDate == null,
+        decoration: _selectionDecoration(
+          icon: FluentIcons.calendar_24_regular,
+        ).copyWith(
+          suffixIcon: const Icon(
+            FluentIcons.chevron_down_24_regular,
+            color: Color(0xFF64748B),
+            size: 24,
+          ),
         ),
-        child: Row(
-          children: [
-            const SizedBox(
-              width: 42,
-              child: Icon(
-                FluentIcons.calendar_24_regular,
-                color: Color(0xFF536278),
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                _birthDateLabel(),
-                style: TextStyle(
-                  color: _selectedBirthDate == null
-                      ? const Color(0xFF64748B)
-                      : const Color(0xFF1F2937),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Icon(
-              FluentIcons.chevron_down_24_regular,
-              color: Color(0xFF64748B),
-              size: 24,
-            ),
-          ],
+        child: Text(
+          _birthDateLabel(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _selectedBirthDate == null
+              ? _fieldHintTextStyle
+              : _fieldValueTextStyle,
         ),
       ),
     );
@@ -288,6 +304,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       }
 
       await _persistSession(token: widget.token, userId: widget.patientId);
+      await AppFcmService.instance.registerTokenForCurrentSession(
+        trigger: 'profile_setup',
+      );
       if (!mounted) return;
 
       AppToast.success(context, 'Profil berhasil dilengkapi');
@@ -380,6 +399,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           },
         );
       } else {
+        ref.read(previousNavIndexProvider.notifier).state = 0;
+        ref.read(dashboardNavIndexProvider.notifier).state = 0;
+        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
         _goSafely('/home');
       }
     } catch (e) {
@@ -508,6 +530,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                           isExpanded: true,
                                           itemHeight: _fieldMinHeight,
                                           alignment: Alignment.centerLeft,
+                                          hint: Text(
+                                            'Jenis Kelamin',
+                                            style: _fieldHintTextStyle,
+                                          ),
                                           icon: const Icon(
                                             FluentIcons.chevron_down_24_regular,
                                             size: 24,
@@ -518,14 +544,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                             _dropdownItem('Male'),
                                             _dropdownItem('Female')
                                           ],
-                                          decoration: _inputDecoration(
-                                            hint: 'Jenis Kelamin',
+                                          decoration: _selectionDecoration(
                                             icon: FluentIcons
                                                 .person_feedback_24_regular,
-                                          ).copyWith(
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 18),
                                           ),
                                           onChanged: (value) => setState(
                                               () => _selectedGender = value),
@@ -580,6 +601,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                           isExpanded: true,
                                           itemHeight: _fieldMinHeight,
                                           alignment: Alignment.centerLeft,
+                                          hint: Text(
+                                            'Golongan Darah',
+                                            style: _fieldHintTextStyle,
+                                          ),
                                           icon: const Icon(
                                             FluentIcons.chevron_down_24_regular,
                                             size: 24,
@@ -596,14 +621,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                             _dropdownItem('O+'),
                                             _dropdownItem('O-'),
                                           ],
-                                          decoration: _inputDecoration(
-                                            hint: 'Golongan Darah',
+                                          decoration: _selectionDecoration(
                                             icon: FluentIcons
                                                 .heart_pulse_24_regular,
-                                          ).copyWith(
-                                            contentPadding:
-                                                const EdgeInsets.symmetric(
-                                                    horizontal: 18),
                                           ),
                                           onChanged: (value) => setState(
                                               () => _selectedBloodType = value),
@@ -622,8 +642,15 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                             color: Color(0xFF1F2937),
                                           ),
                                           decoration: _inputDecoration(
-                                            hint: 'Tinggi Badan (cm)',
+                                            hint: 'Tinggi Badan',
                                             icon: FluentIcons.ruler_24_regular,
+                                          ).copyWith(
+                                            suffixText: 'cm',
+                                            suffixStyle: const TextStyle(
+                                              color: Color(0xFF64748B),
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                           validator: (value) {
                                             final text = (value ?? '').trim();

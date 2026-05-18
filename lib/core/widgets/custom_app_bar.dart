@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+  static const double _toolbarHeight = 64;
+  static const double _toolbarHeightWithSubtitle = 80;
+  static const double _titleFontSize = 24;
+  static const double _subtitleFontSize = 16;
+
   final String title;
   final String? subtitle;
   final VoidCallback? onBackPressed;
@@ -23,7 +28,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    final toolbarHeight = subtitle != null ? 80.0 : 64.0;
+    final toolbarHeight = _resolveToolbarHeight();
 
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -38,7 +43,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             height: toolbarHeight,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 if (showBackButton)
                   Padding(
@@ -73,18 +77,20 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                           title,
                           style: TextStyle(
                             color: titleColor,
-                            fontSize: 24,
+                            fontSize: _titleFontSize,
                             fontWeight: FontWeight.bold,
                           ),
+                          softWrap: true,
                         ),
-                        if (subtitle != null) ...[
+                        if (_hasSubtitle) ...[
                           const SizedBox(height: 4),
                           Text(
                             subtitle!,
                             style: TextStyle(
                               color: subtitleColor ?? Colors.white,
-                              fontSize: 16,
+                              fontSize: _subtitleFontSize,
                             ),
+                            softWrap: true,
                           ),
                         ],
                       ],
@@ -106,5 +112,63 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(subtitle != null ? 80 : 64);
+  Size get preferredSize => Size.fromHeight(_resolveToolbarHeight());
+
+  bool get _hasSubtitle => subtitle != null && subtitle!.trim().isNotEmpty;
+
+  double _resolveToolbarHeight() {
+    if (!_hasSubtitle) return _toolbarHeight;
+
+    final textWidth = _estimateTextWidth();
+    final titleHeight = _measureTextHeight(
+      text: title,
+      maxWidth: textWidth,
+      style: const TextStyle(
+        fontSize: _titleFontSize,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final subtitleHeight = _measureTextHeight(
+      text: subtitle!,
+      maxWidth: textWidth,
+      style: const TextStyle(
+        fontSize: _subtitleFontSize,
+      ),
+    );
+
+    final contentHeight = titleHeight + 4 + subtitleHeight;
+    return contentHeight > _toolbarHeightWithSubtitle - 24
+        ? contentHeight + 24
+        : _toolbarHeightWithSubtitle;
+  }
+
+  double _estimateTextWidth() {
+    final views = WidgetsBinding.instance.platformDispatcher.views;
+    final view = views.isNotEmpty ? views.first : null;
+    final logicalWidth =
+        view == null ? 360.0 : view.physicalSize.width / view.devicePixelRatio;
+
+    const double leadingWidth = 72;
+    const double trailingWidthWithAction = 88;
+    const double trailingWidthWithoutAction = 24;
+    final reservedWidth = leadingWidth +
+        (action != null ? trailingWidthWithAction : trailingWidthWithoutAction);
+    final availableWidth = logicalWidth - reservedWidth;
+
+    return availableWidth < 160 ? 160 : availableWidth;
+  }
+
+  double _measureTextHeight({
+    required String text,
+    required TextStyle style,
+    required double maxWidth,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: TextScaler.noScaling,
+    )..layout(maxWidth: maxWidth);
+
+    return textPainter.size.height;
+  }
 }

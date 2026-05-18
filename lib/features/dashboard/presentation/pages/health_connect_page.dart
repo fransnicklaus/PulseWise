@@ -3,17 +3,19 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_health_connect/flutter_health_connect.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 
-class HealthConnectPage extends StatefulWidget {
+class HealthConnectPage extends ConsumerStatefulWidget {
   const HealthConnectPage({super.key});
 
   @override
-  State<HealthConnectPage> createState() => _HealthConnectPageState();
+  ConsumerState<HealthConnectPage> createState() => _HealthConnectPageState();
 }
 
-class _HealthConnectPageState extends State<HealthConnectPage> {
+class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   static const Map<int, String> _exerciseTypeCodeMap = {
     0: 'Other Workout',
     2: 'Badminton',
@@ -96,6 +98,8 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
   String _statusNote =
       'Ikuti panduan ini agar PulseWise bisa membaca data kesehatan dari wearable Anda.';
   Map<String, dynamic>? _prettyData;
+  bool _isSyncingBackendHealthConnectState = false;
+  bool _didPersistConnectedStatusThisVisit = false;
 
   @override
   void initState() {
@@ -181,6 +185,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
             },
           );
         }
+        await _persistConnectedStatusIfNeeded();
       } catch (e) {
         if (!mounted) return;
         if (updateStatusNote) {
@@ -333,6 +338,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
           action: 'Periksa Izin Data',
           data: {'granted': granted},
         );
+        await _persistConnectedStatusIfNeeded();
       } catch (e) {
         if (!mounted) return;
         setState(() {
@@ -365,6 +371,8 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
           action: 'Minta Izin Data',
           data: {'granted': granted},
         );
+        await _persistConnectedStatusIfNeeded();
+        if (!mounted) return;
         if (granted) {
           AppToast.success(context, 'Izin Health Connect berhasil diberikan');
         } else {
@@ -642,6 +650,41 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
         _hasPermissions == true;
   }
 
+  Future<void> _persistConnectedStatusIfNeeded() async {
+    final ready = _readyStatus() == true;
+    if (!ready ||
+        _isSyncingBackendHealthConnectState ||
+        _didPersistConnectedStatusThisVisit) {
+      return;
+    }
+
+    final currentProfile = ref.read(patientProfileProvider).valueOrNull;
+    if (currentProfile?.isHealthConnectConnected == true &&
+        currentProfile?.healthConnectPreference == 'connect_now') {
+      _didPersistConnectedStatusThisVisit = true;
+      return;
+    }
+
+    _isSyncingBackendHealthConnectState = true;
+    try {
+      await ref.read(profileApiProvider).updateHealthConnectSetup(
+            healthConnectPreference: 'connect_now',
+            healthConnectStatus: 'connected',
+          );
+      ref.invalidate(patientProfileProvider);
+      _didPersistConnectedStatusThisVisit = true;
+      debugPrint(
+        '[HealthConnectPage] Backend status updated to connect_now/connected.',
+      );
+    } catch (e) {
+      debugPrint(
+        '[HealthConnectPage] Failed to persist connected status: $e',
+      );
+    } finally {
+      _isSyncingBackendHealthConnectState = false;
+    }
+  }
+
   String _formatExerciseType(dynamic type) {
     if (type == null) return 'Unknown';
 
@@ -785,7 +828,7 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
                   hint:
                       'Detail ini masih contoh sementara dan nanti bisa kita sesuaikan dengan alur yang benar.',
                   steps: [
-                    'Buka aplikasi wearable yang Anda gunakan, misalnya Samsung Health, Huawei Health, Garmin Connect, atau aplikasi jam tangan lainnya.',
+                    'Buka aplikasi wearable yang Anda gunakan, misalnya Samsung Health, Mi Fitness, Garmin Connect, atau aplikasi jam tangan lainnya yang tersedia dalam Google Play Store.',
                     'Masuk ke menu pengaturan, integrasi, atau izin sinkronisasi di aplikasi tersebut.',
                     'Cari opsi yang berkaitan dengan Health Connect, sinkronisasi kesehatan, atau berbagi data kesehatan.',
                     'Pastikan kategori seperti langkah, detak jantung, tidur, dan aktivitas diizinkan untuk dikirim ke Health Connect.',
@@ -819,13 +862,25 @@ class _HealthConnectPageState extends State<HealthConnectPage> {
                 ],
                 expandableDetails: const _GuideExpandableDetailsContent(
                   hint:
-                      'Detail ini juga masih placeholder dan bisa kita ganti setelah alur finalnya sudah kita cek.',
+                      'Ikuti urutan izin di bawah ini agar PulseWise bisa membaca data dari Health Connect.',
                   steps: [
-                    'Di halaman Health Connect, cari menu izin aplikasi atau App permissions.',
-                    'Temukan PulseWise pada daftar aplikasi yang meminta akses.',
-                    'Pilih jenis data yang ingin diizinkan untuk dibaca oleh PulseWise.',
-                    'Aktifkan akses baca untuk langkah, detak jantung, tidur, dan aktivitas atau olahraga.',
-                    'Simpan perubahan, lalu kembali ke PulseWise dan tekan Cek Izin untuk memastikan akses sudah aktif.',
+                    'Masuk ke halaman izin aplikasi di Health Connect, lalu pilih PulseWise dari daftar aplikasi.',
+                    'Buka bagian pengaturan akses data untuk PulseWise agar kategori data yang dibaca bisa diatur.',
+                    'Aktifkan akses baca untuk langkah, detak jantung, tidur, dan aktivitas, lalu kembali ke PulseWise untuk menekan Cek Izin.',
+                  ],
+                  imageSteps: [
+                    _GuideImageStep(
+                      label: 'Langkah 1',
+                      imagePath: 'assets/images/step_1.jpg',
+                    ),
+                    _GuideImageStep(
+                      label: 'Langkah 2',
+                      imagePath: 'assets/images/step_2.jpg',
+                    ),
+                    _GuideImageStep(
+                      label: 'Langkah 3',
+                      imagePath: 'assets/images/step_3.jpg',
+                    ),
                   ],
                 ),
               ),
@@ -1225,10 +1280,22 @@ class _StepStatusChip extends StatelessWidget {
 class _GuideExpandableDetailsContent {
   final String hint;
   final List<String> steps;
+  final List<_GuideImageStep> imageSteps;
 
   const _GuideExpandableDetailsContent({
     required this.hint,
     required this.steps,
+    this.imageSteps = const [],
+  });
+}
+
+class _GuideImageStep {
+  final String label;
+  final String imagePath;
+
+  const _GuideImageStep({
+    required this.label,
+    required this.imagePath,
   });
 }
 
@@ -1258,59 +1325,74 @@ class _ExpandableGuideDetailsState extends State<_ExpandableGuideDetails> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_isExpanded) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-              child: Text(
-                widget.content.hint,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                  height: 1.5,
-                ),
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+            //   child: Text(
+            //     widget.content.hint,
+            //     style: const TextStyle(
+            //       fontSize: 13,
+            //       fontWeight: FontWeight.w500,
+            //       color: Color(0xFF64748B),
+            //       height: 1.5,
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 12),
-            ...widget.content.steps.asMap().entries.map(
-                  (entry) => Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE7E7),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${entry.key + 1}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFFE64060),
-                              ),
-                            ),
-                          ),
+            ...widget.content.steps.asMap().entries.expand((entry) {
+              final widgets = <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE7E7),
+                          borderRadius: BorderRadius.circular(999),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
+                        child: Center(
                           child: Text(
-                            entry.value,
+                            '${entry.key + 1}',
                             style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF475569),
-                              height: 1.5,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFFE64060),
                             ),
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF475569),
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ];
+
+              if (entry.key < widget.content.imageSteps.length) {
+                widgets.add(
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                    child: _GuideImageStepCard(
+                      step: widget.content.imageSteps[entry.key],
+                    ),
+                  ),
+                );
+              }
+
+              return widgets;
+            }),
             const Divider(height: 1, color: Color(0xFFE2E8F0)),
           ],
           InkWell(
@@ -1322,7 +1404,11 @@ class _ExpandableGuideDetailsState extends State<_ExpandableGuideDetails> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _isExpanded ? 'Sembunyikan detail' : 'Lihat detail langkah',
+                    _isExpanded
+                        ? 'Sembunyikan detail'
+                        : widget.content.imageSteps.isNotEmpty
+                            ? 'Lihat detail dan gambar'
+                            : 'Lihat detail langkah',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
@@ -1337,6 +1423,58 @@ class _ExpandableGuideDetailsState extends State<_ExpandableGuideDetails> {
                     color: const Color(0xFF64748B),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuideImageStepCard extends StatelessWidget {
+  final _GuideImageStep step;
+
+  const _GuideImageStepCard({required this.step});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Container(
+          //   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          //   decoration: BoxDecoration(
+          //     color: const Color(0xFFFFE7E7),
+          //     borderRadius: BorderRadius.circular(999),
+          //   ),
+          //   child: Text(
+          //     step.label,
+          //     style: const TextStyle(
+          //       fontSize: 12,
+          //       fontWeight: FontWeight.w800,
+          //       color: Color(0xFFE64060),
+          //     ),
+          //   ),
+          // ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              color: const Color(0xFFF8FAFC),
+              child: Image.asset(
+                step.imagePath,
+                width: double.infinity,
+                fit: BoxFit.contain,
               ),
             ),
           ),

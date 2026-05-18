@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
@@ -21,8 +22,14 @@ void main() async {
   // Initialize DI / Services
   await di.init();
   await AppFcmService.instance.initialize();
+  await initializeDateFormatting('id_ID');
 
   final initialLocation = await _resolveInitialLocation();
+  if (initialLocation == '/home') {
+    await AppFcmService.instance.registerTokenForCurrentSession(
+      trigger: 'app_launch',
+    );
+  }
 
   runApp(
     ProviderScope(
@@ -46,11 +53,10 @@ Future<String> _resolveInitialLocation() async {
   try {
     final isExpired = JwtDecoder.isExpired(token);
     if (isExpired) {
-      await prefs.remove(tokenKey);
+      await prefs.remove(tokenKey); 
       await prefs.remove(userIdKey);
       return '/login';
     }
-
     return '/home';
   } catch (_) {
     await prefs.remove(tokenKey);
@@ -79,6 +85,7 @@ class _MyAppState extends State<MyApp> {
         .addListener(_handleReminderNotificationNavigation);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleReminderNotificationNavigation();
+      _requestNotificationPermissionOnFirstLaunch();
     });
   }
 
@@ -93,7 +100,6 @@ class _MyAppState extends State<MyApp> {
   void _handleReminderNotificationNavigation() {
     final pending = ReminderNotificationCoordinator.instance.pendingPayload;
     if (pending == null) return;
-
     final currentPath =
         router.routeInformationProvider.value.uri.toString().trim();
     debugPrint(
@@ -114,6 +120,11 @@ class _MyAppState extends State<MyApp> {
     }
 
     debugPrint('[ReminderNotification][Router] Already at /home');
+  }
+
+  Future<void> _requestNotificationPermissionOnFirstLaunch() async {
+    await AppFcmService.instance
+        .maybePromptNotificationPermissionOnFirstLaunch();
   }
 
   @override

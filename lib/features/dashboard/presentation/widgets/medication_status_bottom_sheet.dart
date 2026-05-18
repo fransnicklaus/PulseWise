@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
 
 Future<bool?> showMedicationStatusBottomSheet({
   required BuildContext context,
@@ -51,11 +52,20 @@ class _MedicationStatusBottomSheetState
     extends State<MedicationStatusBottomSheet> {
   static const List<_MedicationStatusOption> _statusOptions = [
     _MedicationStatusOption(
-        label: 'Taken', icon: Icons.check_circle_outline_sharp),
+      value: 'Taken',
+      label: 'Diminum',
+      icon: Icons.check_circle_outline_sharp,
+    ),
     _MedicationStatusOption(
-        label: 'Skipped', icon: Icons.directions_walk_rounded),
+      value: 'Skipped',
+      label: 'Dilewati',
+      icon: Icons.directions_walk_rounded,
+    ),
     _MedicationStatusOption(
-        label: 'Missed', icon: Icons.directions_run_rounded),
+      value: 'Missed',
+      label: 'Terlewat',
+      icon: Icons.directions_run_rounded,
+    ),
   ];
 
   late String _selectedLevel;
@@ -65,19 +75,9 @@ class _MedicationStatusBottomSheetState
   @override
   void initState() {
     super.initState();
-    if (widget.item.status != null) {
-      _selectedLevel = widget.item.status![0].toUpperCase() +
-          widget.item.status!.substring(1).toLowerCase();
-    } else {
-      _selectedLevel = _statusOptions.any((option) =>
-              option.label.toLowerCase() == widget.initialStatus.toLowerCase())
-          ? _statusOptions
-              .firstWhere((option) =>
-                  option.label.toLowerCase() ==
-                  widget.initialStatus.toLowerCase())
-              .label
-          : _statusOptions.first.label;
-    }
+    _selectedLevel = _normalizeStatusValue(widget.item.status) ??
+        _normalizeStatusValue(widget.initialStatus) ??
+        _statusOptions.first.value;
   }
 
   Future<void> _submit() async {
@@ -127,22 +127,22 @@ class _MedicationStatusBottomSheetState
 
     switch (value) {
       case 'taken':
-        label = 'Taken';
+        label = medicationStatusUiLabel(value);
         textColor = const Color(0xFF15803D);
         bgColor = const Color(0xFFDCFCE7);
         break;
       case 'missed':
-        label = 'Missed';
+        label = medicationStatusUiLabel(value);
         textColor = const Color(0xFFB91C1C);
         bgColor = const Color(0xFFFEE2E2);
         break;
       case 'skipped':
-        label = 'Skipped';
+        label = medicationStatusUiLabel(value);
         textColor = Colors.orange[800]!;
         bgColor = Colors.orange[200]!;
         break;
       default:
-        label = 'Open';
+        label = medicationStatusUiLabel(value);
         textColor = Colors.grey[700]!;
         bgColor = Colors.grey[200]!;
         break;
@@ -248,7 +248,7 @@ class _MedicationStatusBottomSheetState
                         ),
                         items: _statusOptions.map((option) {
                           return DropdownMenuItem<String>(
-                            value: option.label,
+                            value: option.value,
                             child: Row(
                               children: [
                                 // Icon(option.icon,
@@ -385,14 +385,28 @@ class _MedicationStatusBottomSheetState
   String _doseText(num dose) {
     return dose % 1 == 0 ? dose.toInt().toString() : dose.toString();
   }
+
+  String? _normalizeStatusValue(String? rawStatus) {
+    if (rawStatus == null || rawStatus.trim().isEmpty) return null;
+
+    for (final option in _statusOptions) {
+      if (option.value.toLowerCase() == rawStatus.toLowerCase()) {
+        return option.value;
+      }
+    }
+
+    return null;
+  }
 }
 
 class _MedicationStatusOption {
   const _MedicationStatusOption({
+    required this.value,
     required this.label,
     required this.icon,
   });
 
+  final String value;
   final String label;
   final IconData icon;
 }

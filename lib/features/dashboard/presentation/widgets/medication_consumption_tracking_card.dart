@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
 
 class MedicationConsumptionTrackingCard extends ConsumerStatefulWidget {
   const MedicationConsumptionTrackingCard({
@@ -222,7 +223,7 @@ class _MedicationConsumptionTrackingCardState
             children: [
               Expanded(
                 child: _SummaryStatCard(
-                  label: 'Taken',
+                  label: 'Diminum',
                   value: takenCount,
                   color: const Color(0xFF15803D),
                   compact: false,
@@ -231,7 +232,7 @@ class _MedicationConsumptionTrackingCardState
               const SizedBox(width: 12),
               Expanded(
                 child: _SummaryStatCard(
-                  label: 'Skipped',
+                  label: 'Dilewati',
                   value: skippedCount,
                   color: const Color(0xFFB45309),
                   compact: false,
@@ -240,7 +241,7 @@ class _MedicationConsumptionTrackingCardState
               const SizedBox(width: 12),
               Expanded(
                 child: _SummaryStatCard(
-                  label: 'Missed',
+                  label: 'Terlewat',
                   value: missedCount,
                   color: const Color(0xFFB91C1C),
                   compact: false,
@@ -496,16 +497,7 @@ class _MedicationLogListTile extends StatelessWidget {
   }
 
   String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'taken':
-        return 'Taken';
-      case 'skipped':
-        return 'Skipped';
-      case 'missed':
-        return 'Missed';
-      default:
-        return status;
-    }
+    return medicationStatusUiLabel(status);
   }
 
   IconData _statusIcon(String status) {

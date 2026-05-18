@@ -42,6 +42,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (authState.isAuthenticated) {
         ref.read(previousNavIndexProvider.notifier).state = 0;
         ref.read(dashboardNavIndexProvider.notifier).state = 0;
+        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
         // Invalidate profile-related providers so they refetch with the new token
         ref.invalidate(authMeProvider);
         ref.invalidate(patientProfileProvider);
@@ -67,7 +68,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
 
     if (!result.success) {
-      final message = result.message ?? authState.error ?? 'Login Google gagal';
       _logGoogleUi('Showing error toast');
       // AppToast.error(context, message);
       return;
@@ -77,6 +77,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         authState.isAuthenticated) {
       ref.read(previousNavIndexProvider.notifier).state = 0;
       ref.read(dashboardNavIndexProvider.notifier).state = 0;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
       // Force refetch of auth/me and profile after Google login
       ref.invalidate(authMeProvider);
       ref.invalidate(patientProfileProvider);

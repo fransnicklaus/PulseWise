@@ -8,6 +8,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
 import '../../widgets/medication_status_bottom_sheet.dart';
 
 class PengingatTab extends ConsumerStatefulWidget {
@@ -49,6 +50,8 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
   Widget build(BuildContext context) {
     super.build(context);
 
+    final calendarFirstDay = DateTime(_focusedDate.year - 5, 1, 1);
+    final calendarLastDay = DateTime(_focusedDate.year + 5, 12, 31);
     final monthAnchor = _dateOnly(_focusedDate);
     final fromDate = DateTime(monthAnchor.year, monthAnchor.month, 1);
     final toDate = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
@@ -59,59 +62,56 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     );
 
     final calendarAsync = ref.watch(medicationCalendarRangeProvider(query));
+    final calendarData = calendarAsync.asData?.value;
+    final events = calendarData == null
+        ? <MedicationCalendarItem>[]
+        : [...calendarData.items]
+      ..sort((a, b) {
+        final dateA = a.scheduledDate ?? DateTime(1970);
+        final dateB = b.scheduledDate ?? DateTime(1970);
+        final dateCompare = dateA.compareTo(dateB);
+        if (dateCompare != 0) return dateCompare;
+        return a.scheduledTime.compareTo(b.scheduledTime);
+      });
+    final selectedEvents = events
+        .where((item) => _isSameDay(item.scheduledDate, _selectedDate))
+        .toList();
+    final errorMessage =
+        calendarAsync.asError?.error.toString().replaceFirst('Exception: ', '');
+
+    if (calendarData != null) {
+      _maybeHandlePendingReminder(events, query);
+    }
 
     return SafeArea(
-      child: calendarAsync.when(
-        loading: () => const SizedBox.expand(
-          child: Center(
-            child: CircularProgressIndicator(color: Color(0xFFE64060)),
-          ),
-        ),
-        error: (error, _) => _ErrorView(
-          message: error.toString().replaceFirst('Exception: ', ''),
-          onRetry: () {
-            ref.invalidate(medicationCalendarRangeProvider(query));
-          },
-        ),
-        data: (calendarData) {
-          final events = [...calendarData.items]..sort((a, b) {
-              final dateA = a.scheduledDate ?? DateTime(1970);
-              final dateB = b.scheduledDate ?? DateTime(1970);
-              final dateCompare = dateA.compareTo(dateB);
-              if (dateCompare != 0) return dateCompare;
-              return a.scheduledTime.compareTo(b.scheduledTime);
-            });
-
-          final selectedEvents = events
-              .where((item) => _isSameDay(item.scheduledDate, _selectedDate))
-              .toList();
-
-          _maybeHandlePendingReminder(events, query);
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(medicationCalendarRangeProvider(query));
-              await ref.read(medicationCalendarRangeProvider(query).future);
-            },
-            color: const Color(0xFFE64060),
-            backgroundColor: Colors.white,
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 120),
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 14),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: TableCalendar<MedicationCalendarItem>(
-                    firstDay: fromDate,
-                    lastDay: toDate,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          ref.invalidate(medicationCalendarRangeProvider(query));
+          await ref.read(medicationCalendarRangeProvider(query).future);
+        },
+        color: const Color(0xFFE64060),
+        backgroundColor: Colors.white,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 120),
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            _buildHeader(context),
+            const SizedBox(height: 14),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Column(
+                children: [
+                  TableCalendar<MedicationCalendarItem>(
+                    firstDay: calendarFirstDay,
+                    lastDay: calendarLastDay,
                     focusedDay: _focusedDate,
+                    locale: 'id_ID',
                     selectedDayPredicate: (day) =>
                         _isSameDay(day, _selectedDate),
                     calendarFormat: CalendarFormat.month,
@@ -151,45 +151,71 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
                       });
                     },
                     onPageChanged: (focusedDay) {
+                      final nextFocusedDate = _dateOnly(focusedDay);
                       setState(() {
-                        _focusedDate = _dateOnly(focusedDay);
+                        _focusedDate = nextFocusedDate;
+                        _selectedDate =
+                            _defaultSelectedDateForMonth(nextFocusedDate);
                       });
                     },
                   ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    _formatDateLong(_selectedDate),
-                    style: const TextStyle(
-                      color: Color(0xFF334155),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                  if (calendarAsync.isLoading) ...[
+                    const SizedBox(height: 8),
+                    const LinearProgressIndicator(
+                      minHeight: 3,
+                      color: Color(0xFFE64060),
+                      backgroundColor: Color(0xFFFFE1E7),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (selectedEvents.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: _EmptyDayCard(),
-                  )
-                else
-                  ...selectedEvents.map(
-                    (item) => _MedicationCalendarCard(
-                      item: item,
-                      onTap: () => _showMedicationBottomSheet(
-                        context,
-                        item,
-                        query,
-                      ),
-                    ),
-                  ),
-              ],
+                  ],
+                ],
+              ),
             ),
-          );
-        },
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                _formatDateLong(_selectedDate),
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (calendarAsync.isLoading && calendarData == null)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: _LoadingDayCard(),
+              )
+            else if (errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _InlineErrorCard(
+                  message: errorMessage,
+                  onRetry: () {
+                    ref.invalidate(medicationCalendarRangeProvider(query));
+                  },
+                ),
+              )
+            else if (selectedEvents.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: _EmptyDayCard(),
+              )
+            else
+              ...selectedEvents.map(
+                (item) => _MedicationCalendarCard(
+                  item: item,
+                  onTap: () => _showMedicationBottomSheet(
+                    context,
+                    item,
+                    query,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -446,6 +472,14 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     return DateTime(date.year, date.month, date.day);
   }
 
+  DateTime _defaultSelectedDateForMonth(DateTime monthDate) {
+    final today = _dateOnly(DateTime.now());
+    if (today.year == monthDate.year && today.month == monthDate.month) {
+      return today;
+    }
+    return DateTime(monthDate.year, monthDate.month, 1);
+  }
+
   String _formatDateLong(DateTime? date) {
     if (date == null) return '-';
     const months = [
@@ -614,22 +648,22 @@ class _StatusChip extends StatelessWidget {
 
     switch (value) {
       case 'taken':
-        label = 'Taken';
+        label = medicationStatusUiLabel(value);
         textColor = const Color(0xFF15803D);
         bgColor = const Color(0xFFDCFCE7);
         break;
       case 'missed':
-        label = 'Missed';
+        label = medicationStatusUiLabel(value);
         textColor = const Color(0xFFB91C1C);
         bgColor = const Color(0xFFFEE2E2);
         break;
       case 'skipped':
-        label = 'Skipped';
+        label = medicationStatusUiLabel(value);
         textColor = Colors.orange[800]!;
         bgColor = Colors.orange[200]!;
         break;
       default:
-        label = 'Open';
+        label = medicationStatusUiLabel(value);
         textColor = Colors.grey[700]!;
         bgColor = Colors.grey[200]!;
         break;
@@ -648,6 +682,46 @@ class _StatusChip extends StatelessWidget {
           fontSize: 16,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+}
+
+class _LoadingDayCard extends StatelessWidget {
+  const _LoadingDayCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              color: Color(0xFFE64060),
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Memuat jadwal obat untuk bulan ini...',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -678,8 +752,8 @@ class _EmptyDayCard extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({
+class _InlineErrorCard extends StatelessWidget {
+  const _InlineErrorCard({
     required this.message,
     required this.onRetry,
   });
@@ -689,32 +763,35 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF475569),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE64060),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Coba Lagi'),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE64060),
+              foregroundColor: Colors.white,
             ),
-          ],
-        ),
+            child: const Text('Coba Lagi'),
+          ),
+        ],
       ),
     );
   }

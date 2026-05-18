@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/emergency_contacts_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
@@ -89,9 +90,15 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
   Future<void> _onLogout() async {
     await ref.read(authProvider.notifier).logout();
+    ref.invalidate(authMeProvider);
     ref.invalidate(patientProfileProvider);
+    ref.invalidate(quickDashboardProvider);
+    ref.invalidate(dashboardVitalsProvider);
+    ref.invalidate(currentDiaryProvider);
+    ref.invalidate(emergencyContactsProvider);
     ref.read(previousNavIndexProvider.notifier).state = 0;
     ref.read(dashboardNavIndexProvider.notifier).state = 0;
+    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun');
     _goSafely('/login');

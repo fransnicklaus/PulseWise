@@ -1761,31 +1761,29 @@ class _DetailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          '$label: ',
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        Flexible(
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          TextSpan(
+            text: value,
             style: const TextStyle(
               color: Color(0xFF1A202C),
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }

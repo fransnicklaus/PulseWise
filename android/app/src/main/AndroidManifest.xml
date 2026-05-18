@@ -1,25 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-    <uses-permission android:name="android.permission.health.READ_STEPS" />
-    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
-    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
-    <uses-permission android:name="android.permission.health.READ_SLEEP" />
-
+    <uses-permission
+        android:name="android.permission.CAMERA"/>
+    <uses-permission
+        android:name="android.permission.READ_CONTACTS"/>
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission
+        android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission
+        android:name="android.permission.health.READ_STEPS"/>
+    <uses-permission
+        android:name="android.permission.health.READ_EXERCISE"/>
+    <uses-permission
+        android:name="android.permission.health.READ_HEART_RATE"/>
+    <uses-permission
+        android:name="android.permission.health.READ_SLEEP"/>
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="pulsewise_reminders" />
+            android:value="pulsewise_reminders"/>
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -34,25 +40,25 @@
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
             <meta-data
-              android:name="io.flutter.embedding.android.NormalTheme"
-              android:resource="@style/NormalTheme"
-              />
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="health_permissions"
-                android:resource="@array/health_permissions" />
+                android:resource="@array/health_permissions"/>
             <intent-filter>
-                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+                <action
+                    android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
-            android:value="2" />
+            android:value="2"/>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
@@ -60,10 +66,13 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
-        <package android:name="com.google.android.apps.healthdata" />
+        <package
+            android:name="com.google.android.apps.healthdata"/>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action
+                android:name="android.intent.action.PROCESS_TEXT"/>
+            <data
+                android:mimeType="text/plain"/>
         </intent>
     </queries>
 </manifest>

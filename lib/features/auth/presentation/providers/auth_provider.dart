@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -142,6 +143,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (userId != null && userId.isNotEmpty) {
         await prefs.setString(_userIdKey, userId);
       }
+      await _syncFcmTokenForCurrentSession('login');
 
       state = state.copyWith(
         isLoading: false,
@@ -605,6 +607,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (userId != null && userId.isNotEmpty) {
         await prefs.setString(_userIdKey, userId);
       }
+      await _syncFcmTokenForCurrentSession('google_home');
 
       _logGoogle('Session saved, auth success');
       return GoogleAuthFlowResult(
@@ -683,10 +686,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    try {
+      await AppFcmService.instance.revokeCurrentTokenForCurrentSession(
+        trigger: 'logout',
+      );
+    } catch (e) {
+      debugPrint('[Auth][FCM] Failed to revoke token on logout: $e');
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userIdKey);
     state = AuthState();
+  }
+
+  Future<void> _syncFcmTokenForCurrentSession(String trigger) async {
+    try {
+      await AppFcmService.instance.registerTokenForCurrentSession(
+        trigger: trigger,
+      );
+    } catch (e) {
+      debugPrint('[Auth][FCM] Failed to sync token for $trigger: $e');
+    }
   }
 
   String? _extractToken(Map<String, dynamic> json) {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -48,6 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
   int _currentStep = 0;
   bool _isSubmitting = false;
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isResendingOtp = false;
   int _otpResendCooldown = 0;
   Timer? _otpCooldownTimer;
@@ -417,7 +419,6 @@ class _RegisterPageState extends State<RegisterPage> {
           final patientId = await _registerAndGetPatientId();
           _registeredPatientId = patientId;
           _registrationEmail = _emailController.text.trim();
-          await _sendEmailOtp(email: _registrationEmail);
           if (!mounted) return;
           AppToast.success(context, 'Registrasi berhasil, OTP sudah dikirim');
         }
@@ -642,7 +643,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(
-                            () => _isPasswordVisible = !_isPasswordVisible);
+                          () => _isPasswordVisible = !_isPasswordVisible,
+                        );
                       },
                       icon: Icon(
                         _isPasswordVisible
@@ -655,21 +657,40 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   validator: (value) {
                     final password = (value ?? '').trim();
-                    if (password.isEmpty) return 'Password wajib diisi';
-                    if (password.length < 6)
+                    if (password.isEmpty) {
+                      return 'Password wajib diisi';
+                    }
+                    if (password.length < 6) {
                       return 'Password minimal 6 karakter';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _confirmPasswordController,
-                  obscureText: !_isPasswordVisible,
+                  obscureText: !_isConfirmPasswordVisible,
                   style:
                       const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
                   decoration: _inputDecoration(
                     hint: 'Confirm Password',
                     icon: FluentIcons.lock_closed_24_regular,
+                  ).copyWith(
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(
+                          () => _isConfirmPasswordVisible =
+                              !_isConfirmPasswordVisible,
+                        );
+                      },
+                      icon: Icon(
+                        _isConfirmPasswordVisible
+                            ? FluentIcons.eye_24_regular
+                            : FluentIcons.eye_off_24_regular,
+                        color: const Color(0xFF536278),
+                        size: 26,
+                      ),
+                    ),
                   ),
                   validator: (value) {
                     final confirmPassword = (value ?? '').trim();
@@ -691,21 +712,19 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextFormField(
+              _OtpDotField(
                 controller: _otpController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                style: const TextStyle(fontSize: 20, letterSpacing: 1.2),
-                decoration: _inputDecoration(
-                  hint: 'Masukkan 6 digit OTP',
-                  icon: FluentIcons.password_24_regular,
-                ).copyWith(counterText: ''),
                 validator: (value) {
                   final otp = (value ?? '').trim();
-                  if (otp.isEmpty) return 'OTP wajib diisi';
-                  if (otp.length != 6) return 'OTP harus 6 digit';
-                  if (int.tryParse(otp) == null)
+                  if (otp.isEmpty) {
+                    return 'OTP wajib diisi';
+                  }
+                  if (otp.length != 6) {
+                    return 'OTP harus 6 digit';
+                  }
+                  if (int.tryParse(otp) == null) {
                     return 'OTP harus berupa angka';
+                  }
                   return null;
                 },
               ),
@@ -714,7 +733,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 'Masukkan kode OTP yang dikirim ke ${_registrationEmail.isNotEmpty ? _registrationEmail : _emailController.text.trim()}.',
                 style: const TextStyle(
                   color: Color(0xFF64748B),
-                  fontSize: 16,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 10),
@@ -728,13 +747,15 @@ class _RegisterPageState extends State<RegisterPage> {
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Color(0xFFE64060)),
                         )
                       : Text(
                           _otpResendCooldown > 0
                               ? 'Kirim Ulang OTP (${_otpResendCooldown}s)'
                               : 'Kirim Ulang OTP',
-                          style: const TextStyle(fontSize: 17),
+                          style: const TextStyle(
+                              fontSize: 17, color: Color(0xFFE64060)),
                         ),
                 ),
               ),
@@ -945,7 +966,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                       Positioned(
-                        top: 0,
+                        top: 11,
                         left: 0,
                         right: 0,
                         child: Center(
@@ -1000,4 +1021,212 @@ class _SessionData {
   final String userId;
 
   const _SessionData({required this.token, required this.userId});
+}
+
+class _OtpDotField extends StatefulWidget {
+  final TextEditingController controller;
+  final String? Function(String?)? validator;
+
+  const _OtpDotField({
+    required this.controller,
+    required this.validator,
+  });
+
+  @override
+  State<_OtpDotField> createState() => _OtpDotFieldState();
+}
+
+class _OtpDotFieldState extends State<_OtpDotField> {
+  final FocusNode _focusNode = FocusNode();
+  FormFieldState<String>? _formFieldState;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleValueChanged);
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleValueChanged);
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _handleValueChanged() {
+    final field = _formFieldState;
+    final shouldRevalidate = field?.hasError ?? false;
+    field?.didChange(widget.controller.text);
+    if (shouldRevalidate) {
+      field?.validate();
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _showKeyboard() {
+    FocusScope.of(context).requestFocus(_focusNode);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<String>(
+      initialValue: widget.controller.text,
+      validator: widget.validator,
+      autovalidateMode: AutovalidateMode.disabled,
+      builder: (field) {
+        _formFieldState = field;
+        final otp = widget.controller.text;
+        final activeIndex = otp.length.clamp(0, 5);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _showKeyboard,
+              child: Row(
+                children: List.generate(6 * 2 - 1, (index) {
+                  if (index.isOdd) {
+                    return const SizedBox(width: 10);
+                  }
+
+                  final slotIndex = index ~/ 2;
+                  final isFilled = slotIndex < otp.length;
+                  final isActive = _focusNode.hasFocus &&
+                      slotIndex == activeIndex &&
+                      otp.length < 6;
+                  final digit = isFilled ? otp[slotIndex] : '';
+                  final borderColor = field.hasError
+                      ? const Color(0xFFDC2626)
+                      : isActive
+                          ? const Color(0xFFE64060)
+                          : const Color(0xFFE2E8F0);
+                  final backgroundColor = isFilled
+                      ? const Color(0xFFF9FBFD)
+                      : const Color(0xFFF9FBFD);
+
+                  return Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: borderColor,
+                          width: isActive ? 1.6 : 1.2,
+                        ),
+                        boxShadow: isActive
+                            ? [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFFE64060,
+                                  ).withOpacity(0.12),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeOut,
+                          child: isFilled
+                              ? Text(
+                                  digit,
+                                  key: ValueKey('digit_$slotIndex$digit'),
+                                  style: const TextStyle(
+                                    color: Color(0xFFE64060),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                )
+                              : Container(
+                                  key: ValueKey('dot_$slotIndex$isActive'),
+                                  width: isActive ? 10 : 8,
+                                  height: isActive ? 10 : 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isActive
+                                        ? const Color(0xFFF8A3B2)
+                                        : const Color(0xFFD7DEE7),
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            SizedBox(
+              width: 0.1,
+              height: 0.1,
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                onTap: _showKeyboard,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                showCursor: false,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: const [AutofillHints.oneTimeCode],
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
+                ],
+                style: const TextStyle(
+                  fontSize: 0.1,
+                  color: Colors.transparent,
+                  height: 0.1,
+                ),
+                cursorColor: Colors.transparent,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Ketuk kotak di atas lalu masukkan 6 digit OTP.',
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (field.hasError) ...[
+              const SizedBox(height: 8),
+              Text(
+                field.errorText ?? '',
+                style: const TextStyle(
+                  color: Color(0xFFDC2626),
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
 }

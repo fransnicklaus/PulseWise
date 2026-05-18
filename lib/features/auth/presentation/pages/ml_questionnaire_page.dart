@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_mapping.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class MlQuestionnairePage extends ConsumerStatefulWidget {
@@ -27,6 +28,14 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
   final Map<String, int> _answers = {};
   bool _isSubmitting = false;
   bool _isInitialLoading = true;
+
+  void _goHomeSafely() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go('/home');
+    });
+  }
 
   @override
   void initState() {
@@ -88,18 +97,6 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
     return null;
   }
 
-  void _navigateToHomeSafely() {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (context.canPop()) {
-        context.pop();
-        return;
-      }
-      context.go('/home');
-    });
-  }
-
   Future<void> _submitMlProfile() async {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid || _isSubmitting) return;
@@ -122,8 +119,8 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
           );
 
       if (!mounted) return;
-      context.go('/home');
-      AppToast.success(context, 'Kuisioner berhasil disimpan');
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+      _goHomeSafely();
     } catch (e) {
       if (!mounted) return;
       AppToast.error(context, e.toString().replaceFirst('Exception: ', ''));
@@ -293,7 +290,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
         title: 'Kuisioner Pasien',
         subtitle: 'Isi untuk kebutuhan prediksi kesehatan',
         showBackButton: true,
-        onBackPressed: () => context.go('/home'),
+        onBackPressed: _goHomeSafely,
       ),
       body: SafeArea(
         child: _isInitialLoading
