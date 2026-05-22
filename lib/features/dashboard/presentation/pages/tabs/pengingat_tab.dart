@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/app_connectivity_provider.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -37,6 +39,16 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     _focusedDate = _dateOnly(now);
     ReminderNotificationCoordinator.instance
         .addListener(_handlePendingReminderSignal);
+  }
+
+  String _networkFailureMessage({
+    required String fallbackMessage,
+  }) {
+    final connectivity = ref.read(appConnectivityProvider);
+    if (connectivity.isOffline || !connectivity.hasNetworkTransport) {
+      return connectivity.message;
+    }
+    return fallbackMessage;
   }
 
   @override
@@ -86,8 +98,29 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: () async {
+          final connectivity = ref.read(appConnectivityProvider);
+          if (connectivity.isOffline) {
+            AppToast.warning(context, connectivity.message);
+            return;
+          }
+
           ref.invalidate(medicationCalendarRangeProvider(query));
-          await ref.read(medicationCalendarRangeProvider(query).future);
+          try {
+            await ref.read(medicationCalendarRangeProvider(query).future);
+          } catch (e) {
+            if (!mounted) return;
+            if (isNetworkRequestError(e)) {
+              AppToast.warning(
+                this.context,
+                _networkFailureMessage(
+                  fallbackMessage:
+                      'Koneksi internet bermasalah. Kalender obat belum bisa dimuat ulang.',
+                ),
+              );
+              return;
+            }
+            rethrow;
+          }
         },
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
@@ -263,6 +296,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
           ),
           _HeaderAction(
             icon: Icons.medication_rounded,
+            label: 'Kelola',
             onTap: () => context.push('/home/reminder/manage'),
           ),
         ],
@@ -309,9 +343,21 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
 
     if (saved == true) {
       ref.invalidate(medicationCalendarRangeProvider(query));
-      await ref.read(medicationCalendarRangeProvider(query).future);
-      if (mounted) {
-        AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+      try {
+        await ref.read(medicationCalendarRangeProvider(query).future);
+        if (mounted) {
+          AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        if (isNetworkRequestError(e)) {
+          AppToast.info(
+            this.context,
+            'Status obat berhasil diperbarui, tetapi kalender terbaru belum bisa dimuat.',
+          );
+          return;
+        }
+        rethrow;
       }
     }
   }
@@ -534,25 +580,62 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
 class _HeaderAction extends StatelessWidget {
   const _HeaderAction({
     required this.icon,
+    required this.label,
     required this.onTap,
   });
 
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
+      borderRadius: BorderRadius.circular(14),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
-          borderRadius: BorderRadius.circular(12),
+          color: const Color(0xFFFFF3F6),
+          border: Border.all(color: const Color(0xFFF5CDD6)),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFE64060).withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Icon(icon, color: const Color(0xFFE64060), size: 24),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: const Color(0xFFFAD9E0)),
+              ),
+              child: Icon(
+                icon,
+                color: const Color(0xFFE64060),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFFE64060),
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
       ),
     );
   }

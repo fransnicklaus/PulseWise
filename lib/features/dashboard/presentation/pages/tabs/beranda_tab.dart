@@ -2,6 +2,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/app_connectivity_provider.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
@@ -57,18 +59,49 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     }
   }
 
+  String _networkFailureMessage({
+    required String fallbackMessage,
+  }) {
+    final connectivity = ref.read(appConnectivityProvider);
+    if (connectivity.isOffline || !connectivity.hasNetworkTransport) {
+      return connectivity.message;
+    }
+    return fallbackMessage;
+  }
+
   Future<void> _onRefresh() async {
-    await Future.wait([
-      ref.refresh(authMeProvider.future),
-      ref.refresh(latestMlRecommendationProvider.future),
-      ref.refresh(quickDashboardProvider.future),
-      ref.refresh(medicationCalendarRangeProvider(
-        MedicationCalendarRangeQuery(
-          from: DateTime.now(),
-          to: DateTime.now().add(const Duration(days: 2)),
-        ),
-      ).future),
-    ]);
+    final connectivity = ref.read(appConnectivityProvider);
+    if (connectivity.isOffline) {
+      AppToast.warning(context, connectivity.message);
+      return;
+    }
+
+    try {
+      await Future.wait([
+        ref.refresh(authMeProvider.future),
+        ref.refresh(latestMlRecommendationProvider.future),
+        ref.refresh(quickDashboardProvider.future),
+        ref.refresh(medicationCalendarRangeProvider(
+          MedicationCalendarRangeQuery(
+            from: DateTime.now(),
+            to: DateTime.now().add(const Duration(days: 2)),
+          ),
+        ).future),
+      ]);
+    } catch (e) {
+      if (!mounted) return;
+      if (isNetworkRequestError(e)) {
+        AppToast.warning(
+          context,
+          _networkFailureMessage(
+            fallbackMessage:
+                'Koneksi internet bermasalah. Beranda belum bisa dimuat ulang.',
+          ),
+        );
+        return;
+      }
+      rethrow;
+    }
   }
 
   String _formatCurrentDate() {
@@ -1453,9 +1486,21 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
 
     if (saved == true) {
       ref.invalidate(medicationCalendarRangeProvider(query));
-      await ref.read(medicationCalendarRangeProvider(query).future);
-      if (mounted) {
-        AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+      try {
+        await ref.read(medicationCalendarRangeProvider(query).future);
+        if (mounted) {
+          AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        if (isNetworkRequestError(e)) {
+          AppToast.info(
+            this.context,
+            'Status obat berhasil diperbarui, tetapi daftar terbaru belum bisa dimuat.',
+          );
+          return;
+        }
+        rethrow;
       }
     }
   }

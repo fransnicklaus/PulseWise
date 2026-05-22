@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
+import 'package:pulsewise/core/widgets/connectivity_status_banner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
@@ -53,7 +54,7 @@ Future<String> _resolveInitialLocation() async {
   try {
     final isExpired = JwtDecoder.isExpired(token);
     if (isExpired) {
-      await prefs.remove(tokenKey); 
+      await prefs.remove(tokenKey);
       await prefs.remove(userIdKey);
       return '/login';
     }
@@ -131,6 +132,19 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'PulseWise',
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child ?? const SizedBox.shrink(),
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: ConnectivityStatusBanner(),
+            ),
+          ],
+        );
+      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

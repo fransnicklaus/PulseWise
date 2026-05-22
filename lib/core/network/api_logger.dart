@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 class ApiLogger {
+  static const _maxStringPreviewLength = 240;
+  static const _maxListPreviewLength = 10;
+
   static void attach(Dio dio) {
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -10,10 +13,12 @@ class ApiLogger {
             final uri = _fullUri(options);
             debugPrint('[API][REQUEST] ${options.method} $uri');
             if (options.queryParameters.isNotEmpty) {
-              debugPrint('[API][QUERY] ${options.queryParameters}');
+              debugPrint(
+                '[API][QUERY] ${_summarizeValue(options.queryParameters)}',
+              );
             }
             if (options.data != null) {
-              debugPrint('[API][PAYLOAD] ${options.data}');
+              debugPrint('[API][PAYLOAD] ${_summarizeValue(options.data)}');
             }
           }
           handler.next(options);
@@ -22,7 +27,7 @@ class ApiLogger {
           if (kDebugMode) {
             final uri = _fullUri(response.requestOptions);
             debugPrint('[API][RESPONSE] ${response.statusCode} $uri');
-            debugPrint('[API][BODY] ${response.data}');
+            debugPrint('[API][BODY] ${_summarizeValue(response.data)}');
           }
           handler.next(response);
         },
@@ -33,7 +38,9 @@ class ApiLogger {
               '[API][ERROR] ${error.response?.statusCode ?? '-'} '
               '${error.requestOptions.method} $uri',
             );
-            debugPrint('[API][ERROR_BODY] ${error.response?.data}');
+            debugPrint(
+              '[API][ERROR_BODY] ${_summarizeValue(error.response?.data)}',
+            );
             debugPrint('[API][ERROR_MESSAGE] ${error.message}');
           }
           handler.next(error);
@@ -44,5 +51,41 @@ class ApiLogger {
 
   static String _fullUri(RequestOptions options) {
     return options.uri.toString();
+  }
+
+  static Object? _summarizeValue(dynamic value, {String? key}) {
+    if (value is Map) {
+      return value.map(
+        (entryKey, entryValue) => MapEntry(
+          entryKey,
+          _summarizeValue(entryValue, key: entryKey.toString()),
+        ),
+      );
+    }
+
+    if (value is List) {
+      final preview = value
+          .take(_maxListPreviewLength)
+          .map((item) => _summarizeValue(item))
+          .toList();
+      if (value.length > _maxListPreviewLength) {
+        preview.add('...(+${value.length - _maxListPreviewLength} items)');
+      }
+      return preview;
+    }
+
+    if (value is String) {
+      final normalizedKey = (key ?? '').toLowerCase();
+      if (normalizedKey.contains('base64')) {
+        return '<base64 ${value.length} chars>';
+      }
+      if (value.length > _maxStringPreviewLength) {
+        return '${value.substring(0, _maxStringPreviewLength)}... '
+            '<${value.length} chars>';
+      }
+      return value;
+    }
+
+    return value;
   }
 }
