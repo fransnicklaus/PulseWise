@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/expandable_text.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/diary_history_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/widgets/diary_section_bottom_sheet.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
@@ -14,6 +17,8 @@ class DiariTab extends ConsumerStatefulWidget {
 }
 
 class _DiariTabState extends ConsumerState<DiariTab> {
+  bool _isHandlingPendingSection = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,43 +76,33 @@ class _DiariTabState extends ConsumerState<DiariTab> {
     try {
       if (section == 'gejala') {
         if (result['saved'] == true) {
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Gejala berhasil disimpan');
         } else if ((result['symptoms'] as List?)?.isNotEmpty == true) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addSymptomsFromModal(result);
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Gejala berhasil disimpan');
         }
       } else if (section.contains('konsumsi')) {
         if (result['saved'] == true) {
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Konsumsi harian berhasil disimpan');
         } else if ((result['name'] ?? '').toString().trim().isNotEmpty) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addConsumptionsFromModal(result);
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Konsumsi harian berhasil disimpan');
         }
       } else if (section.contains('aktivitas')) {
         if (result['saved'] == true) {
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Aktivitas berhasil disimpan');
         } else if (((result['name'] ?? result['activity']) ?? '')
@@ -117,17 +112,13 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           await ref
               .read(currentDiaryProvider.notifier)
               .addActivitiesFromModal(result);
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Aktivitas berhasil disimpan');
         }
       } else if (section.contains('metriks')) {
         if (result['saved'] == true) {
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Metriks kesehatan berhasil disimpan');
         } else if (result['bodyHeight'] != null ||
@@ -138,26 +129,20 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           await ref
               .read(currentDiaryProvider.notifier)
               .addBodyMetricsFromModal(result);
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Metriks kesehatan berhasil disimpan');
         }
       } else if (section == 'tidur') {
         if (result['saved'] == true) {
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Data tidur berhasil disimpan');
         } else if (result['sleepTime'] != null && result['wakeTime'] != null) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addSleepFromModal(result);
-          await ref
-              .read(currentDiaryProvider.notifier)
-              .invalidateCurrentDiaryQuery();
+          await _refreshDiaryData();
           if (!mounted) return;
           AppToast.success(context, 'Data tidur berhasil disimpan');
         }
@@ -170,6 +155,11 @@ class _DiariTabState extends ConsumerState<DiariTab> {
       if (!mounted) return;
       AppToast.error(context, e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  Future<void> _refreshDiaryData() async {
+    await ref.read(currentDiaryProvider.notifier).invalidateCurrentDiaryQuery();
+    ref.invalidate(diaryHistoryProvider);
   }
 
   String _todayLabel() {
@@ -225,14 +215,29 @@ class _DiariTabState extends ConsumerState<DiariTab> {
 
   String _formatConsumptionType(String type) {
     switch (type.toLowerCase()) {
+      case 'makanan berat':
+      case 'breakfast':
+      case 'sarapan':
+      case 'lunch':
+      case 'makan siang':
+      case 'dinner':
+      case 'makan malam':
       case 'food':
-        return 'Makanan';
+      case 'makanan':
+        return 'Makanan Berat';
+      case 'makanan ringan':
+      case 'snack':
+      case 'other':
+      case 'cemilan':
+      case 'camilan':
+      case 'lainnya':
+        return 'Makanan Ringan';
+      case 'minuman':
       case 'drink':
         return 'Minuman';
       case 'medication':
+      case 'obat':
         return 'Obat';
-      case 'snack':
-        return 'Snack';
       default:
         return type.isEmpty ? '-' : type;
     }
@@ -244,6 +249,17 @@ class _DiariTabState extends ConsumerState<DiariTab> {
 
   @override
   Widget build(BuildContext context) {
+    final pendingSection = ref.watch(pendingDiarySectionProvider);
+    if (pendingSection != null && !_isHandlingPendingSection) {
+      _isHandlingPendingSection = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        ref.read(pendingDiarySectionProvider.notifier).state = null;
+        await _openSectionModal(pendingSection);
+        _isHandlingPendingSection = false;
+      });
+    }
+
     final diaryState = ref.watch(currentDiaryProvider);
     final diary = diaryState.diary;
     final isSkeleton = diaryState.isLoading;
@@ -1006,9 +1022,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                                 ? 0
                                                 : 12),
                                       ),
-                                      child: _ConsumptionEntryItem(
+                                      child: _CompactConsumptionEntryItem(
                                         typeLabel: isSkeleton
-                                            ? 'Makanan'
+                                            ? 'Makanan Berat'
                                             : _formatConsumptionType(
                                                 consumptions[entry].type,
                                               ),
@@ -1159,7 +1175,7 @@ class _SectionAddButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
-      child: Container(
+      child: const SizedBox(
         width: 85,
         height: 38,
         // decoration: BoxDecoration(
@@ -1168,12 +1184,12 @@ class _SectionAddButton extends StatelessWidget {
         // ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.add,
               color: Color(0xFFE64060),
               size: 22,
             ),
-            const Text("Tambah",
+            Text("Tambah",
                 style: TextStyle(fontSize: 14, color: Color(0xFFE64060))),
           ],
         ),
@@ -1474,6 +1490,7 @@ class _SleepEntryItem extends StatelessWidget {
   }
 }
 
+/*
 class _ConsumptionEntryItem extends StatelessWidget {
   final String typeLabel;
   final String title;
@@ -1482,6 +1499,7 @@ class _ConsumptionEntryItem extends StatelessWidget {
   final String recordedTime;
   final bool showDivider;
 
+  // ignore: unused_element
   const _ConsumptionEntryItem({
     required this.typeLabel,
     required this.title,
@@ -1539,6 +1557,99 @@ class _ConsumptionEntryItem extends StatelessWidget {
                   ),
                 ),
               ],
+              if (showDivider) ...[
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: Color(0xFFEFF2F6)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+*/
+
+class _CompactConsumptionEntryItem extends StatelessWidget {
+  final String typeLabel;
+  final String title;
+  final String? portion;
+  final String? note;
+  final String recordedTime;
+  final bool showDivider;
+
+  const _CompactConsumptionEntryItem({
+    required this.typeLabel,
+    required this.title,
+    required this.portion,
+    required this.note,
+    required this.recordedTime,
+    this.showDivider = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 58,
+          child: Text(
+            recordedTime,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              ExpandableText(
+                key: ValueKey(
+                  'consumption-$recordedTime-$title-$typeLabel-${portion ?? ''}-${note ?? ''}',
+                ),
+                collapsedMaxLines: 3,
+                content: TextSpan(
+                  children: [
+                    TextSpan(
+                      text:
+                          '$typeLabel • ${(portion ?? '').isEmpty ? '-' : portion}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF334155),
+                        height: 1.4,
+                      ),
+                    ),
+                    if ((note ?? '').isNotEmpty)
+                      const TextSpan(
+                        text: '\n\n',
+                      ),
+                    if ((note ?? '').isNotEmpty)
+                      TextSpan(
+                        text: note!,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                          height: 1.5,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               if (showDivider) ...[
                 const SizedBox(height: 10),
                 const Divider(height: 1, color: Color(0xFFEFF2F6)),

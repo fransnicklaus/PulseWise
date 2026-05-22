@@ -4,8 +4,12 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import 'report_generator_flutter.dart';
@@ -237,10 +241,10 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           });
         }
       } else {
-        final missing = (readiness['missingFields'] as List?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [];
+        final missingRaw =
+            readiness['missingFields'] ?? readiness['missing_fields'];
+        final missing =
+            (missingRaw as List?)?.map((e) => e.toString()).toList() ?? [];
         if (mounted) {
           setState(() {
             _missingFields = missing;
@@ -285,6 +289,110 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   void _handleSearchChanged(String value) {
     setState(() {});
     widget.onSearchChanged?.call(value);
+  }
+
+  List<MlReadinessGroup> get _readinessGroups =>
+      buildMlReadinessGroups(_missingFields);
+
+  Future<void> _openMlQuestionnaireFromReadiness() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token') ?? '';
+    final userId = prefs.getString('auth_user_id') ?? '';
+
+    if (!mounted) return;
+
+    if (token.isEmpty || userId.isEmpty) {
+      AppToast.warning(
+        context,
+        'Sesi login tidak ditemukan. Silakan login ulang.',
+      );
+      return;
+    }
+
+    context.push(
+      '/login/register/ml-questionnaire',
+      extra: {
+        'auth_token': token,
+        'auth_user_id': userId,
+      },
+    );
+  }
+
+  void _openDiarySectionFromReadiness(String sectionTitle) {
+    ref.read(dashboardNavIndexProvider.notifier).state = 2;
+    ref.read(pendingDiarySectionProvider.notifier).state = sectionTitle;
+    context.go('/home');
+  }
+
+  Future<void> _handleReadinessGroupAction(MlReadinessGroup group) async {
+    switch (group.type) {
+      case MlReadinessGroupType.profile:
+        context.push('/home/update-profile');
+        return;
+      case MlReadinessGroupType.mlQuestionnaire:
+        await _openMlQuestionnaireFromReadiness();
+        return;
+      case MlReadinessGroupType.mlAssessment:
+        context.push('/home/patient-dashboard/ml-assessment');
+        return;
+      case MlReadinessGroupType.diaryBodyMetrics:
+      case MlReadinessGroupType.diaryConsumption:
+      case MlReadinessGroupType.diaryActivity:
+      case MlReadinessGroupType.diarySleep:
+      case MlReadinessGroupType.diarySymptoms:
+        final sectionTitle = group.diarySectionTitle;
+        if (sectionTitle == null || sectionTitle.trim().isEmpty) return;
+        _openDiarySectionFromReadiness(sectionTitle);
+        return;
+      case MlReadinessGroupType.unknown:
+        return;
+    }
+  }
+
+  IconData _readinessGroupIcon(MlReadinessGroupType type) {
+    switch (type) {
+      case MlReadinessGroupType.profile:
+        return Icons.person_outline_rounded;
+      case MlReadinessGroupType.mlQuestionnaire:
+        return Icons.assignment_ind_outlined;
+      case MlReadinessGroupType.mlAssessment:
+        return Icons.fact_check_outlined;
+      case MlReadinessGroupType.diaryBodyMetrics:
+        return Icons.favorite_border_rounded;
+      case MlReadinessGroupType.diaryConsumption:
+        return Icons.restaurant_menu_rounded;
+      case MlReadinessGroupType.diaryActivity:
+        return Icons.directions_walk_rounded;
+      case MlReadinessGroupType.diarySleep:
+        return Icons.bedtime_outlined;
+      case MlReadinessGroupType.diarySymptoms:
+        return Icons.healing_outlined;
+      case MlReadinessGroupType.unknown:
+        return Icons.info_outline_rounded;
+    }
+  }
+
+  Color _readinessGroupAccent(MlReadinessGroupType type) {
+    switch (type) {
+      case MlReadinessGroupType.profile:
+        return const Color(0xFF7C3AED);
+      case MlReadinessGroupType.mlQuestionnaire:
+        return const Color(0xFF2563EB);
+      case MlReadinessGroupType.mlAssessment:
+        return const Color(0xFFE13D5A);
+      case MlReadinessGroupType.diaryBodyMetrics:
+        return const Color(0xFF0F766E);
+      case MlReadinessGroupType.diaryConsumption:
+        return const Color(0xFFEA580C);
+      case MlReadinessGroupType.diaryActivity:
+        return const Color(0xFF0284C7);
+      case MlReadinessGroupType.diarySleep:
+        return const Color(0xFF4F46E5);
+      case MlReadinessGroupType.diarySymptoms:
+        return const Color(0xFFDC2626);
+      case MlReadinessGroupType.unknown:
+        return const Color(0xFF64748B);
+    }
   }
 
   @override
@@ -614,7 +722,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                             ),
                                                           ),
                                                         ),
-                                                        SizedBox(height: 16),
+                                                        const SizedBox(
+                                                            height: 16),
                                                         SizedBox(
                                                           width:
                                                               double.infinity,
@@ -680,8 +789,9 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                   value: period.id,
                                                   child: Text(
                                                     period.label,
-                                                    style:
-                                                        TextStyle(fontSize: 18),
+                                                    style: const TextStyle(
+                                                      fontSize: 18,
+                                                    ),
                                                   ),
                                                 ),
                                               )
@@ -991,6 +1101,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   }
 
   Widget _buildNotReadySection(double fullWidth) {
+    final readinessGroups = _readinessGroups;
+
     return Container(
       width: fullWidth,
       padding: const EdgeInsets.all(32),
@@ -1023,7 +1135,173 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
             ),
           ),
           const SizedBox(height: 24),
-          if (_missingFields.isNotEmpty) ...[
+          if (readinessGroups.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Area yang perlu dilengkapi (${readinessGroups.length})',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Color(0xFF1A202C),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            ...readinessGroups.map((group) {
+              final accent = _readinessGroupAccent(group.type);
+              final previewLabels = group.fieldLabels.take(3).toList();
+              final remainingCount =
+                  group.fieldLabels.length - previewLabels.length;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: accent.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Icon(
+                              _readinessGroupIcon(group.type),
+                              color: accent,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  group.title,
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF1A202C),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  group.description,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF64748B),
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (previewLabels.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        const Text(
+                          'Contoh data yang masih kosong:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF334155),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ...previewLabels.map(
+                              (label) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: accent.withOpacity(0.20),
+                                  ),
+                                ),
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF475569),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (remainingCount > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: accent.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '+$remainingCount lainnya',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: accent,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                      if (group.hasAction) ...[
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: accent,
+                              side: BorderSide(color: accent),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () => _handleReadinessGroupAction(group),
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            label: Text(
+                              group.buttonLabel!,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+          if (readinessGroups.isEmpty && _missingFields.isNotEmpty) ...[
             const Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -1065,25 +1343,28 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                 ),
               ),
           ],
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE13D5A),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          if (readinessGroups.isEmpty) ...[
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE13D5A),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: () {
+                context.push('/home/patient-dashboard/ml-assessment');
+              },
+              icon: const Icon(Icons.edit_document),
+              label: const Text(
+                'Lengkapi Form',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
-            onPressed: () {
-              context.push('/home/patient-dashboard/ml-assessment');
-            },
-            icon: const Icon(Icons.edit_document),
-            label: const Text(
-              'Lengkapi Form',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-          )
+          ],
         ],
       ),
     );
@@ -1860,9 +2141,9 @@ class PredictionMetricCard extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text(
+                const Text(
                   'Berikut adalah skor risiko kesehatan terbaru pasien yang menunjukkan probabilitas komplikasi serius dalam waktu dekat',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A202C),
