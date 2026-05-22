@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';

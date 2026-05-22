@@ -8,11 +8,11 @@ import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
-import 'report_generator_flutter.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/report_generator_flutter.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({

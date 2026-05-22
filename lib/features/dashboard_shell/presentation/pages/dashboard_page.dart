@@ -4,16 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-
-import '../providers/current_diary_provider.dart';
-import '../providers/dashboard_provider.dart';
-import '../providers/profile_provider.dart';
-import '../../services/health_connect_sync_service.dart';
-import 'tabs/beranda_tab.dart';
-import 'tabs/diari_tab.dart';
-import 'tabs/edukasi_tab.dart';
-import 'tabs/pengingat_tab.dart';
-import 'tabs/profil_tab.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/tabs/diari_tab.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/tabs/pengingat_tab.dart';
+import 'package:pulsewise/features/dashboard/presentation/pages/tabs/profil_tab.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/services/health_connect_sync_service.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/home_dashboard/presentation/pages/beranda_tab.dart';
+import 'package:pulsewise/features/home_dashboard/presentation/pages/edukasi_tab.dart';
 
 enum _HealthConnectPromptChoice {
   connectNow,

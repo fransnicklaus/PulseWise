@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 
 class GoogleVerifyOtpPage extends ConsumerStatefulWidget {
   final String email;

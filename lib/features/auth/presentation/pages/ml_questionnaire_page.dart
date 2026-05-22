@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_mapping.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class MlQuestionnairePage extends ConsumerStatefulWidget {

@@ -4,7 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 
 class AddPengingatPage extends ConsumerStatefulWidget {

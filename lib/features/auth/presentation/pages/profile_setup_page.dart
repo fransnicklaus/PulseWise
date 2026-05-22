@@ -8,7 +8,7 @@ import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   final String token;

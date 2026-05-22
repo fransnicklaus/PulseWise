@@ -5,7 +5,7 @@ import 'package:pulsewise/features/auth/presentation/pages/ml_questionnaire_page
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/home_page.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/add_diary_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/riwayat_diari_page.dart';
@@ -19,9 +19,9 @@ import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.
 import 'package:pulsewise/features/dashboard/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/update_profile_page.dart';
-// import 'package:pulsewise/features/dashboard/presentation/pages/patient_dashboard_page.dart';
+// import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/patient_ml_assessment_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/patient_flutter.dart'
+import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';

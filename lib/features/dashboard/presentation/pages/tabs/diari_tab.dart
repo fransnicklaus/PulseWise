@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/expandable_text.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/diary_history_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/widgets/diary_section_bottom_sheet.dart';
 import 'package:skeletonizer/skeletonizer.dart';

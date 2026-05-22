@@ -8,7 +8,7 @@ import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
 import '../../widgets/medication_status_bottom_sheet.dart';

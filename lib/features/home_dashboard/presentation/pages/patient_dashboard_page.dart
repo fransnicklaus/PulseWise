@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({super.key});
