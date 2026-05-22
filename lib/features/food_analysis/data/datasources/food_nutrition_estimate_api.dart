@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 
 import '../models/food_macro_analysis.dart';
 
@@ -11,9 +10,6 @@ class FoodNutritionEstimateApi {
   FoodNutritionEstimateApi(this._dio);
 
   final Dio _dio;
-
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
 
   Future<FoodMacroAnalysis> estimateNutrition({
     required File imageFile,
@@ -69,29 +65,11 @@ class FoodNutritionEstimateApi {
   }
 
   Future<String> _readBearerToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    return token;
+    return AppSessionStore.requireToken();
   }
 
   Future<String> _readUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
-
-    return userId;
+    return AppSessionStore.requireUserId();
   }
 
   Future<String> _imageToBase64(File imageFile) async {

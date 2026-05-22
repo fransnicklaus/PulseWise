@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 
 import '../models/manual_medication_reminder_notification_response.dart';
 
@@ -8,8 +7,6 @@ class ManualMedicationReminderNotificationApi {
   ManualMedicationReminderNotificationApi(this._dio);
 
   final Dio _dio;
-
-  static const _tokenKey = 'auth_token';
 
   Future<ManualMedicationReminderNotificationResponse> sendReminder({
     required String userId,
@@ -57,17 +54,7 @@ class ManualMedicationReminderNotificationApi {
   }
 
   Future<String> _readBearerToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    return token;
+    return AppSessionStore.requireToken();
   }
 
   String _extractErrorMessage(DioException error) {

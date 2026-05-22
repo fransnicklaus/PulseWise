@@ -1,13 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'profile_provider.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 
 final emergencyContactsProvider =
     StateNotifierProvider<EmergencyContactsNotifier, EmergencyContactsState>(
-  (ref) => EmergencyContactsNotifier(ref.watch(dioProvider)),
+  (ref) => EmergencyContactsNotifier(ref.watch(apiDioProvider)),
 );
 
 class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
@@ -15,9 +13,17 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
 
   final Dio _dio;
 
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
   static const _defaultLimit = 20;
+
+  Future<String> _readBearerToken() {
+    return AppSessionStore.requireToken();
+  }
+
+  Future<String> _readPatientId() {
+    return AppSessionStore.requireUserId(
+      missingMessage: 'patientId tidak ditemukan. Silakan login ulang.',
+    );
+  }
 
   Future<void> fetchInitial() async {
     if (state.isLoadingInitial) return;
@@ -74,20 +80,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     required String contactNumber,
     required bool isPriority,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$patientId/emergency-contacts',
@@ -115,20 +109,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     required String contactNumber,
     required bool isPriority,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/users/$patientId/emergency-contacts/$emergencyContactId',
@@ -155,20 +137,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     required String contactLabel,
     required bool isPriority,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/users/$patientId/emergency-contacts/$emergencyContactId',
@@ -231,20 +201,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
   }
 
   Future<void> deleteEmergencyContact(String emergencyContactId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.delete<Map<String, dynamic>>(
       '/users/$patientId/emergency-contacts/$emergencyContactId',
@@ -263,20 +221,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
 
   Future<_PageResult> _fetchPage(
       {required int page, required int limit}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$patientId/emergency-contacts',

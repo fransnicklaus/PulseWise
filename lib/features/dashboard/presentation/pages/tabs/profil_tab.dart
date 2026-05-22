@@ -8,13 +8,13 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/emergency_contacts_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class ProfilTab extends ConsumerStatefulWidget {
@@ -398,9 +398,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   }
 
   Future<void> _copyAndPrintAuthToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token') ?? '';
-    final userId = prefs.getString('auth_user_id') ?? '';
+    final session = await AppSessionStore.readSession(allowEnvFallback: false);
+    final token = session.token ?? '';
+    final userId = session.userId ?? '';
 
     if (!mounted) return;
 
@@ -419,9 +419,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   }
 
   Future<void> _goToMlQuestionnaire() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token') ?? '';
-    final userId = prefs.getString('auth_user_id') ?? '';
+    final session = await AppSessionStore.readSession(allowEnvFallback: false);
+    final token = session.token ?? '';
+    final userId = session.userId ?? '';
 
     if (!mounted) return;
 
@@ -436,8 +436,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     context.push(
       '/login/register/ml-questionnaire',
       extra: {
-        'auth_token': token,
-        'auth_user_id': userId,
+        AppSessionStore.tokenPrefsKey: token,
+        AppSessionStore.userIdPrefsKey: userId,
       },
     );
   }

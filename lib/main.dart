@@ -6,8 +6,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/widgets/connectivity_status_banner.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
 
@@ -40,12 +40,9 @@ void main() async {
 }
 
 Future<String> _resolveInitialLocation() async {
-  const tokenKey = 'auth_token';
-  const userIdKey = 'auth_user_id';
-
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString(tokenKey) ?? '';
-  final userId = prefs.getString(userIdKey) ?? '';
+  final session = await AppSessionStore.readSession(allowEnvFallback: false);
+  final token = session.token ?? '';
+  final userId = session.userId ?? '';
 
   if (token.isEmpty || userId.isEmpty) {
     return '/login';
@@ -54,14 +51,12 @@ Future<String> _resolveInitialLocation() async {
   try {
     final isExpired = JwtDecoder.isExpired(token);
     if (isExpired) {
-      await prefs.remove(tokenKey);
-      await prefs.remove(userIdKey);
+      await AppSessionStore.clearSession();
       return '/login';
     }
     return '/home';
   } catch (_) {
-    await prefs.remove(tokenKey);
-    await prefs.remove(userIdKey);
+    await AppSessionStore.clearSession();
     return '/login';
   }
 }

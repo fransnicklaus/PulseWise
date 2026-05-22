@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
@@ -92,8 +92,6 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
 
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
   static const _fallbackGoogleClientId =
       '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com';
   static const _androidApplicationId = 'com.rdib.pulsewise';
@@ -116,10 +114,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
 
@@ -138,11 +134,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       final userId = _extractUserId(responseData);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
-      if (userId != null && userId.isNotEmpty) {
-        await prefs.setString(_userIdKey, userId);
-      }
+      await AppSessionStore.saveSession(token: token, userId: userId);
       await _syncFcmTokenForCurrentSession('login');
 
       state = state.copyWith(
@@ -172,11 +164,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
     _logGoogle('Login flow started');
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
-
       final envWebClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
       final envServerClientId = dotenv.env['GOOGLE_SERVER_CLIENT_ID'];
       final envClientId = dotenv.env['GOOGLE_CLIENT_ID'];
@@ -289,10 +276,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
       final response = await dio.post<Map<String, dynamic>>(
@@ -355,10 +340,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
       final verifyResponse = await dio.post<Map<String, dynamic>>(
@@ -400,10 +383,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> resendEmailVerificationOtp(String email) async {
-    final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-    if (baseUrl.isEmpty) {
-      throw Exception('API_BASE_URL belum diatur di file .env');
-    }
+
+    final baseUrl = resolveApiBaseUrl();
 
     final dio = _buildDio(baseUrl);
     final response = await dio.post<Map<String, dynamic>>(
@@ -424,15 +405,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String confirmNewPassword,
   }) async {
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
 
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey) ?? state.token ?? '';
+      final token =
+          (await AppSessionStore.readToken(allowEnvFallback: false) ??
+                  state.token ??
+                  '')
+              .trim();
       if (token.trim().isEmpty) {
         throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
       }
@@ -472,10 +454,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
   }) async {
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
       final response = await dio.post<Map<String, dynamic>>(
@@ -502,10 +482,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String otp,
   }) async {
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
       final response = await dio.post<Map<String, dynamic>>(
@@ -533,10 +511,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String confirmNewPassword,
   }) async {
     try {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-      if (baseUrl.isEmpty) {
-        throw Exception('API_BASE_URL belum diatur di file .env');
-      }
+
+      final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
       final response = await dio.post<Map<String, dynamic>>(
@@ -567,10 +543,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String idToken,
     required String role,
   }) async {
-    final baseUrl = dotenv.env['API_BASE_URL'] ?? '';
-    if (baseUrl.isEmpty) {
-      throw Exception('API_BASE_URL belum diatur di file .env');
-    }
+
+    final baseUrl = resolveApiBaseUrl();
 
     final dio = _buildDio(baseUrl);
     _logGoogle('Calling backend /auth/oauth/google');
@@ -602,11 +576,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final userId = _extractUserId(body) ?? _extractUserId(data);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_tokenKey, token);
-      if (userId != null && userId.isNotEmpty) {
-        await prefs.setString(_userIdKey, userId);
-      }
+      await AppSessionStore.saveSession(token: token, userId: userId);
       await _syncFcmTokenForCurrentSession('google_home');
 
       _logGoogle('Session saved, auth success');
@@ -673,16 +643,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Dio _buildDio(String baseUrl) {
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        headers: const {'Accept': 'application/json'},
-      ),
-    );
-    ApiLogger.attach(dio);
-    return dio;
+    return createApiDio(baseUrl);
   }
 
   Future<void> logout() async {
@@ -694,9 +655,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       debugPrint('[Auth][FCM] Failed to revoke token on logout: $e');
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_userIdKey);
+    await AppSessionStore.clearSession();
     state = AuthState();
   }
 
@@ -794,3 +753,4 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return 'Login gagal. Periksa email dan kata sandi.';
   }
 }
+

@@ -4,10 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -58,9 +58,6 @@ class _RegisterPageState extends State<RegisterPage> {
   String? _registeredPatientId;
   String _registrationEmail = '';
 
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
-
   bool get _isGoogleFlow {
     return (widget.googleEmail ?? '').isNotEmpty &&
         (widget.googleIdToken ?? '').isNotEmpty;
@@ -98,19 +95,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Dio _buildDio() {
-    final baseUrl = dotenv.env['API_BASE_URL'] ??
-        'https://pulsewise-backend.vercel.app/api/v1';
-
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        headers: const {'Accept': 'application/json'},
-      ),
-    );
-    ApiLogger.attach(dio);
-    return dio;
+    return createApiDio(resolveApiBaseUrl());
   }
 
   String _extractApiError(Object error) {
@@ -458,8 +443,8 @@ class _RegisterPageState extends State<RegisterPage> {
         context.push(
           '/login/register/profile-setup',
           extra: {
-            _tokenKey: session.token,
-            _userIdKey: session.userId,
+            AppSessionStore.tokenPrefsKey: session.token,
+            AppSessionStore.userIdPrefsKey: session.userId,
           },
         );
       }

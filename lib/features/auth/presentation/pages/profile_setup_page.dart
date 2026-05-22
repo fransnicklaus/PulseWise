@@ -1,15 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   final String token;
@@ -42,9 +41,6 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   bool _isSubmitting = false;
   bool _showBirthDateValidation = false;
 
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
-
   void _goSafely(String location, {Object? extra}) {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -61,19 +57,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   }
 
   Dio _buildDio() {
-    final baseUrl = dotenv.env['API_BASE_URL'] ??
-        'https://pulsewise-backend.vercel.app/api/v1';
-
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        headers: const {'Accept': 'application/json'},
-      ),
-    );
-    ApiLogger.attach(dio);
-    return dio;
+    return createApiDio(resolveApiBaseUrl());
   }
 
   String _extractApiError(Object error) {
@@ -257,9 +241,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     required String token,
     required String userId,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await prefs.setString(_userIdKey, userId);
+    await AppSessionStore.saveSession(token: token, userId: userId);
   }
 
   Future<void> _submitProfile() async {
@@ -394,8 +376,8 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
         _goSafely(
           '/login/register/ml-questionnaire',
           extra: {
-            'auth_token': widget.token,
-            'auth_user_id': widget.patientId,
+            AppSessionStore.tokenPrefsKey: widget.token,
+            AppSessionStore.userIdPrefsKey: widget.patientId,
           },
         );
       } else {

@@ -5,11 +5,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:pulsewise/core/network/api_logger.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -52,8 +52,8 @@ class AppFcmService {
 
   static const String tokenPrefsKey = 'fcm_device_token';
   static const String appIdPrefsKey = 'fcm_app_installation_id';
-  static const String authTokenPrefsKey = 'auth_token';
-  static const String authUserIdPrefsKey = 'auth_user_id';
+  static const String authTokenPrefsKey = AppSessionStore.tokenPrefsKey;
+  static const String authUserIdPrefsKey = AppSessionStore.userIdPrefsKey;
   static const String notificationPromptedPrefsKey =
       'notification_permission_prompted';
   static const String androidChannelId = 'pulsewise_reminders';
@@ -494,9 +494,9 @@ class AppFcmService {
   }
 
   Future<_FcmAuthSession?> _getCurrentSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(authTokenPrefsKey) ?? '';
-    final userId = prefs.getString(authUserIdPrefsKey) ?? '';
+    final session = await AppSessionStore.readSession(allowEnvFallback: false);
+    final token = session.token ?? '';
+    final userId = session.userId ?? '';
 
     if (token.trim().isEmpty || userId.trim().isEmpty) {
       return null;
@@ -561,21 +561,7 @@ class AppFcmService {
   }
 
   Dio _buildDio() {
-    final baseUrl = dotenv.env['API_BASE_URL'] ??
-        'https://pulsewise-backend.vercel.app/api/v1';
-
-    final dio = Dio(
-      BaseOptions(
-        baseUrl: baseUrl,
-        connectTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
-        headers: const {
-          'Accept': 'application/json',
-        },
-      ),
-    );
-    ApiLogger.attach(dio);
-    return dio;
+    return createApiDio(resolveApiBaseUrl());
   }
 
   String _platformName() {

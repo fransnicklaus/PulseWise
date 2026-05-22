@@ -2,31 +2,12 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pulsewise/core/network/api_logger.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pulsewise/core/network/api_dio_provider.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'current_diary_provider.dart';
 
-final dioProvider = Provider<Dio>((ref) {
-  final baseUrl = dotenv.env['API_BASE_URL'] ??
-      'https://pulsewise-backend.vercel.app/api/v1';
-
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 20),
-      headers: const {
-        'Accept': 'application/json',
-      },
-    ),
-  );
-
-  ApiLogger.attach(dio);
-  return dio;
-});
-
 final profileApiProvider = Provider<ProfileApi>((ref) {
-  return ProfileApi(ref.watch(dioProvider));
+  return ProfileApi(ref.watch(apiDioProvider));
 });
 
 final patientProfileProvider = FutureProvider<PatientProfile>((ref) async {
@@ -581,14 +562,26 @@ class DashboardFieldMeasurement {
 
 class ProfileApi {
   final Dio _dio;
-  static const _tokenKey = 'auth_token';
-  static const _userIdKey = 'auth_user_id';
   static const Object _unsetValue = Object();
 
   ProfileApi(this._dio);
 
   static const _defaultCloudinaryUploadUrl =
       'https://api.cloudinary.com/v1_1/drvu0dpry/image/upload';
+
+  Future<String> _readBearerToken() {
+    return AppSessionStore.requireToken();
+  }
+
+  Future<String> _readPatientId() {
+    return AppSessionStore.requireUserId(
+      missingMessage: 'patientId tidak ditemukan. Silakan login ulang.',
+    );
+  }
+
+  Future<String> _readUserId() {
+    return AppSessionStore.requireUserId();
+  }
 
   Future<void> uploadAvatar({
     required MultipartFile file,
@@ -616,20 +609,8 @@ class ProfileApi {
   Future<AvatarUploadSignature> fetchAvatarUploadSignature({
     required String folder,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$patientId/avatar/upload-signature',
@@ -702,20 +683,8 @@ class ProfileApi {
     required String format,
     required String resourceType,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/users/$patientId/avatar',
@@ -744,22 +713,12 @@ class ProfileApi {
   }
 
   Future<PatientProfile> fetchProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception(
-          'Bearer token tidak ditemukan. Isi AUTH_TOKEN di file .env');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception(
-          'patientId tidak ditemukan. Login ulang untuk menyimpan userId.');
-    }
+    final token = await AppSessionStore.requireToken(
+      missingMessage: 'Bearer token tidak ditemukan. Isi AUTH_TOKEN di file .env',
+    );
+    final patientId = await AppSessionStore.requireUserId(
+      missingMessage: 'patientId tidak ditemukan. Login ulang untuk menyimpan userId.',
+    );
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -818,20 +777,8 @@ class ProfileApi {
     required String bloodType,
     required String address,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/patients/$patientId/profile',
@@ -862,20 +809,8 @@ class ProfileApi {
     required String healthConnectPreference,
     Object? healthConnectStatus = _unsetValue,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final payload = <String, dynamic>{
       'healthConnectPreference': healthConnectPreference,
@@ -905,14 +840,7 @@ class ProfileApi {
   }
 
   Future<AuthMeUser> fetchAuthMe() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/auth/me',
@@ -1016,20 +944,8 @@ class ProfileApi {
   }
 
   Future<Map<String, dynamic>> fetchLatestMlAssessment() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -1078,20 +994,8 @@ class ProfileApi {
     String? startDate,
     String? endDate,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -1143,20 +1047,8 @@ class ProfileApi {
   }
 
   Future<Map<String, dynamic>> fetchMlReadiness(String date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$patientId/ml-readiness',
@@ -1179,20 +1071,8 @@ class ProfileApi {
   }
 
   Future<Map<String, dynamic>> fetchMlPrediction(String date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$patientId/ml-predictions',
@@ -1216,20 +1096,8 @@ class ProfileApi {
   }
 
   Future<MlRecommendationResponse?> fetchLatestMlRecommendation() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -1260,20 +1128,8 @@ class ProfileApi {
 
   Future<DashboardVitalsResponse> fetchDashboardVitals(
       String timePeriod) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$patientId/dashboard/vitals',
@@ -1297,20 +1153,8 @@ class ProfileApi {
   }
 
   Future<QuickDashboardResponse?> fetchQuickDashboard() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -1339,20 +1183,8 @@ class ProfileApi {
   }
 
   Future<MlRecommendationResponse> fetchMlRecommendations(String date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$patientId/ml-recommendations/',
@@ -1381,20 +1213,9 @@ class ProfileApi {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     String formatDate(DateTime date) {
       return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -1432,20 +1253,8 @@ class ProfileApi {
 
   Future<MlRecommendationResponse> fetchMlRecommendationHistoryDetail(
       String resultId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$patientId/ml-recommendations/history/$resultId',
@@ -1473,20 +1282,8 @@ class ProfileApi {
   Future<Map<String, dynamic>> submitMlAssessment({
     required Map<String, dynamic> payload,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/patients/$patientId/ml-assessments',
@@ -1520,20 +1317,8 @@ class ProfileApi {
     required String assessmentId,
     required Map<String, dynamic> payload,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/patients/$patientId/ml-assessments/$assessmentId',
@@ -1575,20 +1360,8 @@ class ProfileApi {
   }
 
   Future<DiaryDetail> fetchDiaryDetail(DateTime diaryDate) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
-
-    final patientId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (patientId.isEmpty) {
-      throw Exception('patientId tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
+    final patientId = await _readPatientId();
 
     final cleanDiaryDate = diaryDate.toIso8601String().split('T')[0];
 
@@ -1610,20 +1383,9 @@ class ProfileApi {
   }
 
   Future<DiaryDetail?> fetchDiaryDetailByDate(DateTime date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final dateParam =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -1665,20 +1427,9 @@ class ProfileApi {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     String formatDate(DateTime date) {
       return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -1715,20 +1466,9 @@ class ProfileApi {
   }
 
   Future<Map<String, dynamic>?> fetchSleepDiaryByDate(DateTime date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final dateParam =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -1762,20 +1502,9 @@ class ProfileApi {
     required String wakeTime,
     required num sleepDurationHours,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.put<Map<String, dynamic>>(
       '/users/$userId/diaries/by-date/sleep',
@@ -1813,20 +1542,9 @@ class ProfileApi {
     required String time,
     required String note,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$userId/diaries/by-date/symptoms',
@@ -1865,20 +1583,9 @@ class ProfileApi {
     required String note,
     Map<String, dynamic>? nutritionPayload,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final requestBody = <String, dynamic>{
       'diaryDate': diaryDate,
@@ -1926,20 +1633,9 @@ class ProfileApi {
     String? userFeeling,
     String? note,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.post<Map<String, dynamic>>(
       '/users/$userId/diaries/by-date/activities',
@@ -1981,20 +1677,9 @@ class ProfileApi {
     int? heartRate,
     int? oxygenSaturation,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final data = <String, dynamic>{
       'diaryDate': diaryDate,
@@ -2041,20 +1726,9 @@ class ProfileApi {
     required List<String> intakeTimes,
     String? note,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final normalizedFrequency = frequency.toLowerCase();
 
@@ -2093,20 +1767,9 @@ class ProfileApi {
     int page = 1,
     int limit = 10,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$userId/medications',
@@ -2136,20 +1799,9 @@ class ProfileApi {
   }
 
   Future<MedicationItem> fetchMedicationDetail(String medicationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.get<Map<String, dynamic>>(
       '/users/$userId/medications/$medicationId',
@@ -2187,20 +1839,9 @@ class ProfileApi {
     required List<String> intakeTimes,
     String? note,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final normalizedFrequency = frequency.toLowerCase();
 
@@ -2239,20 +1880,9 @@ class ProfileApi {
   }
 
   Future<void> deleteMedication(String medicationId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     final response = await _dio.delete<Map<String, dynamic>>(
       '/users/$userId/medications/$medicationId',
@@ -2272,20 +1902,9 @@ class ProfileApi {
 
   Future<void> takeMedication(String status, String medicationId,
       DateTime scheduledDate, String scheduledTime) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     DateTime now = DateTime.now();
 
@@ -2325,14 +1944,7 @@ class ProfileApi {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
     if (patientId.trim().isEmpty) {
       throw Exception('patientId tidak ditemukan. Silakan login ulang.');
@@ -2383,20 +1995,9 @@ class ProfileApi {
     required DateTime from,
     required DateTime to,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_tokenKey) ??
-        dotenv.env['AUTH_TOKEN'] ??
-        dotenv.env['BEARER_TOKEN'] ??
-        '';
-    if (token.isEmpty) {
-      throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
-    }
+    final token = await _readBearerToken();
 
-    final userId =
-        prefs.getString(_userIdKey) ?? dotenv.env['PATIENT_ID'] ?? '';
-    if (userId.isEmpty) {
-      throw Exception('userId tidak ditemukan. Silakan login ulang.');
-    }
+    final userId = await _readUserId();
 
     String formatDate(DateTime date) {
       final y = date.year.toString().padLeft(4, '0');
@@ -2948,3 +2549,6 @@ class CloudinaryUploadResult {
     );
   }
 }
+
+
+

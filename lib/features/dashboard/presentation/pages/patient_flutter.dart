@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import 'report_generator_flutter.dart';
@@ -295,9 +295,9 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       buildMlReadinessGroups(_missingFields);
 
   Future<void> _openMlQuestionnaireFromReadiness() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token') ?? '';
-    final userId = prefs.getString('auth_user_id') ?? '';
+    final session = await AppSessionStore.readSession(allowEnvFallback: false);
+    final token = session.token ?? '';
+    final userId = session.userId ?? '';
 
     if (!mounted) return;
 
@@ -312,8 +312,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     context.push(
       '/login/register/ml-questionnaire',
       extra: {
-        'auth_token': token,
-        'auth_user_id': userId,
+        AppSessionStore.tokenPrefsKey: token,
+        AppSessionStore.userIdPrefsKey: userId,
       },
     );
   }

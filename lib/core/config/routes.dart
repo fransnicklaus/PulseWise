@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/ml_questionnaire_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
@@ -61,8 +62,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                     return const LoginPage();
                   }
 
-                  final token = (extra['auth_token'] ?? '').toString();
-                  final patientId = (extra['auth_user_id'] ?? '').toString();
+                  final token =
+                      (extra[AppSessionStore.tokenPrefsKey] ?? '').toString();
+                  final patientId =
+                      (extra[AppSessionStore.userIdPrefsKey] ?? '').toString();
 
                   if (token.isEmpty || patientId.isEmpty) {
                     return const LoginPage();
@@ -82,8 +85,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                     return const LoginPage();
                   }
 
-                  final token = (extra['auth_token'] ?? '').toString();
-                  final patientId = (extra['auth_user_id'] ?? '').toString();
+                  final token =
+                      (extra[AppSessionStore.tokenPrefsKey] ?? '').toString();
+                  final patientId =
+                      (extra[AppSessionStore.userIdPrefsKey] ?? '').toString();
 
                   if (token.isEmpty || patientId.isEmpty) {
                     return const LoginPage();

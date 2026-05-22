@@ -5,13 +5,12 @@ import 'package:pulsewise/core/network/api_logger.dart';
 
 const defaultApiBaseUrl = 'https://pulsewise-backend.vercel.app/api/v1';
 
-final apiBaseUrlProvider = Provider<String>((ref) {
-  return dotenv.env['API_BASE_URL'] ?? defaultApiBaseUrl;
-});
+String resolveApiBaseUrl() {
+  final configuredBaseUrl = dotenv.env['API_BASE_URL']?.trim() ?? '';
+  return configuredBaseUrl.isEmpty ? defaultApiBaseUrl : configuredBaseUrl;
+}
 
-final apiDioProvider = Provider<Dio>((ref) {
-  final baseUrl = ref.watch(apiBaseUrlProvider);
-
+Dio createApiDio(String baseUrl) {
   final dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
@@ -25,4 +24,13 @@ final apiDioProvider = Provider<Dio>((ref) {
 
   ApiLogger.attach(dio);
   return dio;
+}
+
+final apiBaseUrlProvider = Provider<String>((ref) {
+  return resolveApiBaseUrl();
+});
+
+final apiDioProvider = Provider<Dio>((ref) {
+  final baseUrl = ref.watch(apiBaseUrlProvider);
+  return createApiDio(baseUrl);
 });
