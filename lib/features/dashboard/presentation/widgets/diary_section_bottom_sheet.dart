@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
 import 'package:pulsewise/features/food_analysis/presentation/pages/food_macro_camera_page.dart';
+import 'package:pulsewise/features/food_analysis/presentation/pages/manual_food_macro_entry_page.dart';
 
 typedef GejalaSubmitCallback = Future<void> Function(
     Map<String, dynamic> payload);
@@ -161,6 +162,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   bool _isSavingGejala = false;
   bool _isSavingAktivitas = false;
   bool _isSavingKonsumsi = false;
+  bool _isManualSimpleExpanded = false;
   String? _gejalaListError;
   String? _gejalaOtherError;
   String? _gejalaSubmitError;
@@ -212,9 +214,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     minute: TimeOfDay.now().minute,
   );
   final List<String> _consumptionTypeLabels = const [
-    'Snack',
-    'Obat',
-    'Makanan',
+    'Makanan Berat',
+    'Makanan Ringan',
     'Minuman',
   ];
   final List<String> _activityFeelingOptions = const [
@@ -226,15 +227,42 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
 
   String _mapConsumptionTypeToApi(String label) {
     switch (label.trim().toLowerCase()) {
-      case 'obat':
-        return 'medication';
+      case 'makanan berat':
+      case 'breakfast':
+      case 'sarapan':
+      case 'lunch':
+      case 'makan siang':
+      case 'dinner':
+      case 'makan malam':
       case 'makanan':
-        return 'food';
-      case 'minuman':
-        return 'drink';
+      case 'food':
+        return 'Makanan Berat';
+      case 'makanan ringan':
       case 'snack':
+      case 'cemilan':
+      case 'camilan':
+      case 'other':
+      case 'lainnya':
+      case 'medication':
+      case 'obat':
+        return 'Makanan Ringan';
+      case 'drink':
+      case 'minuman':
+        return 'Minuman';
       default:
-        return 'snack';
+        return 'Makanan Berat';
+    }
+  }
+
+  String _formatConsumptionTypeLabel(String value) {
+    switch (_mapConsumptionTypeToApi(value)) {
+      case 'Makanan Ringan':
+        return 'Makanan Ringan';
+      case 'Minuman':
+        return 'Minuman';
+      case 'Makanan Berat':
+      default:
+        return 'Makanan Berat';
     }
   }
 
@@ -645,7 +673,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     if (missingType || missingName || missingPortion || portionTooLong) {
       setState(() {
         _konsumsiSubmitError = null;
-        _konsumsiTypeError = missingType ? 'Pilih satu tipe konsumsi.' : null;
+        _konsumsiTypeError =
+            missingType ? 'Pilih satu kategori konsumsi.' : null;
         _konsumsiNameError = missingName ? 'Mohon isi nama konsumsi.' : null;
         _konsumsiPortionError = missingPortion
             ? 'Mohon isi porsi konsumsi.'
@@ -703,13 +732,31 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   }
 
   Future<void> _openFoodMacroCameraPage() async {
+    final selectedTypeLabel = (_selectedConsumptionTypeLabel == null ||
+            _selectedConsumptionTypeLabel!.trim().isEmpty)
+        ? _consumptionTypeLabels.first
+        : _selectedConsumptionTypeLabel!;
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
-        builder: (_) => const FoodMacroCameraPage(),
+        builder: (_) => FoodMacroCameraPage(
+          onSaveConsumption: widget.onSubmitKonsumsi,
+          consumptionTypeLabel: _formatConsumptionTypeLabel(selectedTypeLabel),
+          consumptionTypeApi: _mapConsumptionTypeToApi(selectedTypeLabel),
+          consumptionTime: _formatTime(_selectedTime),
+        ),
       ),
     );
 
     if (!mounted || result == null) return;
+
+    final action = (result['action'] ?? '').toString();
+    if (action == 'saved') {
+      Navigator.of(context).pop({
+        'section': widget.title,
+        'saved': true,
+      });
+      return;
+    }
 
     final userFoodName = (result['user_food_name'] ?? '').toString().trim();
     final userDescription =
@@ -726,10 +773,9 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
 
     setState(() {
       _foodMacroAnalysis = analysis;
-      if (_selectedConsumptionTypeLabel == null ||
-          _selectedConsumptionTypeLabel == 'Obat') {
-        _selectedConsumptionTypeLabel = 'Makanan';
-      }
+      _selectedConsumptionTypeLabel =
+          _formatConsumptionTypeLabel(analysis.mealCategory);
+      _isManualSimpleExpanded = true;
       if (userFoodName.isNotEmpty) {
         _mealNameController.text = userFoodName;
       } else if (suggestedName.isNotEmpty) {
@@ -746,6 +792,40 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       _konsumsiNameError = null;
       _konsumsiPortionError = null;
       _konsumsiSubmitError = null;
+    });
+  }
+
+  Future<void> _openManualMacroEntryPage() async {
+    final selectedTypeLabel = (_selectedConsumptionTypeLabel == null ||
+            _selectedConsumptionTypeLabel!.trim().isEmpty)
+        ? _consumptionTypeLabels.first
+        : _selectedConsumptionTypeLabel!;
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => ManualFoodMacroEntryPage(
+          onSaveConsumption: widget.onSubmitKonsumsi,
+          consumptionTypeLabel: _formatConsumptionTypeLabel(selectedTypeLabel),
+          consumptionTypeApi: _mapConsumptionTypeToApi(selectedTypeLabel),
+          consumptionTime: _formatTime(_selectedTime),
+          useCurrentTime: _useCurrentTime,
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    final action = (result['action'] ?? '').toString();
+    if (action == 'saved') {
+      Navigator.of(context).pop({
+        'section': widget.title,
+        'saved': true,
+      });
+      return;
+    }
+
+    Navigator.of(context).pop({
+      'section': widget.title,
+      ...result,
     });
   }
 
@@ -2780,130 +2860,143 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     );
   }
 
-  Widget _buildKonsumsiContent() {
-    return AbsorbPointer(
-      absorbing: _isSavingKonsumsi,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'Waktu Konsumsi',
+  Widget _buildKonsumsiTimeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Waktu Konsumsi',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF334155),
+          ),
+        ),
+        const SizedBox(height: 10),
+        CheckboxListTile(
+          value: _useCurrentTime,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          activeColor: const Color(0xFFE64060),
+          title: const Text(
+            'Gunakan waktu sekarang',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Color(0xFF334155),
             ),
           ),
-          const SizedBox(height: 10),
-          CheckboxListTile(
-            value: _useCurrentTime,
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            activeColor: const Color(0xFFE64060),
-            title: const Text(
-              'Gunakan waktu sekarang',
-              style: TextStyle(
+          onChanged: (value) {
+            final shouldUseCurrentTime = value ?? false;
+            setState(() {
+              _useCurrentTime = shouldUseCurrentTime;
+              if (shouldUseCurrentTime) {
+                _selectedTime = TimeOfDay.now();
+              }
+            });
+          },
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _useCurrentTime ? null : _pickTime,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.access_time),
+            label: Text(
+              'Pilih Jam (${_formatTime(_selectedTime)})',
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF334155),
-              ),
-            ),
-            onChanged: (value) {
-              final shouldUseCurrentTime = value ?? false;
-              setState(() {
-                _useCurrentTime = shouldUseCurrentTime;
-                if (shouldUseCurrentTime) {
-                  _selectedTime = TimeOfDay.now();
-                }
-              });
-            },
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _useCurrentTime ? null : _pickTime,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(Icons.access_time),
-              label: Text(
-                'Pilih Jam (${_formatTime(_selectedTime)})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          const Text(
-            'Tipe Konsumsi',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF334155),
-            ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKonsumsiMethodSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pilih Cara Input',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF334155),
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _consumptionTypeLabels
-                .map(
-                  (label) => ChoiceChip(
-                    label: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _selectedConsumptionTypeLabel == label
-                            ? Colors.white
-                            : const Color(0xFF334155),
-                      ),
-                    ),
-                    selected: _selectedConsumptionTypeLabel == label,
-                    selectedColor: const Color(0xFFE64060),
-                    backgroundColor: const Color(0xFFF8FAFC),
-                    side: BorderSide(
-                      color: _konsumsiTypeError != null &&
-                              _selectedConsumptionTypeLabel == null
-                          ? const Color(0xFFE64060)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                    onSelected: (_) {
-                      setState(() {
-                        _selectedConsumptionTypeLabel = label;
-                        if (label == 'Obat') {
-                          _foodMacroAnalysis = null;
-                        }
-                        _konsumsiTypeError = null;
-                        _konsumsiSubmitError = null;
-                      });
-                    },
-                  ),
-                )
-                .toList(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Silakan pilih cara yang paling mudah untuk mencatat konsumsi hari ini.',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF64748B),
+            height: 1.45,
           ),
-          if (_konsumsiTypeError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _konsumsiTypeError!,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFFE64060),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-          const SizedBox(height: 18),
+        ),
+        const SizedBox(height: 14),
+        _ConsumptionMethodCard(
+          icon: Icons.camera_alt_rounded,
+          iconColor: const Color(0xFF9A3412),
+          iconBackgroundColor: const Color(0xFFFFEDD5),
+          borderColor: const Color(0xFFFED7AA),
+          title: 'Analisis Foto Makanan / Minuman',
+          description:
+              'Ambil foto. Sistem akan membantu memperkirakan kategori konsumsi dan nutrisi.',
+          actionLabel: 'Buka kamera',
+          actionIcon: Icons.arrow_forward_rounded,
+          onPressed: _openFoodMacroCameraPage,
+        ),
+        const SizedBox(height: 12),
+        _ConsumptionMethodCard(
+          icon: Icons.analytics_outlined,
+          iconColor: const Color(0xFF1D4ED8),
+          iconBackgroundColor: const Color(0xFFDBEAFE),
+          borderColor: const Color(0xFFBFDBFE),
+          title: 'Input Nutrisi Lengkap',
+          description:
+              'Isi manual kalori, protein, lemak, serat, dan data nutrisi lainnya bila tersedia.',
+          actionLabel: 'Isi lengkap',
+          actionIcon: Icons.open_in_new_rounded,
+          onPressed: _openManualMacroEntryPage,
+        ),
+        const SizedBox(height: 12),
+        _ConsumptionMethodCard(
+          icon: Icons.edit_note_rounded,
+          iconColor: const Color(0xFF047857),
+          iconBackgroundColor: const Color(0xFFECFDF3),
+          borderColor: const Color(0xFFA7F3D0),
+          title: 'Input Manual Sederhana',
+          description:
+              'Isi kategori, nama konsumsi, porsi, dan catatan tanpa data nutrisi detail.',
+          badgeLabel: _isManualSimpleExpanded ? 'Form sedang terbuka' : null,
+          badgeBackgroundColor: const Color(0xFFD1FAE5),
+          badgeTextColor: const Color(0xFF065F46),
+          actionLabel:
+              _isManualSimpleExpanded ? 'Sembunyikan form' : 'Buka form',
+          actionIcon: _isManualSimpleExpanded
+              ? Icons.keyboard_arrow_up_rounded
+              : Icons.keyboard_arrow_down_rounded,
+          onPressed: () {
+            setState(() {
+              _isManualSimpleExpanded = !_isManualSimpleExpanded;
+            });
+          },
+        ),
+        if (_foodMacroAnalysis != null) ...[
+          const SizedBox(height: 14),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(16),
@@ -2913,58 +3006,142 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Analisis Foto Makanan',
+                  'Ringkasan Analisis Foto',
                   style: TextStyle(
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF9A3412),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedConsumptionTypeLabel == 'Obat'
-                      ? 'Fitur ini dipakai untuk makanan atau minuman. Ubah tipe konsumsi jika ingin analisis makro dari foto.'
-                      : 'Buka kamera, isi nama makanan dan deskripsi opsional, lalu ambil foto. Hasil nutrisi akan tampil di halaman terpisah dan bisa dipakai untuk mengganti data dummy nutrisi.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF9A3412),
-                    height: 1.45,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _selectedConsumptionTypeLabel == 'Obat'
-                        ? null
-                        : _openFoodMacroCameraPage,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFFF59E0B)),
-                      foregroundColor: const Color(0xFF9A3412),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    icon: const Icon(Icons.camera_alt_rounded),
-                    label: const Text(
-                      'Buka Kamera Makanan',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                if (_foodMacroAnalysis != null) ...[
-                  const SizedBox(height: 14),
-                  _FoodMacroSummaryCard(analysis: _foodMacroAnalysis!),
-                ],
+                const SizedBox(height: 10),
+                _FoodMacroSummaryCard(analysis: _foodMacroAnalysis!),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildKonsumsiCategorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Kategori Konsumsi',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF334155),
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Bagian ini dipakai untuk input manual. Jika memakai foto, kategori mengikuti hasil analisis.',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF64748B),
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: _consumptionTypeLabels
+              .map(
+                (label) => ChoiceChip(
+                  label: Text(
+                    _formatConsumptionTypeLabel(label),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: _selectedConsumptionTypeLabel == label
+                          ? Colors.white
+                          : const Color(0xFF334155),
+                    ),
+                  ),
+                  selected: _selectedConsumptionTypeLabel == label,
+                  selectedColor: const Color(0xFFE64060),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  side: BorderSide(
+                    color: _konsumsiTypeError != null &&
+                            _selectedConsumptionTypeLabel == null
+                        ? const Color(0xFFE64060)
+                        : const Color(0xFFE2E8F0),
+                  ),
+                  onSelected: _foodMacroAnalysis != null
+                      ? null
+                      : (_) {
+                          setState(() {
+                            _selectedConsumptionTypeLabel = label;
+                            _konsumsiTypeError = null;
+                            _konsumsiSubmitError = null;
+                          });
+                        },
+                ),
+              )
+              .toList(),
+        ),
+        if (_foodMacroAnalysis != null) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Kategori dari hasil analisis foto sudah terkunci dan tidak bisa diubah manual.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF9A3412),
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
+          ),
+        ],
+        if (_konsumsiTypeError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _konsumsiTypeError!,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFE64060),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildKonsumsiManualForm() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Input Manual Sederhana',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Cocok untuk catatan cepat ketika Anda belum ingin mengisi nutrisi detail.',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 16),
           const Text(
             'Nama Konsumsi',
             style: TextStyle(
@@ -2990,13 +3167,13 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               color: Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
-              hintText: 'Contoh: Aspirin',
+              hintText: 'Contoh: nasi tim ayam, teh hangat, pisang rebus',
               hintStyle: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF94A3B8),
               ),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: Colors.white,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
@@ -3047,13 +3224,13 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               color: Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
-              hintText: 'Contoh: 1 tablet',
+              hintText: 'Contoh: 1 mangkuk kecil, 1 gelas, 2 potong',
               hintStyle: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF94A3B8),
               ),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: Colors.white,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
@@ -3094,13 +3271,14 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
               color: Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
-              hintText: 'Contoh: Sesudah makan malam',
+              hintText:
+                  'Contoh: tanpa gula, kuah sedikit, dimakan setelah jalan pagi',
               hintStyle: const TextStyle(
                 fontSize: 15,
                 color: Color(0xFF94A3B8),
               ),
               filled: true,
-              fillColor: const Color(0xFFF8FAFC),
+              fillColor: Colors.white,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
@@ -3151,7 +3329,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                       ),
                     )
                   : const Text(
-                      'Simpan',
+                      'Simpan Konsumsi',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
@@ -3159,6 +3337,41 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                     ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandableKonsumsiManualSection() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: !_isManualSimpleExpanded
+          ? const SizedBox.shrink()
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 22),
+                _buildKonsumsiCategorySection(),
+                const SizedBox(height: 18),
+                _buildKonsumsiManualForm(),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildKonsumsiContent() {
+    return AbsorbPointer(
+      absorbing: _isSavingKonsumsi,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildKonsumsiTimeSection(),
+          const SizedBox(height: 22),
+          _buildKonsumsiMethodSection(),
+          _buildExpandableKonsumsiManualSection(),
         ],
       ),
     );
@@ -3210,6 +3423,139 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ConsumptionMethodCard extends StatelessWidget {
+  const _ConsumptionMethodCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackgroundColor,
+    required this.borderColor,
+    required this.title,
+    required this.description,
+    this.badgeLabel,
+    this.badgeBackgroundColor,
+    this.badgeTextColor,
+    this.actionLabel,
+    this.actionIcon,
+    this.onPressed,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackgroundColor;
+  final Color borderColor;
+  final String title;
+  final String description;
+  final String? badgeLabel;
+  final Color? badgeBackgroundColor;
+  final Color? badgeTextColor;
+  final String? actionLabel;
+  final IconData? actionIcon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAction = actionLabel != null && onPressed != null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: iconBackgroundColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: iconColor, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          // if (badgeLabel != null) ...[
+          //   const SizedBox(height: 12),
+          //   Container(
+          //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          //     decoration: BoxDecoration(
+          //       color: badgeBackgroundColor ?? const Color(0xFFF1F5F9),
+          //       borderRadius: BorderRadius.circular(999),
+          //     ),
+          //     child: Text(
+          //       badgeLabel!,
+          //       style: TextStyle(
+          //         fontSize: 13,
+          //         fontWeight: FontWeight.w700,
+          //         color: badgeTextColor ?? const Color(0xFF334155),
+          //       ),
+          //     ),
+          //   ),
+          // ],
+          if (hasAction) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onPressed,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: iconColor,
+                  side: BorderSide(color: borderColor),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: Icon(actionIcon ?? Icons.arrow_forward_rounded),
+                label: Text(
+                  actionLabel!,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -1,9 +1,10 @@
 class FoodMacroAnalysis {
-  static const defaultNutritionSource = 'openai_vision_estimate';
+  static const defaultNutritionSource = 'backend_nutrition_estimate';
   static const maxPortionEstimateLength = 255;
 
   final bool isFoodImage;
   final String validationMessage;
+  final String mealCategory;
   final List<String> detectedFoods;
   final String portionEstimate;
   final double portionGramsEstimate;
@@ -26,6 +27,7 @@ class FoodMacroAnalysis {
   const FoodMacroAnalysis({
     required this.isFoodImage,
     required this.validationMessage,
+    required this.mealCategory,
     required this.detectedFoods,
     required this.portionEstimate,
     required this.portionGramsEstimate,
@@ -47,33 +49,102 @@ class FoodMacroAnalysis {
   });
 
   factory FoodMacroAnalysis.fromJson(Map<String, dynamic> json) {
+    final detectedFoodsRaw = _firstList(
+      json,
+      const ['detected_foods', 'detectedFoods'],
+    );
+    final fallbackMealName =
+        _firstNonEmptyString(json, const ['meal_name', 'mealName']);
+
     return FoodMacroAnalysis(
-      isFoodImage: _toBool(json['is_food_image'], fallback: true),
-      validationMessage: (json['validation_message'] ?? '').toString().trim(),
-      detectedFoods: ((json['detected_foods'] as List?) ?? const [])
+      isFoodImage: _toBool(
+        _firstValue(json, const ['is_food_image', 'isFoodImage']),
+        fallback: true,
+      ),
+      validationMessage: _firstNonEmptyString(
+        json,
+        const ['validation_message', 'validationMessage'],
+      ),
+      mealCategory: _normalizeMealCategory(
+        _firstValue(json, const ['meal_category', 'mealCategory']),
+      ),
+      detectedFoods: (detectedFoodsRaw ??
+              (fallbackMealName.isEmpty
+                  ? const []
+                  : <String>[fallbackMealName]))
           .map((item) => item.toString().trim())
           .where((item) => item.isNotEmpty)
           .toList(),
-      portionEstimate:
-          truncatePortionText((json['portion_estimate'] ?? '').toString()),
-      portionGramsEstimate: _toDouble(json['portion_grams_estimate']),
-      fdcFoodId:
-          (json['fdc_food_id'] ?? json['fdcFoodId'] ?? '').toString().trim(),
+      portionEstimate: truncatePortionText(_firstNonEmptyString(json, const [
+        'portion_estimate',
+        'portionEstimate',
+        'portion_description',
+        'portionDescription',
+        'portion',
+      ])),
+      portionGramsEstimate: _toDouble(
+        _firstValue(
+          json,
+          const [
+            'portion_grams_estimate',
+            'portionGramsEstimate',
+            'portionGrams'
+          ],
+        ),
+      ),
+      fdcFoodId: _firstNonEmptyString(
+        json,
+        const ['fdc_food_id', 'fdcFoodId'],
+      ),
       nutritionSource: _normalizeNutritionSource(
-          json['nutrition_source'] ?? json['nutritionSource']),
-      caloriesKcal: _toDouble(json['calories_kcal']),
-      proteinG: _toDouble(json['protein_g']),
-      carbsG: _toDouble(json['carbs_g']),
-      sugarG: _toDouble(json['sugar_g']),
-      fiberG: _toDouble(json['fiber_g']),
-      fatG: _toDouble(json['fat_g']),
-      saturatedFatG: _toDouble(json['saturated_fat_g']),
-      monounsaturatedFatG: _toDouble(json['monounsaturated_fat_g']),
-      polyunsaturatedFatG: _toDouble(json['polyunsaturated_fat_g']),
-      cholesterolMg: _toDouble(json['cholesterol_mg']),
-      calciumMg: _toDouble(json['calcium_mg']),
-      confidence: (json['confidence'] ?? '').toString().trim(),
-      notes: (json['notes'] ?? '').toString().trim(),
+        _firstValue(json, const ['nutrition_source', 'nutritionSource']),
+      ),
+      caloriesKcal: _toDouble(
+        _firstValue(
+            json, const ['calories_kcal', 'caloriesKcal', 'energyKcal']),
+      ),
+      proteinG: _toDouble(
+        _firstValue(json, const ['protein_g', 'proteinG']),
+      ),
+      carbsG: _toDouble(
+        _firstValue(json, const ['carbs_g', 'carbsG', 'carbohydrateG']),
+      ),
+      sugarG: _toDouble(
+        _firstValue(json, const ['sugar_g', 'sugarG']),
+      ),
+      fiberG: _toDouble(
+        _firstValue(json, const ['fiber_g', 'fiberG']),
+      ),
+      fatG: _toDouble(
+        _firstValue(json, const ['fat_g', 'fatG', 'totalFatG']),
+      ),
+      saturatedFatG: _toDouble(
+        _firstValue(json, const ['saturated_fat_g', 'saturatedFatG']),
+      ),
+      monounsaturatedFatG: _toDouble(
+        _firstValue(
+          json,
+          const ['monounsaturated_fat_g', 'monounsaturatedFatG'],
+        ),
+      ),
+      polyunsaturatedFatG: _toDouble(
+        _firstValue(
+          json,
+          const ['polyunsaturated_fat_g', 'polyunsaturatedFatG'],
+        ),
+      ),
+      cholesterolMg: _toDouble(
+        _firstValue(json, const ['cholesterol_mg', 'cholesterolMg']),
+      ),
+      calciumMg: _toDouble(
+        _firstValue(json, const ['calcium_mg', 'calciumMg']),
+      ),
+      confidence:
+          _firstNonEmptyString(json, const ['confidence', 'confidenceLevel']),
+      notes: _firstNonEmptyString(
+        json,
+        const ['notes', 'note'],
+      ),
     );
   }
 
@@ -90,9 +161,58 @@ class FoodMacroAnalysis {
     return fallback;
   }
 
+  static dynamic _firstValue(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      if (json.containsKey(key)) {
+        return json[key];
+      }
+    }
+    return null;
+  }
+
+  static String _firstNonEmptyString(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    final value = _firstValue(json, keys);
+    return value?.toString().trim() ?? '';
+  }
+
+  static List? _firstList(Map<String, dynamic> json, List<String> keys) {
+    final value = _firstValue(json, keys);
+    return value is List ? value : null;
+  }
+
   static String _normalizeNutritionSource(dynamic value) {
     final raw = value?.toString().trim() ?? '';
     return raw.isEmpty ? defaultNutritionSource : raw;
+  }
+
+  static String _normalizeMealCategory(dynamic value) {
+    switch ((value?.toString().trim().toLowerCase() ?? '')) {
+      case 'makanan berat':
+      case 'breakfast':
+      case 'sarapan':
+      case 'lunch':
+      case 'makan siang':
+      case 'dinner':
+      case 'makan malam':
+      case 'food':
+      case 'makanan':
+        return 'breakfast';
+      case 'makanan ringan':
+      case 'snack':
+      case 'cemilan':
+      case 'camilan':
+      case 'lainnya':
+      case 'other':
+        return 'snack';
+      case 'minuman':
+      case 'drink':
+        return 'drink';
+      default:
+        return 'other';
+    }
   }
 
   static String truncatePortionText(String value) {
@@ -105,6 +225,7 @@ class FoodMacroAnalysis {
     return {
       'is_food_image': isFoodImage,
       'validation_message': validationMessage,
+      'meal_category': mealCategory,
       'detected_foods': detectedFoods,
       'portion_estimate': portionEstimate,
       'portion_grams_estimate': portionGramsEstimate,
@@ -154,6 +275,22 @@ class FoodMacroAnalysis {
     }
 
     return payload;
+  }
+
+  String get mealCategoryLabel {
+    switch (mealCategory) {
+      case 'breakfast':
+      case 'lunch':
+      case 'dinner':
+        return 'Makanan Berat';
+      case 'snack':
+      case 'other':
+        return 'Makanan Ringan';
+      case 'drink':
+        return 'Minuman';
+      default:
+        return 'Makanan Ringan';
+    }
   }
 
   String get suggestedName => detectedFoods.join(', ');

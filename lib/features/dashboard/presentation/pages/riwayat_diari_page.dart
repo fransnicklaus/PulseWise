@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/expandable_text.dart';
 import '../providers/current_diary_provider.dart';
 import '../providers/diary_history_provider.dart';
 import '../providers/profile_provider.dart';
@@ -244,7 +245,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                               label: Text(
                                 startLabel,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 16),
+                                style: const TextStyle(fontSize: 16),
                               ),
                               onPressed:
                                   state.isLoading ? null : _pickStartDate,
@@ -600,6 +601,36 @@ class _ExpandedDiaryContent extends StatelessWidget {
     return unit.isEmpty ? '$value' : '$value $unit';
   }
 
+  String _formatConsumptionType(String type) {
+    switch (type.toLowerCase()) {
+      case 'makanan berat':
+      case 'breakfast':
+      case 'sarapan':
+      case 'lunch':
+      case 'makan siang':
+      case 'dinner':
+      case 'makan malam':
+      case 'food':
+      case 'makanan':
+        return 'Makanan Berat';
+      case 'makanan ringan':
+      case 'snack':
+      case 'other':
+      case 'cemilan':
+      case 'camilan':
+      case 'lainnya':
+        return 'Makanan Ringan';
+      case 'minuman':
+      case 'drink':
+        return 'Minuman';
+      case 'medication':
+      case 'obat':
+        return 'Obat';
+      default:
+        return type.isEmpty ? '-' : type;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bodyMetrics = [...detail.bodyMetrics]..sort((a, b) =>
@@ -748,7 +779,7 @@ class _ExpandedDiaryContent extends StatelessWidget {
                     leading: formatTime(item.timeStamp),
                     title: item.name,
                     subtitle:
-                        '${item.type} • ${(item.portion ?? '').isEmpty ? '-' : item.portion}${(item.note ?? '').isEmpty ? '' : ' • ${item.note}'}',
+                        '${_formatConsumptionType(item.type)} • ${(item.portion ?? '').isEmpty ? '-' : item.portion}${(item.note ?? '').isEmpty ? '' : ' • ${item.note}'}',
                   ),
                 )
                 .toList(),
@@ -1027,13 +1058,17 @@ class _SimpleRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 14,
-                      height: 1.45,
-                      fontWeight: FontWeight.w500,
+                  ExpandableText(
+                    key: ValueKey('simple-row-$leading-$title-$subtitle'),
+                    collapsedMaxLines: 3,
+                    content: TextSpan(
+                      text: subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                        height: 1.45,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
