@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'package:go_router/go_router.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_health_connect/flutter_health_connect.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import '../../../../core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/health_connect/presentation/providers/health_connect_provider.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 class HealthConnectPage extends ConsumerStatefulWidget {
   const HealthConnectPage({super.key});
@@ -667,7 +667,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
 
     _isSyncingBackendHealthConnectState = true;
     try {
-      await ref.read(profileApiProvider).updateHealthConnectSetup(
+      await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
             healthConnectPreference: 'connect_now',
             healthConnectStatus: 'connected',
           );

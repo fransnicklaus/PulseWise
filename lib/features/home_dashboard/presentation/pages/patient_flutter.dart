@@ -10,6 +10,7 @@ import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import 'package:pulsewise/features/dashboard/presentation/pages/report_generator_flutter.dart';
@@ -95,11 +96,15 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     try {
       final api = ref.read(profileApiProvider);
       final vitals = await api.fetchDashboardVitals(selectedPeriod.id);
-      AuthMeUser? authMe;
+      String? authMeEmail;
+      String? authMeAvatarUrl;
       try {
-        authMe = await api.fetchAuthMe();
+        final authMe = await ref.read(authMeProvider.future);
+        authMeEmail = authMe.email;
+        authMeAvatarUrl = authMe.avatarPhoto;
       } catch (_) {
-        authMe = null;
+        authMeEmail = null;
+        authMeAvatarUrl = null;
       }
 
       final dashboardData = vitals.data;
@@ -117,11 +122,11 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           sex: _normalizeNullable(patient.sex),
           dateOfBirth: _normalizeNullable(patient.dateOfBirth),
           phone: _normalizeNullable(patient.phone),
-          email: _normalizeNullable(patient.email) ?? authMe?.email,
+          email: _normalizeNullable(patient.email) ?? authMeEmail,
         ),
         periods: _periodOptions,
         selectedPeriod: selectedPeriod,
-        avatarUrl: authMe?.avatarPhoto,
+        avatarUrl: authMeAvatarUrl,
         heartRatePoints: _buildChartPoints(
           dashboardData.series.timestamps,
           dashboardData.series.heartRate,

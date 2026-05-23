@@ -10,6 +10,7 @@ import 'package:pulsewise/features/dashboard/presentation/providers/medication_c
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
 import 'package:pulsewise/features/dashboard/presentation/widgets/medication_status_bottom_sheet.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 final latestMlRecommendationProvider =
     FutureProvider<MlRecommendationResponse?>((ref) async {

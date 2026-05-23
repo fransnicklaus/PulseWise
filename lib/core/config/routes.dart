@@ -17,14 +17,14 @@ import 'package:pulsewise/features/dashboard/presentation/pages/manage_pengingat
 import 'package:pulsewise/features/dashboard/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/fcm_token_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/health_connect_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/update_profile_page.dart';
 // import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/patient_ml_assessment_page.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';
+import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
+import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
   return GoRouter(

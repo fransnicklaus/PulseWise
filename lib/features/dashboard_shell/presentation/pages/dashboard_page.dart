@@ -6,13 +6,15 @@ import 'package:pulsewise/core/notifications/reminder_notification_coordinator.d
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/tabs/diari_tab.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/tabs/pengingat_tab.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/tabs/profil_tab.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/services/health_connect_sync_service.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/health_connect/data/datasources/health_connect_sync_service.dart';
+import 'package:pulsewise/features/health_connect/presentation/providers/health_connect_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/beranda_tab.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/edukasi_tab.dart';
+import 'package:pulsewise/features/profile/data/models/profile_models.dart';
+import 'package:pulsewise/features/profile/presentation/pages/profil_tab.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 enum _HealthConnectPromptChoice {
   connectNow,
@@ -161,19 +163,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     try {
       switch (choice) {
         case _HealthConnectPromptChoice.connectNow:
-          await ref.read(profileApiProvider).updateHealthConnectSetup(
+          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
                 healthConnectPreference: 'connect_now',
                 healthConnectStatus: 'not_started',
               );
           break;
         case _HealthConnectPromptChoice.remindLater:
-          await ref.read(profileApiProvider).updateHealthConnectSetup(
+          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
                 healthConnectPreference: 'remind_later',
                 healthConnectStatus: 'not_started',
               );
           break;
         case _HealthConnectPromptChoice.noDevice:
-          await ref.read(profileApiProvider).updateHealthConnectSetup(
+          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
                 healthConnectPreference: 'no_device',
                 healthConnectStatus: null,
               );

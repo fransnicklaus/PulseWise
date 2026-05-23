@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/profile/data/models/profile_models.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 class UpdateProfilePage extends ConsumerStatefulWidget {
   const UpdateProfilePage({super.key});
@@ -133,7 +134,7 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
 
     setState(() => isSaving = true);
     try {
-      await ref.read(profileApiProvider).updatePatientProfile(
+      await ref.read(patientProfileApiProvider).updatePatientProfile(
             dateOfBirth: _formatDateForApi(selectedBirthDate!),
             sex: selectedSex ?? 'male',
             heightCm: height,

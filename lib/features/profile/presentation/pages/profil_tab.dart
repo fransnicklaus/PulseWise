@@ -12,9 +12,11 @@ import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
+    hide AuthMeUser, PatientProfile;
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/emergency_contacts_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class ProfilTab extends ConsumerStatefulWidget {
@@ -512,7 +514,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     setState(() => _isUploadingAvatar = true);
     try {
       if (!mounted) return;
-      await ref.read(profileApiProvider).uploadAvatar(file: file);
+      await ref.read(patientProfileApiProvider).uploadAvatar(file: file);
       if (!mounted) return;
 
       ref.invalidate(patientProfileProvider);

@@ -10,11 +10,6 @@ final profileApiProvider = Provider<ProfileApi>((ref) {
   return ProfileApi(ref.watch(apiDioProvider));
 });
 
-final patientProfileProvider = FutureProvider<PatientProfile>((ref) async {
-  final api = ref.watch(profileApiProvider);
-  return api.fetchProfile();
-});
-
 final dashboardVitalsProvider =
     FutureProvider.family<DashboardVitalsResponse, String>(
         (ref, timePeriod) async {
@@ -30,11 +25,6 @@ final quickDashboardProvider =
 
 final dashboardTimePeriodProvider =
     StateProvider<String>((ref) => 'last_30_days');
-
-final authMeProvider = FutureProvider<AuthMeUser>((ref) async {
-  final api = ref.watch(profileApiProvider);
-  return api.fetchAuthMe();
-});
 
 class MlRecommendationLifestyle {
   final String variable;
