@@ -10,6 +10,7 @@ import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
@@ -228,13 +229,13 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     });
     try {
       final date = DateTime.now().toIso8601String().split('T').first;
-      final api = ref.read(profileApiProvider);
-      final readiness = await api.fetchMlReadiness(date);
+      final recommendationApi = ref.read(profileApiProvider);
+      final readiness =
+          await ref.read(mlAssessmentApiProvider).fetchMlReadiness(date);
 
-      final isReady = readiness['ready'] == true;
+      final isReady = readiness.ready;
       if (isReady) {
-        // await api.fetchMlPrediction(date); // Not used currently, just call
-        final rec = await api.fetchMlRecommendations(date);
+        final rec = await recommendationApi.fetchMlRecommendations(date);
         if (mounted) {
           setState(() {
             // Kita map rec result sebagai prediction result jika available
@@ -246,13 +247,9 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           });
         }
       } else {
-        final missingRaw =
-            readiness['missingFields'] ?? readiness['missing_fields'];
-        final missing =
-            (missingRaw as List?)?.map((e) => e.toString()).toList() ?? [];
         if (mounted) {
           setState(() {
-            _missingFields = missing;
+            _missingFields = readiness.missingFields;
             _isCheckingMl = false;
           });
         }

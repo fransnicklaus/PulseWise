@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_mapping.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
 
 class PatientMlAssessmentPage extends ConsumerStatefulWidget {
   const PatientMlAssessmentPage({super.key});
@@ -55,11 +55,10 @@ class _PatientMlAssessmentPageState
 
     setState(() => _isInitialLoading = true);
     try {
-      final latest =
-          await ref.read(profileApiProvider).fetchLatestMlAssessment();
+      final latest = await ref.read(mlAssessmentApiProvider).fetchLatestMlAssessment();
       if (!mounted) return;
 
-      if (latest.isEmpty) {
+      if (latest == null) {
         setState(() {
           _assessmentId = null;
           _assessmentDate = DateTime.now();
@@ -72,13 +71,12 @@ class _PatientMlAssessmentPageState
       }
 
       setState(() {
-        _assessmentId = latest['assessmentId']?.toString();
-        _assessmentDate =
-            _parseDate(latest['assessmentDate']) ?? DateTime.now();
+        _assessmentId = latest.assessmentId;
+        _assessmentDate = latest.assessmentDate ?? DateTime.now();
         _selectionValues.clear();
 
         for (final fieldKey in MlMapping.dynamic_form_mapping) {
-          final raw = latest[fieldKey];
+          final raw = latest.valueFor(fieldKey);
           if (raw == null) continue;
 
           final group = MlMapping.getGroupFromFieldKey(fieldKey);
@@ -106,14 +104,6 @@ class _PatientMlAssessmentPageState
     }
   }
 
-  DateTime? _parseDate(dynamic value) {
-    if (value is DateTime) return value;
-    if (value is String && value.trim().isNotEmpty) {
-      return DateTime.tryParse(value.trim());
-    }
-    return null;
-  }
-
   int? _toIntOrNull(dynamic value) {
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -124,14 +114,6 @@ class _PatientMlAssessmentPageState
   double? _toDoubleOrNull(String value) {
     final parsed = double.tryParse(value.trim());
     return parsed;
-  }
-
-  String _formatRangeValue(num value) {
-    final asDouble = value.toDouble();
-    if (asDouble == asDouble.roundToDouble()) {
-      return asDouble.toInt().toString();
-    }
-    return asDouble.toStringAsFixed(2).replaceFirst(RegExp(r'\.0+$'), '');
   }
 
   String _formatApiDate(DateTime value) {
@@ -172,7 +154,7 @@ class _PatientMlAssessmentPageState
         }
       }
 
-      final saved = await ref.read(profileApiProvider).saveMlAssessment(
+      final saved = await ref.read(mlAssessmentApiProvider).saveMlAssessment(
             assessmentId: _assessmentId,
             payload: payload,
           );
