@@ -10,7 +10,6 @@ import 'package:pulsewise/features/diary/presentation/pages/detail_diari_page.da
 import 'package:pulsewise/features/diary/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/riwayat_diari_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/fcm_token_page.dart';
 // import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
@@ -23,6 +22,7 @@ import 'package:pulsewise/features/medication/presentation/pages/detail_penginga
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_page.dart';
+import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
 

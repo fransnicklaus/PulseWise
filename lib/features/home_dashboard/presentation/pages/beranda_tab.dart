@@ -6,8 +6,8 @@ import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
-    show QuickDashboardData, QuickDashboardResponse, quickDashboardProvider;
+import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
+import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';

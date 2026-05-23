@@ -9,8 +9,7 @@ import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
-    show profileApiProvider;
+import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
 import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
 import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
 import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
@@ -97,7 +96,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     });
 
     try {
-      final api = ref.read(profileApiProvider);
+      final api = ref.read(dashboardOverviewApiProvider);
       final vitals = await api.fetchDashboardVitals(selectedPeriod.id);
       String? authMeEmail;
       String? authMeAvatarUrl;
