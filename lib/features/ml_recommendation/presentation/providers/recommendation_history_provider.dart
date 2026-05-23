@@ -1,20 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/features/ml_recommendation/data/datasources/ml_recommendation_api.dart';
+import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
+import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
 
-// import 'current_diary_provider.dart';
-import 'profile_provider.dart';
-
-final recommendationhistoryNotifier = StateNotifierProvider.autoDispose<
+final recommendationHistoryNotifierProvider = StateNotifierProvider.autoDispose<
     RecommendationHistoryNotifier, RecommendationHistoryState>(
   (ref) {
-    return RecommendationHistoryNotifier(ref.watch(profileApiProvider));
+    return RecommendationHistoryNotifier(
+        ref.watch(mlRecommendationApiProvider));
   },
 );
 
-class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryState> {
-  RecommendationHistoryNotifier(this._profileApi)
+class RecommendationHistoryNotifier
+    extends StateNotifier<RecommendationHistoryState> {
+  RecommendationHistoryNotifier(this._recommendationApi)
       : super(const RecommendationHistoryState());
 
-  final ProfileApi _profileApi;
+  final MlRecommendationApi _recommendationApi;
 
   Future<void> loadRecommendationHistory({
     int page = 1,
@@ -37,7 +39,7 @@ class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryS
     );
 
     try {
-      final response = await _profileApi.fetchMlRecommendationHistory(
+      final response = await _recommendationApi.fetchMlRecommendationHistory(
         page: page,
         limit: limit,
         startDate: startDate,
@@ -112,7 +114,9 @@ class RecommendationHistoryNotifier extends StateNotifier<RecommendationHistoryS
 
     try {
       final detail =
-          await _profileApi.fetchMlRecommendationHistoryDetail(resultId);
+          await _recommendationApi.fetchMlRecommendationHistoryDetail(
+        resultId,
+      );
       if (!mounted) return;
 
       final Map<String, MlRecommendationResponse> nextDetails = {

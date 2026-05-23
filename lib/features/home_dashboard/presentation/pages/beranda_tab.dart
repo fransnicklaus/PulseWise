@@ -7,24 +7,15 @@ import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
-    show
-        MlRecommendationResponse,
-        QuickDashboardData,
-        QuickDashboardResponse,
-        profileApiProvider,
-        quickDashboardProvider;
+    show QuickDashboardData, QuickDashboardResponse, quickDashboardProvider;
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
 import 'package:pulsewise/features/medication/presentation/widgets/medication_status_bottom_sheet.dart';
+import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
+import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
-
-final latestMlRecommendationProvider =
-    FutureProvider<MlRecommendationResponse?>((ref) async {
-  final api = ref.watch(profileApiProvider);
-  return api.fetchLatestMlRecommendation();
-});
 
 class BerandaTab extends ConsumerStatefulWidget {
   const BerandaTab({super.key});

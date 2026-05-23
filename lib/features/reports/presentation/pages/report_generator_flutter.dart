@@ -32,13 +32,12 @@ class BackendPatientReportRepository implements PatientReportRepository {
     required DateTime startDate,
     required DateTime endDate,
   }) async {
-    final uri =
-        (endpointBuilder ?? _defaultEndpointBuilder)(
-          baseUri,
-          patientId,
-          startDate,
-          endDate,
-        );
+    final uri = (endpointBuilder ?? _defaultEndpointBuilder)(
+      baseUri,
+      patientId,
+      startDate,
+      endDate,
+    );
     final json = await getJson(uri);
     return PatientReportResponse.fromJson(json);
   }
@@ -128,13 +127,12 @@ Future<void> showPatientReportFlow(
 
     await showDialog<void>(
       context: context,
-      builder:
-          (_) => PatientReportPreviewDialog(
-            response: response,
-            startDate: range.start,
-            endDate: range.end,
-            onPrintRequested: onPrintRequested,
-          ),
+      builder: (_) => PatientReportPreviewDialog(
+        response: response,
+        startDate: range.start,
+        endDate: range.end,
+        onPrintRequested: onPrintRequested,
+      ),
     );
   } catch (error) {
     if (context.mounted) {
@@ -212,14 +210,13 @@ class PatientReportPreviewDialog extends StatelessWidget {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
-                child:
-                    report == null
-                        ? const _EmptyReportState()
-                        : PatientReportDocument(
-                          report: report,
-                          startDate: startDate,
-                          endDate: endDate,
-                        ),
+                child: report == null
+                    ? const _EmptyReportState()
+                    : PatientReportDocument(
+                        report: report,
+                        startDate: startDate,
+                        endDate: endDate,
+                      ),
               ),
             ),
           ],
@@ -327,9 +324,11 @@ class PatientReportDocument extends StatelessWidget {
               spacing: 16,
               runSpacing: 16,
               children: [
-                _InfoTile(label: 'Patient Name', value: report.patientInfo.name),
+                _InfoTile(
+                    label: 'Patient Name', value: report.patientInfo.name),
                 _InfoTile(label: 'Patient ID', value: report.patientInfo.id),
-                _InfoTile(label: 'Date of Birth', value: report.patientInfo.dob),
+                _InfoTile(
+                    label: 'Date of Birth', value: report.patientInfo.dob),
                 _InfoTile(label: 'Sex', value: report.patientInfo.sex),
               ],
             ),
@@ -359,8 +358,7 @@ class PatientReportDocument extends StatelessWidget {
                 _StatCard(
                   title: 'SpO2',
                   value: '${report.stats.oxygenSaturation.avg} %',
-                  range:
-                      '${report.stats.oxygenSaturation.min}% - '
+                  range: '${report.stats.oxygenSaturation.min}% - '
                       '${report.stats.oxygenSaturation.max}%',
                 ),
                 _StatCard(
@@ -372,8 +370,7 @@ class PatientReportDocument extends StatelessWidget {
                 _StatCard(
                   title: 'BMI',
                   value: report.stats.bmi.avg,
-                  range:
-                      '${report.stats.bmi.min} - ${report.stats.bmi.max}',
+                  range: '${report.stats.bmi.min} - ${report.stats.bmi.max}',
                 ),
               ],
             ),
@@ -381,65 +378,63 @@ class PatientReportDocument extends StatelessWidget {
           const SizedBox(height: 24),
           _ReportBlock(
             title: 'Critical Alerts / Abnormalities',
-            child:
-                rows.isEmpty
-                    ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFBBF7D0)),
-                      ),
-                      child: const Text(
-                        'No abnormal vital signs detected in this reporting period.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFF15803D),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                    : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        headingRowColor: MaterialStateProperty.all(
-                          const Color(0xFFF8FAFC),
-                        ),
-                        columns: const [
-                          DataColumn(label: Text('Date & Time')),
-                          DataColumn(label: Text('Metric')),
-                          DataColumn(label: Text('Value')),
-                        ],
-                        rows:
-                            rows
-                                .map(
-                                  (row) => DataRow(
-                                    cells: [
-                                      DataCell(Text(row.date)),
-                                      DataCell(
-                                        Text(
-                                          row.metric,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          row.value,
-                                          style: const TextStyle(
-                                            color: Color(0xFFE13D5A),
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                                .toList(),
+            child: rows.isEmpty
+                ? Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: const Text(
+                      'No abnormal vital signs detected in this reporting period.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF15803D),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
+                  )
+                : SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: MaterialStateProperty.all(
+                        const Color(0xFFF8FAFC),
+                      ),
+                      columns: const [
+                        DataColumn(label: Text('Date & Time')),
+                        DataColumn(label: Text('Metric')),
+                        DataColumn(label: Text('Value')),
+                      ],
+                      rows: rows
+                          .map(
+                            (row) => DataRow(
+                              cells: [
+                                DataCell(Text(row.date)),
+                                DataCell(
+                                  Text(
+                                    row.metric,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    row.value,
+                                    style: const TextStyle(
+                                      color: Color(0xFFE13D5A),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
           ),
           const SizedBox(height: 28),
           const Divider(color: Color(0xFFF1F5F9)),
@@ -470,15 +465,14 @@ class PatientReportResponse {
   factory PatientReportResponse.fromJson(Map<String, dynamic> json) {
     final rawList = json['report_data'] as List<dynamic>? ?? const [];
     return PatientReportResponse(
-      reportData:
-          rawList
-              .whereType<Map<dynamic, dynamic>>()
-              .map(
-                (item) => PatientVitalsReport.fromJson(
-                  Map<String, dynamic>.from(item),
-                ),
-              )
-              .toList(),
+      reportData: rawList
+          .whereType<Map<dynamic, dynamic>>()
+          .map(
+            (item) => PatientVitalsReport.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -507,7 +501,8 @@ class PatientVitalsReport {
   }
 
   factory PatientVitalsReport.fromJson(Map<String, dynamic> json) {
-    final rawAbnormal = json['abnormal_instances'] as List<dynamic>? ?? const [];
+    final rawAbnormal =
+        json['abnormal_instances'] as List<dynamic>? ?? const [];
     return PatientVitalsReport(
       patientInfo: PatientInfo.fromJson(
         Map<String, dynamic>.from(
@@ -519,13 +514,13 @@ class PatientVitalsReport {
           json['stats'] as Map<dynamic, dynamic>? ?? const {},
         ),
       ),
-      abnormalInstances:
-          rawAbnormal
-              .whereType<Map<dynamic, dynamic>>()
-              .map(
-                (item) => AbnormalInstance.fromJson(Map<String, dynamic>.from(item)),
-              )
-              .toList(),
+      abnormalInstances: rawAbnormal
+          .whereType<Map<dynamic, dynamic>>()
+          .map(
+            (item) =>
+                AbnormalInstance.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList(),
     );
   }
 }
@@ -680,18 +675,16 @@ class _PatientReportPresetSheet extends StatelessWidget {
             _PresetButton(
               label: 'Last 2 Weeks',
               active: true,
-              onTap:
-                  () => Navigator.of(
-                    context,
-                  ).pop(PatientReportPreset.lastTwoWeeks),
+              onTap: () => Navigator.of(
+                context,
+              ).pop(PatientReportPreset.lastTwoWeeks),
             ),
             const SizedBox(height: 12),
             _PresetButton(
               label: 'Last 1 Month',
-              onTap:
-                  () => Navigator.of(
-                    context,
-                  ).pop(PatientReportPreset.lastOneMonth),
+              onTap: () => Navigator.of(
+                context,
+              ).pop(PatientReportPreset.lastOneMonth),
             ),
           ],
         ),

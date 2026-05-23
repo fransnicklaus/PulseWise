@@ -2,20 +2,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/recommendation_history_provider.dart';
+import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
+import 'package:pulsewise/features/ml_recommendation/presentation/providers/recommendation_history_provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 import '../../../../core/widgets/custom_app_bar.dart';
-
-// TODO: Update this when ML Recommendation History Endpoint is ready
-// final mlHistoryProvider = StateNotifierProvider.autoDispose<
-//     RecommendationHistoryNotifier, RecommendationHistoryState>(
-//   (ref) {
-//     return RecommendationHistoryNotifier(ref.watch(profileApiProvider));
-//   },
-// );
 
 class MlRecommendationHistoryPage extends ConsumerStatefulWidget {
   const MlRecommendationHistoryPage({super.key});
@@ -30,9 +22,6 @@ class _MlRecommendationHistoryPageState
   final ScrollController _scrollController = ScrollController();
   final Map<String, GlobalKey> _itemKeys = <String, GlobalKey>{};
   String? _expandedId;
-
-  MlRecommendationResponse? _mlRecommendation;
-  MlRecommendationResponse? _mlPredictionResult;
 
   @override
   void initState() {
@@ -54,7 +43,7 @@ class _MlRecommendationHistoryPageState
     if (!_scrollController.hasClients) return;
     final threshold = _scrollController.position.maxScrollExtent - 220;
     if (_scrollController.position.pixels >= threshold) {
-      ref.read(recommendationhistoryNotifier.notifier).loadNextPage();
+      ref.read(recommendationHistoryNotifierProvider.notifier).loadNextPage();
     }
   }
 
@@ -63,7 +52,9 @@ class _MlRecommendationHistoryPageState
     final startOfMonth = DateTime(now.year, now.month, 1);
     final endOfMonth = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
-    ref.read(recommendationhistoryNotifier.notifier).loadRecommendationHistory(
+    ref
+        .read(recommendationHistoryNotifierProvider.notifier)
+        .loadRecommendationHistory(
           page: 1,
           limit: 10,
           startDate: startOfMonth,
@@ -80,7 +71,7 @@ class _MlRecommendationHistoryPageState
     if (isExpanded) return;
 
     await ref
-        .read(recommendationhistoryNotifier.notifier)
+        .read(recommendationHistoryNotifierProvider.notifier)
         .loadRecommendationDetail(id);
     if (!mounted) return;
 
@@ -167,7 +158,7 @@ class _MlRecommendationHistoryPageState
 
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
-    final state = ref.read(recommendationhistoryNotifier);
+    final state = ref.read(recommendationHistoryNotifierProvider);
     final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
     final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
 
@@ -192,7 +183,7 @@ class _MlRecommendationHistoryPageState
     });
 
     await ref
-        .read(recommendationhistoryNotifier.notifier)
+        .read(recommendationHistoryNotifierProvider.notifier)
         .loadRecommendationHistory(
           page: 1,
           limit: 10,
@@ -203,7 +194,7 @@ class _MlRecommendationHistoryPageState
 
   Future<void> _pickEndDate() async {
     final now = DateTime.now();
-    final state = ref.read(recommendationhistoryNotifier);
+    final state = ref.read(recommendationHistoryNotifierProvider);
     final currentStart = state.startDate ?? DateTime(now.year, now.month, 1);
     final currentEnd = state.endDate ?? DateTime(now.year, now.month + 1, 0);
 
@@ -228,7 +219,7 @@ class _MlRecommendationHistoryPageState
     });
 
     await ref
-        .read(recommendationhistoryNotifier.notifier)
+        .read(recommendationHistoryNotifierProvider.notifier)
         .loadRecommendationHistory(
           page: 1,
           limit: 10,
@@ -239,7 +230,7 @@ class _MlRecommendationHistoryPageState
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(recommendationhistoryNotifier);
+    final state = ref.watch(recommendationHistoryNotifierProvider);
     final startLabel =
         state.startDate != null ? _formatDate(state.startDate) : 'Start date';
     final endLabel =
@@ -255,8 +246,9 @@ class _MlRecommendationHistoryPageState
         onBackPressed: () => context.pop(),
       ),
       body: RefreshIndicator(
-        onRefresh: () =>
-            ref.read(recommendationhistoryNotifier.notifier).refreshHistory(),
+        onRefresh: () => ref
+            .read(recommendationHistoryNotifierProvider.notifier)
+            .refreshHistory(),
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
         child: SingleChildScrollView(
@@ -452,7 +444,7 @@ class _MlRecommendationHistoryPageState
                                                 padding: const EdgeInsets.only(
                                                     top: 12),
                                                 // child: Text('this works'),
-                                                child: _expandedArea(
+                                                child: _ExpandedArea(
                                                   detail: detail,
                                                   isLoading: isDetailLoading,
                                                   error: detailError,
@@ -624,12 +616,12 @@ String _formatDate(DateTime? date) {
   return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
 }
 
-class _expandedArea extends StatelessWidget {
+class _ExpandedArea extends StatelessWidget {
   final MlRecommendationResponse? detail;
   final bool isLoading;
   final String? error;
 
-  const _expandedArea(
+  const _ExpandedArea(
       {required this.detail, required this.isLoading, this.error});
 
   @override

@@ -9,12 +9,14 @@ import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
+    show profileApiProvider;
 import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
+import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
+import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/reports/presentation/pages/report_generator_flutter.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
-
-import 'package:pulsewise/features/dashboard/presentation/pages/report_generator_flutter.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
   const PatientDashboardPage({
@@ -195,7 +197,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     if (!mounted) return;
     setState(() => _isLoadingLast = true);
     try {
-      final api = ref.read(profileApiProvider);
+      final api = ref.read(mlRecommendationApiProvider);
 
       final rec = await api.fetchLatestMlRecommendation().catchError((e) {
         debugPrint('Error fetching last ML recommendation: $e');
@@ -229,7 +231,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     });
     try {
       final date = DateTime.now().toIso8601String().split('T').first;
-      final recommendationApi = ref.read(profileApiProvider);
+      final recommendationApi = ref.read(mlRecommendationApiProvider);
       final readiness =
           await ref.read(mlAssessmentApiProvider).fetchMlReadiness(date);
 
