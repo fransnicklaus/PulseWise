@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pulsewise/features/food_analysis/data/models/food_consumption_result.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
 import 'package:pulsewise/features/food_analysis/presentation/pages/food_macro_camera_page.dart';
 import 'package:pulsewise/features/food_analysis/presentation/pages/manual_food_macro_entry_page.dart';
@@ -264,6 +265,85 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       default:
         return 'Makanan Berat';
     }
+  }
+
+  String _resolveFoodAnalysisPortion(FoodMacroAnalysis analysis) {
+    if (analysis.portionEstimate.isNotEmpty) {
+      return FoodMacroAnalysis.truncatePortionText(analysis.portionEstimate);
+    }
+
+    if (analysis.portionGramsEstimate > 0) {
+      return '${analysis.portionGramsEstimate.round()} g';
+    }
+
+    return '1 porsi';
+  }
+
+  String _buildFoodAnalysisNote(FoodMacroCaptureResult result) {
+    final analysisNotes = result.analysis.notes.trim();
+    final noteParts = <String>[
+      if (result.userDescription.isNotEmpty) result.userDescription,
+      if (analysisNotes.isNotEmpty) 'Analisis foto: $analysisNotes',
+    ];
+    return noteParts.join('\n\n');
+  }
+
+  Map<String, dynamic> _buildFoodAnalysisConsumptionPayload(
+    FoodMacroCaptureResult result,
+  ) {
+    final analysis = result.analysis;
+    final suggestedName = analysis.suggestedName.trim();
+    final resolvedName = result.userFoodName.isNotEmpty
+        ? result.userFoodName
+        : (suggestedName.isNotEmpty ? suggestedName : 'Makanan');
+
+    return {
+      'section': widget.title,
+      'typeLabel': _formatConsumptionTypeLabel(analysis.mealCategory),
+      'type': _mapConsumptionTypeToApi(analysis.mealCategory),
+      'name': resolvedName,
+      'portion': _resolveFoodAnalysisPortion(analysis),
+      'time': _formatTime(_selectedTime),
+      'useCurrentTime': _useCurrentTime,
+      'note': _buildFoodAnalysisNote(result),
+      'foodMacroAnalysis': analysis.toJson(),
+      'nutritionPayload': analysis.toNutritionPayload(),
+    };
+  }
+
+  Future<void> _runKonsumsiSubmission(Map<String, dynamic> payload) async {
+    final submitKonsumsi = widget.onSubmitKonsumsi;
+    if (submitKonsumsi == null) return;
+
+    setState(() => _isSavingKonsumsi = true);
+    try {
+      await submitKonsumsi(payload);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _konsumsiSubmitError = e.toString().replaceFirst('Exception: ', '');
+      });
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingKonsumsi = false);
+      }
+    }
+  }
+
+  Future<void> _submitKonsumsiPayload(Map<String, dynamic> payload) async {
+    final submitKonsumsi = widget.onSubmitKonsumsi;
+    if (submitKonsumsi == null) {
+      Navigator.of(context).pop(payload);
+      return;
+    }
+
+    await _runKonsumsiSubmission(payload);
+    if (!mounted) return;
+    Navigator.of(context).pop({
+      'section': widget.title,
+      'saved': true,
+    });
   }
 
   String get _normalizedSectionTitle => widget.title.trim().toLowerCase();
@@ -702,47 +782,20 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       'useCurrentTime': _useCurrentTime,
       'note': note,
       'foodMacroAnalysis': _foodMacroAnalysis?.toJson(),
-      'nutritionPayload': _foodMacroAnalysis?.toDiaryNutritionPayload(),
+      'nutritionPayload': _foodMacroAnalysis?.toNutritionPayload(),
     };
-
-    final submitKonsumsi = widget.onSubmitKonsumsi;
-    if (submitKonsumsi == null) {
-      Navigator.of(context).pop(payload);
-      return;
-    }
-
-    setState(() => _isSavingKonsumsi = true);
-    try {
-      await submitKonsumsi(payload);
-      if (!mounted) return;
-      Navigator.of(context).pop({
-        'section': widget.title,
-        'saved': true,
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _konsumsiSubmitError = e.toString().replaceFirst('Exception: ', '');
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingKonsumsi = false);
-      }
-    }
+    await _submitKonsumsiPayload(payload);
   }
 
   Future<void> _openFoodMacroCameraPage() async {
-    final selectedTypeLabel = (_selectedConsumptionTypeLabel == null ||
-            _selectedConsumptionTypeLabel!.trim().isEmpty)
-        ? _consumptionTypeLabels.first
-        : _selectedConsumptionTypeLabel!;
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => FoodMacroCameraPage(
-          onSaveConsumption: widget.onSubmitKonsumsi,
-          consumptionTypeLabel: _formatConsumptionTypeLabel(selectedTypeLabel),
-          consumptionTypeApi: _mapConsumptionTypeToApi(selectedTypeLabel),
-          consumptionTime: _formatTime(_selectedTime),
+          onUseAnalysis: (captureResult) async {
+            await _runKonsumsiSubmission(
+              _buildFoodAnalysisConsumptionPayload(captureResult),
+            );
+          },
         ),
       ),
     );
@@ -758,10 +811,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       return;
     }
 
-    final userFoodName = (result['user_food_name'] ?? '').toString().trim();
-    final userDescription =
-        (result['user_description'] ?? '').toString().trim();
-    final analysis = FoodMacroAnalysis.fromJson(result);
+    final captureResult = FoodMacroCaptureResult.fromMap(result);
+    final userFoodName = captureResult.userFoodName;
+    final userDescription = captureResult.userDescription;
+    final analysis = captureResult.analysis;
     final suggestedName = analysis.suggestedName;
     final analysisNotes = analysis.notes.trim();
     final existingNote = _mealDescriptionController.text.trim();
@@ -803,7 +856,12 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => ManualFoodMacroEntryPage(
-          onSaveConsumption: widget.onSubmitKonsumsi,
+          onSubmitConsumption: (manualResult) async {
+            await _runKonsumsiSubmission({
+              'section': widget.title,
+              ...manualResult.toMap(),
+            });
+          },
           consumptionTypeLabel: _formatConsumptionTypeLabel(selectedTypeLabel),
           consumptionTypeApi: _mapConsumptionTypeToApi(selectedTypeLabel),
           consumptionTime: _formatTime(_selectedTime),

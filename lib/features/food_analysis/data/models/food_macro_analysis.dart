@@ -247,7 +247,7 @@ class FoodMacroAnalysis {
     };
   }
 
-  Map<String, dynamic> toDiaryNutritionPayload() {
+  Map<String, dynamic> toNutritionPayload() {
     if (!isFoodImage) {
       return const {};
     }

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/food_analysis/data/models/food_consumption_result.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
 
-typedef SaveManualFoodConsumptionCallback = Future<void> Function(
-  Map<String, dynamic> payload,
+typedef SubmitManualFoodConsumptionCallback = Future<void> Function(
+  ManualFoodConsumptionResult result,
 );
 
 class ManualFoodMacroEntryPage extends StatefulWidget {
   const ManualFoodMacroEntryPage({
     super.key,
-    this.onSaveConsumption,
+    this.onSubmitConsumption,
     this.consumptionTypeLabel,
     this.consumptionTypeApi,
     this.consumptionTime,
     this.useCurrentTime = true,
   });
 
-  final SaveManualFoodConsumptionCallback? onSaveConsumption;
+  final SubmitManualFoodConsumptionCallback? onSubmitConsumption;
   final String? consumptionTypeLabel;
   final String? consumptionTypeApi;
   final String? consumptionTime;
@@ -218,26 +219,26 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
       _isSaving = true;
     });
 
-    final payload = {
-      'typeLabel': _formatMealCategoryLabel(_selectedMealCategory),
-      'type': _selectedMealCategory,
-      'name': mealName,
-      'portion': portion,
-      'time': _resolvedTime,
-      'useCurrentTime': widget.useCurrentTime,
-      'note': note,
-      'nutritionPayload': _buildNutritionPayload(),
-    };
+    final result = ManualFoodConsumptionResult(
+      typeLabel: _formatMealCategoryLabel(_selectedMealCategory),
+      type: _selectedMealCategory,
+      name: mealName,
+      portion: portion,
+      time: _resolvedTime,
+      useCurrentTime: widget.useCurrentTime,
+      note: note,
+      nutritionPayload: _buildNutritionPayload(),
+    );
 
     try {
-      final onSaveConsumption = widget.onSaveConsumption;
-      if (onSaveConsumption == null) {
+      final onSubmitConsumption = widget.onSubmitConsumption;
+      if (onSubmitConsumption == null) {
         if (!mounted) return;
-        Navigator.of(context).pop(payload);
+        Navigator.of(context).pop(result.toMap());
         return;
       }
 
-      await onSaveConsumption(payload);
+      await onSubmitConsumption(result);
       if (!mounted) return;
       Navigator.of(context).pop(const {'action': 'saved'});
     } catch (e) {

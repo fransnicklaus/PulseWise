@@ -8,26 +8,21 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/food_analysis/data/models/food_consumption_result.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
 import 'package:pulsewise/features/food_analysis/presentation/providers/food_nutrition_estimate_api_provider.dart';
 
-typedef SaveFoodConsumptionCallback = Future<void> Function(
-  Map<String, dynamic> payload,
+typedef SubmitFoodMacroCaptureCallback = Future<void> Function(
+  FoodMacroCaptureResult result,
 );
 
 class FoodMacroCameraPage extends ConsumerStatefulWidget {
   const FoodMacroCameraPage({
     super.key,
-    this.onSaveConsumption,
-    this.consumptionTypeLabel,
-    this.consumptionTypeApi,
-    this.consumptionTime,
+    this.onUseAnalysis,
   });
 
-  final SaveFoodConsumptionCallback? onSaveConsumption;
-  final String? consumptionTypeLabel;
-  final String? consumptionTypeApi;
-  final String? consumptionTime;
+  final SubmitFoodMacroCaptureCallback? onUseAnalysis;
 
   @override
   ConsumerState<FoodMacroCameraPage> createState() =>
@@ -262,122 +257,29 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
     );
   }
 
-  String _resolveConsumptionTypeLabel() {
-    final raw = widget.consumptionTypeLabel?.trim() ?? '';
-    return _normalizeMealCategoryValue(raw);
-  }
-
-  String _resolveConsumptionTypeApi() {
-    final raw = widget.consumptionTypeApi?.trim() ?? '';
-    return _normalizeMealCategoryValue(raw);
-  }
-
-  String _normalizeMealCategoryValue(String raw) {
-    switch (raw.trim().toLowerCase()) {
-      case 'makanan ringan':
-      case 'snack':
-      case 'other':
-      case 'cemilan':
-      case 'camilan':
-      case 'lainnya':
-        return 'Makanan Ringan';
-      case 'minuman':
-      case 'drink':
-        return 'Minuman';
-      case 'makanan berat':
-      case 'breakfast':
-      case 'sarapan':
-      case 'lunch':
-      case 'makan siang':
-      case 'dinner':
-      case 'makan malam':
-      case 'food':
-      case 'makanan':
-      default:
-        return 'Makanan Berat';
-    }
-  }
-
-  String _resolveMealCategory(FoodMacroAnalysis analysis) {
-    final category = analysis.mealCategory.trim();
-    if (category.isEmpty) return _resolveConsumptionTypeApi();
-    return _normalizeMealCategoryValue(category);
-  }
-
-  String _resolveMealCategoryLabel(FoodMacroAnalysis analysis) {
-    final label = _resolveMealCategory(analysis).trim();
-    return label.isEmpty ? _resolveConsumptionTypeLabel() : label;
-  }
-
-  String _resolveConsumptionTime() {
-    final raw = widget.consumptionTime?.trim() ?? '';
-    if (raw.isNotEmpty) return raw;
-
-    final now = TimeOfDay.now();
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  String _resolvePortion(FoodMacroAnalysis analysis) {
-    if (analysis.portionEstimate.isNotEmpty) {
-      return FoodMacroAnalysis.truncatePortionText(analysis.portionEstimate);
-    }
-
-    if (analysis.portionGramsEstimate > 0) {
-      return '${analysis.portionGramsEstimate.round()} g';
-    }
-
-    return '1 porsi';
-  }
-
-  String _buildConsumptionNote(FoodMacroAnalysis analysis) {
-    final userDescription = _foodDescriptionController.text.trim();
-    final analysisNotes = analysis.notes.trim();
-    final noteParts = <String>[
-      if (userDescription.isNotEmpty) userDescription,
-      if (analysisNotes.isNotEmpty) 'Analisis foto: $analysisNotes',
-    ];
-
-    return noteParts.join('\n\n');
-  }
-
-  Map<String, dynamic> _buildConsumptionPayload(FoodMacroAnalysis analysis) {
-    final userFoodName = _foodNameController.text.trim();
-    final suggestedName = analysis.suggestedName.trim();
-    final resolvedName = userFoodName.isNotEmpty
-        ? userFoodName
-        : (suggestedName.isNotEmpty ? suggestedName : 'Makanan');
-
-    return {
-      'typeLabel': _resolveMealCategoryLabel(analysis),
-      'type': _resolveMealCategory(analysis),
-      'name': resolvedName,
-      'portion': _resolvePortion(analysis),
-      'time': _resolveConsumptionTime(),
-      'useCurrentTime': true,
-      'note': _buildConsumptionNote(analysis),
-      'foodMacroAnalysis': analysis.toJson(),
-      'nutritionPayload': analysis.toDiaryNutritionPayload(),
-    };
+  FoodMacroCaptureResult _buildCaptureResult(FoodMacroAnalysis analysis) {
+    return FoodMacroCaptureResult(
+      analysis: analysis,
+      userFoodName: _foodNameController.text.trim(),
+      userDescription: _foodDescriptionController.text.trim(),
+    );
   }
 
   Future<void> _openAnalysisResultPage({
     required File imageFile,
     required FoodMacroAnalysis analysis,
   }) async {
+    final captureResult = _buildCaptureResult(analysis);
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => _FoodMacroAnalysisResultPage(
           imageFile: imageFile,
           analysis: analysis,
-          userFoodName: _foodNameController.text.trim(),
-          userDescription: _foodDescriptionController.text.trim(),
-          onSaveConsumption: widget.onSaveConsumption == null
+          userFoodName: captureResult.userFoodName,
+          userDescription: captureResult.userDescription,
+          onUseAnalysis: widget.onUseAnalysis == null
               ? null
-              : () => widget.onSaveConsumption!(
-                    _buildConsumptionPayload(analysis),
-                  ),
+              : () => widget.onUseAnalysis!(captureResult),
         ),
       ),
     );
@@ -390,16 +292,7 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
       return;
     }
     if (action != 'use') return;
-
-    final analysisPayloadRaw = result['analysis'];
-    if (analysisPayloadRaw is! Map) return;
-
-    final payload = analysisPayloadRaw.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
-    payload['user_food_name'] = _foodNameController.text.trim();
-    payload['user_description'] = _foodDescriptionController.text.trim();
-    Navigator.of(context).pop(payload);
+    Navigator.of(context).pop(captureResult.toMap());
   }
 
   @override
@@ -1106,7 +999,7 @@ class _FoodMacroAnalysisResultPage extends StatefulWidget {
     required this.analysis,
     required this.userFoodName,
     required this.userDescription,
-    this.onSaveConsumption,
+    this.onUseAnalysis,
   });
 
   final File imageFile;
@@ -1114,7 +1007,7 @@ class _FoodMacroAnalysisResultPage extends StatefulWidget {
   final String userFoodName;
   final String userDescription;
 
-  final Future<void> Function()? onSaveConsumption;
+  final Future<void> Function()? onUseAnalysis;
 
   @override
   State<_FoodMacroAnalysisResultPage> createState() =>
@@ -1129,12 +1022,9 @@ class _FoodMacroAnalysisResultPageState
   Future<void> _handleUseResult() async {
     if (_isSaving) return;
 
-    final onSaveConsumption = widget.onSaveConsumption;
-    if (onSaveConsumption == null) {
-      Navigator.of(context).pop({
-        'action': 'use',
-        'analysis': widget.analysis.toJson(),
-      });
+    final onUseAnalysis = widget.onUseAnalysis;
+    if (onUseAnalysis == null) {
+      Navigator.of(context).pop(const {'action': 'use'});
       return;
     }
 
@@ -1144,7 +1034,7 @@ class _FoodMacroAnalysisResultPageState
     });
 
     try {
-      await onSaveConsumption();
+      await onUseAnalysis();
       if (!mounted) return;
       Navigator.of(context).pop(const {'action': 'saved'});
     } catch (e) {
@@ -1307,7 +1197,7 @@ class _FoodMacroAnalysisResultPageState
                                 ),
                               )
                             : Text(
-                                widget.onSaveConsumption == null
+                                widget.onUseAnalysis == null
                                     ? 'Pakai Hasil'
                                     : 'Pakai Hasil dan Simpan',
                                 style: const TextStyle(
