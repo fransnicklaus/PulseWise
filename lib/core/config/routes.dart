@@ -11,10 +11,6 @@ import 'package:pulsewise/features/diary/presentation/pages/detail_diari_page.da
 import 'package:pulsewise/features/diary/presentation/pages/diary_qr_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/riwayat_diari_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/detail_pengingat_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/add_pengingat_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/edit_pengingat_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/fcm_token_page.dart';
 // import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/patient_ml_assessment_page.dart';
@@ -24,6 +20,10 @@ import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart'
 import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
+import 'package:pulsewise/features/medication/presentation/pages/add_pengingat_page.dart';
+import 'package:pulsewise/features/medication/presentation/pages/detail_pengingat_page.dart';
+import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
+import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {

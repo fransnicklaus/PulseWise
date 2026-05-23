@@ -5,13 +5,13 @@ import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:table_calendar/table_calendar.dart';
-
-import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
-import '../../widgets/medication_status_bottom_sheet.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
+import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
+import 'package:pulsewise/features/medication/presentation/widgets/medication_status_bottom_sheet.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class PengingatTab extends ConsumerStatefulWidget {
   const PengingatTab({super.key});
@@ -323,7 +323,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
           throw Exception('Tanggal jadwal obat tidak tersedia.');
         }
 
-        return ref.read(profileApiProvider).takeMedication(
+        return ref.read(medicationApiProvider).takeMedication(
               status,
               currentItem.medicationId,
               scheduledDate,

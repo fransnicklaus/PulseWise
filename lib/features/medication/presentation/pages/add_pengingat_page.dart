@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 
 class AddPengingatPage extends ConsumerStatefulWidget {
   const AddPengingatPage({super.key});
@@ -989,7 +989,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
 
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(profileApiProvider).addMedication(
+      await ref.read(medicationApiProvider).addMedication(
             name: name,
             form: selectedForm.toLowerCase(),
             color: _hexColor(_selectedMedicationColor),

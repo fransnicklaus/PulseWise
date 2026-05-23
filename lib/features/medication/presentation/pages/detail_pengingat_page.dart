@@ -4,9 +4,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/medication_history_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/widgets/medication_consumption_tracking_card.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
+import 'package:pulsewise/features/medication/presentation/widgets/medication_consumption_tracking_card.dart';
 
 class DetailPengingatPage extends ConsumerStatefulWidget {
   const DetailPengingatPage({
@@ -67,7 +68,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
 
     setState(() => _isDeleting = true);
     try {
-      await ref.read(profileApiProvider).deleteMedication(medicationId);
+      await ref.read(medicationApiProvider).deleteMedication(medicationId);
       if (!mounted) return;
       context.pop(true);
     } catch (e) {
@@ -202,7 +203,6 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
     final hasWeeklyDays =
         item.frequency.toLowerCase() == 'weekly' && item.daysOfWeek.isNotEmpty;
     final note = item.note?.trim();
-    final conditionTag = item.conditionTag?.trim();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),

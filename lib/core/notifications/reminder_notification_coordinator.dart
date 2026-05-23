@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 
 class MedicationReminderNotificationPayload {
   const MedicationReminderNotificationPayload({

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
 
 class MedicationConsumptionTrackingCard extends ConsumerStatefulWidget {
   const MedicationConsumptionTrackingCard({
@@ -99,7 +100,7 @@ class _MedicationConsumptionTrackingCardState
     }
 
     try {
-      final response = await ref.read(profileApiProvider).fetchMedicationLogs(
+      final response = await ref.read(medicationApiProvider).fetchMedicationLogs(
             patientId: widget.patientId,
             medicationId: widget.medicationId,
             page: nextPage,

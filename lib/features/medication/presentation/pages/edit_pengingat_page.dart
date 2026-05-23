@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/medication_history_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
 
 class EditPengingatPage extends ConsumerStatefulWidget {
   const EditPengingatPage({
@@ -22,11 +23,20 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
   static const List<String> _forms = [
     'pill',
     'tablet',
-    'capsule',
-    'drops',
-    'syrup',
-    'liquid',
+    'kapsul',
+    'tetes',
+    'sirup',
+    'cairan',
   ];
+
+  static const Map<String, String> _formLabels = {
+    'pill': 'Pill',
+    'tablet': 'Tablet',
+    'kapsul': 'Kapsul',
+    'tetes': 'Tetes',
+    'sirup': 'Sirup',
+    'cairan': 'Cairan',
+  };
 
   static const List<String> _doseUnits = [
     'mg',
@@ -36,15 +46,23 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
     'tetes',
   ];
 
-  static const Map<String, Color> _colorOptions = {
-    'red': Color(0xFFEF4444),
-    'orange': Color(0xFFF97316),
-    'yellow': Color(0xFFEAB308),
-    'green': Color(0xFF22C55E),
-    'blue': Color(0xFF3B82F6),
-    'purple': Color(0xFF8B5CF6),
-    'white': Color(0xFFE2E8F0),
-  };
+  static const List<Color> _medicationColors = [
+    Color(0xFFE64060),
+    Color(0xFFEF4444),
+    Color(0xFFF97316),
+    Color(0xFFF59E0B),
+    Color(0xFFEAB308),
+    Color(0xFF84CC16),
+    Color(0xFF22C55E),
+    Color(0xFF10B981),
+    Color(0xFF14B8A6),
+    Color(0xFF06B6D4),
+    Color(0xFF0EA5E9),
+    Color(0xFF3B82F6),
+    Color(0xFF6366F1),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+  ];
 
   final _doseController = TextEditingController();
   final _noteController = TextEditingController();
@@ -55,10 +73,9 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
   bool _isSaving = false;
 
   String _selectedForm = 'pill';
-  String _selectedColor = 'red';
   String _selectedDoseUnit = 'mg';
+  Color _selectedMedicationColor = _medicationColors.first;
   String _selectedFrequency = 'daily';
-  String _initialFrequency = 'daily';
   int _dailyEvery = 1;
   DateTime _startDate = DateTime.now();
   List<int> _selectedDaysOfWeek = [];
@@ -77,8 +94,9 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
   @override
   void initState() {
     super.initState();
-    _detailFuture =
-        ref.read(profileApiProvider).fetchMedicationDetail(widget.medicationId);
+    _detailFuture = ref
+        .read(medicationApiProvider)
+        .fetchMedicationDetail(widget.medicationId);
   }
 
   @override
@@ -144,11 +162,12 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                         fontWeight: FontWeight.w600,
                       ),
                       decoration: _inputDecoration('Pilih bentuk obat'),
+                      dropdownColor: Colors.white,
                       items: _forms
                           .map(
                             (form) => DropdownMenuItem(
                               value: form,
-                              child: Text(form),
+                              child: Text(_formLabels[form] ?? form),
                             ),
                           )
                           .toList(),
@@ -161,60 +180,54 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                   const SizedBox(height: 12),
                   _sectionCard(
                     title: 'Warna Obat',
-                    child: Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _colorOptions.entries.map((entry) {
-                        final selected = _selectedColor == entry.key;
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(999),
-                          onTap: () =>
-                              setState(() => _selectedColor = entry.key),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
+                    child: SizedBox(
+                      height: 46,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _medicationColors.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (_, index) {
+                          final color = _medicationColors[index];
+                          final selected =
+                              color.value == _selectedMedicationColor.value;
+                          return GestureDetector(
+                            onTap: () => setState(
+                              () => _selectedMedicationColor = color,
                             ),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? const Color(0xFFFFE7EE)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(999),
-                              border: Border.all(
-                                color: selected
-                                    ? const Color(0xFFE64060)
-                                    : const Color(0xFFE2E8F0),
-                                width: 1.5,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: color,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: selected
+                                      ? const Color(0xFF0F172A)
+                                      : Colors.white,
+                                  width: selected ? 2.5 : 1.5,
+                                ),
+                                boxShadow: selected
+                                    ? [
+                                        BoxShadow(
+                                          color: color.withOpacity(0.35),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ]
+                                    : null,
                               ),
+                              child: selected
+                                  ? const Icon(
+                                      Icons.check,
+                                      color: Colors.white,
+                                      size: 18,
+                                    )
+                                  : null,
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                    color: entry.value,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(0xFFCBD5E1),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  entry.key,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF334155),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                          );
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -538,15 +551,10 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
 
   void _initializeForm(MedicationItem item) {
     _isInitialized = true;
-    _selectedForm = item.form.toLowerCase().trim().isEmpty
-        ? 'pill'
-        : item.form.toLowerCase().trim();
-    _selectedColor = _colorOptions.containsKey(item.color.toLowerCase().trim())
-        ? item.color.toLowerCase().trim()
-        : 'red';
+    _selectedForm = _normalizeFormValue(item.form);
+    _selectedMedicationColor = _resolveMedicationColor(item.color);
     _selectedFrequency =
         item.frequency.toLowerCase() == 'weekly' ? 'weekly' : 'daily';
-    _initialFrequency = _selectedFrequency;
     _dailyEvery = (item.numOfDays ?? 0) > 0 ? item.numOfDays! : 1;
     _startDate = item.startDate ?? DateTime.now();
     _selectedDaysOfWeek =
@@ -569,7 +577,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
     setState(() {
       _isInitialized = false;
       _detailFuture = ref
-          .read(profileApiProvider)
+          .read(medicationApiProvider)
           .fetchMedicationDetail(widget.medicationId);
     });
   }
@@ -630,10 +638,10 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
     setState(() => _isSaving = true);
 
     try {
-      await ref.read(profileApiProvider).updateMedication(
+      await ref.read(medicationApiProvider).updateMedication(
             medicationId: widget.medicationId,
             form: _selectedForm,
-            color: _selectedColor,
+            color: _hexColor(_selectedMedicationColor),
             singleDose: dose,
             singleDoseUnit: unit,
             startDate: _formatDateOnly(_startDate),
@@ -797,6 +805,70 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
 
   String _doseText(num dose) {
     return dose % 1 == 0 ? dose.toInt().toString() : dose.toString();
+  }
+
+  String _hexColor(Color color) {
+    final rgb = color.value & 0x00FFFFFF;
+    return '#${rgb.toRadixString(16).padLeft(6, '0')}';
+  }
+
+  Color _resolveMedicationColor(String rawColor) {
+    const namedFallbacks = {
+      'red': Color(0xFFEF4444),
+      'orange': Color(0xFFF97316),
+      'yellow': Color(0xFFEAB308),
+      'green': Color(0xFF22C55E),
+      'blue': Color(0xFF3B82F6),
+      'purple': Color(0xFF8B5CF6),
+      'white': Color(0xFFE2E8F0),
+      'pink': Color(0xFFEC4899),
+    };
+
+    final normalized = rawColor.toLowerCase().trim();
+    if (namedFallbacks.containsKey(normalized)) {
+      return namedFallbacks[normalized]!;
+    }
+
+    final cleaned = normalized.replaceFirst('#', '');
+    final parsed = int.tryParse(cleaned, radix: 16);
+    if (parsed == null) {
+      return _medicationColors.first;
+    }
+
+    final color = cleaned.length <= 6
+        ? Color(0xFF000000 | parsed)
+        : Color(parsed);
+
+    for (final paletteColor in _medicationColors) {
+      if (paletteColor.value == color.value) {
+        return paletteColor;
+      }
+    }
+
+    return _medicationColors.first;
+  }
+
+  String _normalizeFormValue(String rawForm) {
+    final normalized = rawForm.toLowerCase().trim();
+    switch (normalized) {
+      case 'pill':
+      case 'tablet':
+      case 'kapsul':
+      case 'tetes':
+      case 'sirup':
+      case 'cairan':
+        return normalized;
+      case 'capsule':
+        return 'kapsul';
+      case 'drops':
+        return 'tetes';
+      case 'syrup':
+        return 'sirup';
+      case 'liquid':
+        return 'cairan';
+      default:
+        return 'pill';
+    }
   }
 }
 

@@ -1,22 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/features/medication/data/datasources/medication_api.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 
-import 'profile_provider.dart';
+import 'medication_api_provider.dart';
 
 final medicationDetailProvider =
     FutureProvider.autoDispose.family<MedicationItem, String>((ref, id) async {
-  return ref.watch(profileApiProvider).fetchMedicationDetail(id);
+  return ref.watch(medicationApiProvider).fetchMedicationDetail(id);
 });
 
 final medicationHistoryProvider = StateNotifierProvider.autoDispose<
     MedicationHistoryNotifier, MedicationHistoryState>(
-  (ref) => MedicationHistoryNotifier(ref.watch(profileApiProvider)),
+  (ref) => MedicationHistoryNotifier(ref.watch(medicationApiProvider)),
 );
 
 class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
-  MedicationHistoryNotifier(this._profileApi)
+  MedicationHistoryNotifier(this._medicationApi)
       : super(const MedicationHistoryState());
 
-  final ProfileApi _profileApi;
+  final MedicationApi _medicationApi;
 
   Future<void> loadMedications({
     int page = 1,
@@ -35,7 +37,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
     );
 
     try {
-      final response = await _profileApi.fetchMedications(
+      final response = await _medicationApi.fetchMedications(
         page: page,
         limit: limit,
       );

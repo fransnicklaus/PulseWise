@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/tabs/pengingat_tab.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/diary/presentation/pages/tabs/diari_tab.dart';
 import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
@@ -12,6 +11,7 @@ import 'package:pulsewise/features/health_connect/data/datasources/health_connec
 import 'package:pulsewise/features/health_connect/presentation/providers/health_connect_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/beranda_tab.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/edukasi_tab.dart';
+import 'package:pulsewise/features/medication/presentation/pages/tabs/pengingat_tab.dart';
 import 'package:pulsewise/features/profile/data/models/profile_models.dart';
 import 'package:pulsewise/features/profile/presentation/pages/profil_tab.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';

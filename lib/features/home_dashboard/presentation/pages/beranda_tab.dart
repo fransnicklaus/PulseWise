@@ -6,10 +6,18 @@ import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/medication_calendar_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
-import 'package:pulsewise/features/dashboard/presentation/widgets/medication_status_bottom_sheet.dart';
+import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
+    show
+        MlRecommendationResponse,
+        QuickDashboardData,
+        QuickDashboardResponse,
+        profileApiProvider,
+        quickDashboardProvider;
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
+import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
+import 'package:pulsewise/features/medication/presentation/widgets/medication_status_bottom_sheet.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 final latestMlRecommendationProvider =
@@ -1472,7 +1480,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
           throw Exception('Tanggal jadwal obat tidak tersedia.');
         }
 
-        return ref.read(profileApiProvider).takeMedication(
+        return ref.read(medicationApiProvider).takeMedication(
               status,
               currentItem.medicationId,
               scheduledDate,

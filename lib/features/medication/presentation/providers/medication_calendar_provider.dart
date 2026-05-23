@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 
-import 'profile_provider.dart';
+import 'medication_api_provider.dart';
 
 class MedicationCalendarRangeQuery {
   final DateTime from;
@@ -36,7 +37,7 @@ class MedicationCalendarRangeQuery {
 final medicationCalendarRangeProvider = FutureProvider.autoDispose
     .family<MedicationCalendarResponse, MedicationCalendarRangeQuery>(
   (ref, query) async {
-    return ref.watch(profileApiProvider).fetchMedicationCalendar(
+    return ref.watch(medicationApiProvider).fetchMedicationCalendar(
           from: query.from,
           to: query.to,
         );

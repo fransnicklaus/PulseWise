@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/utils/medication_status_ui.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
 
 Future<bool?> showMedicationStatusBottomSheet({
   required BuildContext context,
