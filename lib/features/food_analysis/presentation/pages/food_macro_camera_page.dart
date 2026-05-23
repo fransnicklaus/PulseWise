@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_macro_analysis.dart';
@@ -117,22 +119,22 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
     await _initializeCamera(index: nextIndex);
   }
 
-  Future<void> _captureAndAnalyze() async {
+  bool _validateMealName() {
     final mealName = _foodNameController.text.trim();
     if (mealName.isEmpty) {
       setState(() {
         _errorMessage = 'Nama makanan wajib diisi sebelum analisis.';
       });
       AppToast.warning(context, _errorMessage!);
-      return;
+      return false;
     }
+    return true;
+  }
 
-    final controller = _cameraController;
-    if (controller == null || !controller.value.isInitialized) {
-      AppToast.warning(context, 'Kamera belum siap.');
-      return;
-    }
-    if (_isAnalyzing) return;
+  Future<void> _analyzeImageFile(File imageFile) async {
+    if (!_validateMealName() || _isAnalyzing) return;
+
+    final mealName = _foodNameController.text.trim();
 
     try {
       setState(() {
@@ -140,8 +142,6 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
         _errorMessage = null;
       });
 
-      final photo = await controller.takePicture();
-      final imageFile = File(photo.path);
       final result =
           await ref.read(foodNutritionEstimateApiProvider).estimateNutrition(
                 imageFile: imageFile,
@@ -177,6 +177,68 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     }
+  }
+
+  Future<void> _captureAndAnalyze() async {
+    if (!_validateMealName()) return;
+
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) {
+      AppToast.warning(context, 'Kamera belum siap.');
+      return;
+    }
+    if (_isAnalyzing) return;
+
+    try {
+      final photo = await controller.takePicture();
+      await _analyzeImageFile(File(photo.path));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    if (!_validateMealName() || _isAnalyzing) return;
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+      allowMultiple: false,
+      withData: true,
+    );
+
+    if (picked == null || picked.files.isEmpty) return;
+
+    final selected = picked.files.first;
+    const maxImageBytes = 10 * 1024 * 1024;
+    if (selected.size > maxImageBytes) {
+      if (!mounted) return;
+      AppToast.warning(context, 'Ukuran gambar maksimal 10 MB.');
+      return;
+    }
+
+    String? sourcePath = selected.path;
+    if ((sourcePath == null || sourcePath.isEmpty) && selected.bytes != null) {
+      final tempDir = await getTemporaryDirectory();
+      final fallbackName =
+          selected.name.isEmpty ? 'food_gallery.jpg' : selected.name;
+      final tempFile = File(
+        '${tempDir.path}${Platform.pathSeparator}${DateTime.now().millisecondsSinceEpoch}_$fallbackName',
+      );
+      await tempFile.writeAsBytes(selected.bytes!, flush: true);
+      sourcePath = tempFile.path;
+    }
+
+    if (sourcePath == null || sourcePath.isEmpty) {
+      if (!mounted) return;
+      AppToast.warning(context, 'File gambar tidak valid.');
+      return;
+    }
+
+    await _analyzeImageFile(File(sourcePath));
   }
 
   Widget buildCameraPreview(CameraController controller) {
@@ -588,28 +650,86 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
                       ),
                     ],
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isAnalyzing ? null : _captureAndAnalyze,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE64060),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                    // Container(
+                    //   width: double.infinity,
+                    //   padding: const EdgeInsets.all(14),
+                    //   decoration: BoxDecoration(
+                    //     color: const Color(0xFFFFFBFB),
+                    //     borderRadius: BorderRadius.circular(16),
+                    //     border: Border.all(color: const Color(0xFFFBC8D2)),
+                    //   ),
+                    //   child: const Text(
+                    //     'Pilih cara ambil gambar. Bisa foto langsung dari kamera atau pilih gambar dari galeri.',
+                    //     style: TextStyle(
+                    //       fontSize: 16,
+                    //       fontWeight: FontWeight.w600,
+                    //       color: Color(0xFF475569),
+                    //       height: 1.45,
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _isAnalyzing ? null : _pickFromGallery,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF475569),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text(
+                              'Pilih Galeri',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
-                        icon: const Icon(Icons.camera_alt_rounded),
-                        label: const Text(
-                          'Ambil Foto dan Lihat Hasil',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isAnalyzing || !hasPreview
+                                ? null
+                                : _captureAndAnalyze,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE64060),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            icon: const Icon(Icons.camera_alt_rounded),
+                            label: const Text(
+                              'Ambil Foto',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+                    if (!hasPreview) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Kamera belum tersedia, tapi Anda tetap bisa pilih gambar dari galeri.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                          height: 1.4,
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
