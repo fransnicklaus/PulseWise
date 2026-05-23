@@ -6,7 +6,6 @@ import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.da
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
-import 'package:pulsewise/features/dashboard/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/add_diary_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/riwayat_diari_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/detail_diari_page.dart';
@@ -23,6 +22,7 @@ import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flu
     as patient_ui;
 import 'package:pulsewise/features/dashboard/presentation/pages/print_page.dart';
 import 'package:pulsewise/features/dashboard/presentation/pages/ml_recommendation_history_page.dart';
+import 'package:pulsewise/features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 

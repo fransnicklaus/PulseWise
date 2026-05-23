@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import '../../../../core/widgets/custom_app_bar.dart';
-import '../providers/emergency_contacts_provider.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/emergency_contacts/data/models/emergency_contact_models.dart';
+import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
 
 class ContactsPage extends ConsumerStatefulWidget {
   const ContactsPage({super.key});
@@ -1306,23 +1307,23 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
         final contact = await FlutterContacts.openExternalPick();
         if (contact != null) {
           _applyPickedContact(contact);
-          if (!mounted) return;
-          AppToast.success(context, 'Kontak berhasil dipilih');
+          // if (!mounted) return;
+          // AppToast.success(context, 'Kontak berhasil dipilih');
           return;
         }
       } catch (_) {
         // Some devices/ROMs do not support external contact picker reliably.
       }
 
-      final contact = await _showInAppContactPicker();
-      if (contact == null) {
-        _showMessage('Tidak ada kontak yang dipilih.');
-        return;
-      }
+      // final contact = await _showInAppContactPicker();
+      // if (contact == null) {
+      //   _showMessage('Tidak ada kontak yang dipilih.');
+      //   return;
+      // }
 
-      _applyPickedContact(contact);
-      if (!mounted) return;
-      AppToast.success(context, 'Kontak berhasil dipilih');
+      // _applyPickedContact(contact);
+      // if (!mounted) return;
+      // AppToast.success(context, 'Kontak berhasil dipilih');
     } on MissingPluginException {
       if (!mounted) return;
       AppToast.warning(

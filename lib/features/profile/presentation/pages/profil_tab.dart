@@ -15,7 +15,7 @@ import 'package:pulsewise/features/dashboard/presentation/providers/current_diar
 import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart'
     hide AuthMeUser, PatientProfile;
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/emergency_contacts_provider.dart';
+import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
