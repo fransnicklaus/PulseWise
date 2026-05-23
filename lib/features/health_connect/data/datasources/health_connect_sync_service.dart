@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_health_connect/flutter_health_connect.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/current_diary_provider.dart';
+import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Syncs Health Connect data (exercise, heart rate, sleep) to the backend.
