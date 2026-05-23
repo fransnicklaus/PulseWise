@@ -6,7 +6,7 @@ import 'package:pulsewise/core/data/ml_mapping.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard/presentation/providers/profile_provider.dart';
+import 'package:pulsewise/features/ml_questionnaire/presentation/providers/ml_questionnaire_provider.dart';
 
 class MlQuestionnairePage extends ConsumerStatefulWidget {
   final String token;
@@ -48,7 +48,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
 
     setState(() => _isInitialLoading = true);
     try {
-      final existing = await ref.read(profileApiProvider).fetchMlProfile(
+      final existing = await ref.read(mlQuestionnaireApiProvider).fetchMlProfile(
             token: widget.token,
             patientId: widget.patientId,
           );
@@ -57,8 +57,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
 
       final parsedAnswers = <String, int>{};
       for (final fieldKey in MlMapping.form_mapping) {
-        final rawValue = existing[fieldKey];
-        final parsed = _toIntOrNull(rawValue);
+        final parsed = existing.intAnswerFor(fieldKey);
         if (parsed == null) continue;
 
         final group = MlMapping.getGroupFromFieldKey(fieldKey);
@@ -90,13 +89,6 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
     }
   }
 
-  int? _toIntOrNull(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
-  }
-
   Future<void> _submitMlProfile() async {
     final valid = _formKey.currentState?.validate() ?? false;
     if (!valid || _isSubmitting) return;
@@ -112,7 +104,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
         payload[fieldKey] = answer;
       }
 
-      await ref.read(profileApiProvider).submitMlProfile(
+      await ref.read(mlQuestionnaireApiProvider).submitMlProfile(
             token: widget.token,
             patientId: widget.patientId,
             payload: payload,

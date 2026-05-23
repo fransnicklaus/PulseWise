@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
-import 'package:pulsewise/features/auth/presentation/pages/ml_questionnaire_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
@@ -24,6 +23,7 @@ import 'package:pulsewise/features/medication/presentation/pages/add_pengingat_p
 import 'package:pulsewise/features/medication/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
+import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
