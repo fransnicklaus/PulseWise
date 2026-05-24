@@ -887,6 +887,31 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         child: SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
+                            onPressed: () => context.push('/home/picker-demo'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFB45309),
+                              side: const BorderSide(color: Color(0xFFFCD34D)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.watch_later_outlined,
+                                size: 22),
+                            label: const Text(
+                              'Demo Date & Time Picker',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
                             onPressed: () => context.push('/home/fcm-token'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF0F766E),

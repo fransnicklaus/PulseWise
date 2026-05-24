@@ -22,6 +22,7 @@ import 'package:pulsewise/features/medication/presentation/pages/detail_penginga
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
 import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_page.dart';
+import 'package:pulsewise/features/profile/presentation/pages/date_time_picker_demo_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
@@ -200,6 +201,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'fcm-token',
             builder: (context, state) => const FcmTokenPage(),
+          ),
+          GoRoute(
+            path: 'picker-demo',
+            builder: (context, state) => const DateTimePickerDemoPage(),
           ),
           GoRoute(
             path: 'diary',
