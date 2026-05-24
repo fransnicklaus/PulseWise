@@ -9,6 +9,9 @@ final previousNavIndexProvider = StateProvider<int>((ref) => 0);
 // Used to request opening a specific diary section after navigating to the Diary tab.
 final pendingDiarySectionProvider = StateProvider<String?>((ref) => null);
 
+// Used to show a one-time success toast after redirecting into the Diary tab.
+final pendingDiaryToastMessageProvider = StateProvider<String?>((ref) => null);
+
 // Armed only after an explicit login/auth flow transitions into /home.
 final healthConnectLoginPromptArmedProvider =
     StateProvider<bool>((ref) => false);

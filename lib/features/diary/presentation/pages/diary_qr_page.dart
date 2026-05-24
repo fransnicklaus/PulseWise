@@ -24,21 +24,21 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
         // subtitle: 'Tambahkan kontak darurat baru',
         showBackButton: true,
         onBackPressed: () => context.pop(),
-        action: IconButton(
-          onPressed: () async {
-            final scanned = await context.push<String>('/home/diary-qr/scan');
-            if (!mounted || scanned == null || scanned.isEmpty) return;
-            setState(() => _lastScannedCode = scanned);
-          },
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFFFFE5EA),
-          ),
-          icon: const Icon(
-            Icons.qr_code_scanner,
-            color: Color(0xFFE64060),
-          ),
-          tooltip: 'Scan QR',
-        ),
+        // action: IconButton(
+        //   onPressed: () async {
+        //     final scanned = await context.push<String>('/home/diary-qr/scan');
+        //     if (!mounted || scanned == null || scanned.isEmpty) return;
+        //     setState(() => _lastScannedCode = scanned);
+        //   },
+        //   style: IconButton.styleFrom(
+        //     backgroundColor: const Color(0xFFFFE5EA),
+        //   ),
+        //   icon: const Icon(
+        //     Icons.qr_code_scanner,
+        //     color: Color(0xFFE64060),
+        //   ),
+        //   tooltip: 'Scan QR',
+        // ),
       ),
       body: SafeArea(
         child: Column(

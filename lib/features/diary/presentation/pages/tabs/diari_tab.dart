@@ -18,6 +18,7 @@ class DiariTab extends ConsumerStatefulWidget {
 
 class _DiariTabState extends ConsumerState<DiariTab> {
   bool _isHandlingPendingSection = false;
+  bool _isHandlingPendingToast = false;
 
   @override
   void initState() {
@@ -250,6 +251,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
   @override
   Widget build(BuildContext context) {
     final pendingSection = ref.watch(pendingDiarySectionProvider);
+    final pendingToastMessage = ref.watch(pendingDiaryToastMessageProvider);
     if (pendingSection != null && !_isHandlingPendingSection) {
       _isHandlingPendingSection = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -257,6 +259,19 @@ class _DiariTabState extends ConsumerState<DiariTab> {
         ref.read(pendingDiarySectionProvider.notifier).state = null;
         await _openSectionModal(pendingSection);
         _isHandlingPendingSection = false;
+      });
+    }
+
+    if (pendingToastMessage != null && !_isHandlingPendingToast) {
+      _isHandlingPendingToast = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          _isHandlingPendingToast = false;
+          return;
+        }
+        ref.read(pendingDiaryToastMessageProvider.notifier).state = null;
+        AppToast.success(context, pendingToastMessage);
+        _isHandlingPendingToast = false;
       });
     }
 
@@ -424,7 +439,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                     const SizedBox(width: 10),
                                     GestureDetector(
                                       onTap: () =>
-                                          context.push('/home/diary-qr'),
+                                          context.push('/home/diary-qr/scan'),
                                       child: Container(
                                         width: 48,
                                         height: 48,
