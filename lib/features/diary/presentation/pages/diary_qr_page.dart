@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -12,11 +13,26 @@ class DiaryQrPage extends StatefulWidget {
 
 class _DiaryQrPageState extends State<DiaryQrPage> {
   String? _lastScannedCode;
+  String? _userId;
+  bool _isLoadingUserId = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    final session = await AppSessionStore.readSession(allowEnvFallback: false);
+    if (!mounted) return;
+    setState(() {
+      _userId = (session.userId ?? '').trim();
+      _isLoadingUserId = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    const userId = 'PW-USER-938271';
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
@@ -126,12 +142,37 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: const Color(0xFFE2E8F0)),
                           ),
-                          child: QrImageView(
-                            data: userId,
-                            version: QrVersions.auto,
-                            size: 220,
-                            backgroundColor: Colors.white,
-                          ),
+                          child: _isLoadingUserId
+                              ? const SizedBox(
+                                  width: 220,
+                                  height: 220,
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                )
+                              : (_userId?.isNotEmpty ?? false)
+                                  ? QrImageView(
+                                      data: _userId!,
+                                      version: QrVersions.auto,
+                                      size: 220,
+                                      backgroundColor: Colors.white,
+                                    )
+                                  : const SizedBox(
+                                      width: 220,
+                                      height: 220,
+                                      child: Center(
+                                        child: Text(
+                                          'User ID tidak tersedia.\nSilakan login ulang.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                         ),
                         const SizedBox(height: 16),
                         const Text(
@@ -144,7 +185,11 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
                         ),
                         const SizedBox(height: 4),
                         SelectableText(
-                          userId,
+                          _isLoadingUserId
+                              ? 'Memuat userId...'
+                              : ((_userId?.isNotEmpty ?? false)
+                                  ? _userId!
+                                  : 'User ID tidak tersedia'),
                           style: const TextStyle(
                             color: Color(0xFF0F172A),
                             fontSize: 18,

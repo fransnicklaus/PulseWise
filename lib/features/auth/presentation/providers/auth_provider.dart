@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -62,6 +63,7 @@ class AuthState {
   final String? error;
   final String? token;
   final String? userId;
+  final String role;
   final bool isAuthenticated;
 
   AuthState({
@@ -69,6 +71,7 @@ class AuthState {
     this.error,
     this.token,
     this.userId,
+    this.role = AppRoles.patient,
     this.isAuthenticated = false,
   });
 
@@ -77,6 +80,7 @@ class AuthState {
     String? error,
     String? token,
     String? userId,
+    String? role,
     bool? isAuthenticated,
   }) {
     return AuthState(
@@ -84,6 +88,7 @@ class AuthState {
       error: error,
       token: token ?? this.token,
       userId: userId ?? this.userId,
+      role: role ?? this.role,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
     );
   }
@@ -114,7 +119,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -133,8 +137,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         throw Exception('Token tidak ditemukan pada respons login');
       }
       final userId = _extractUserId(responseData);
+      final role = _extractRole(responseData);
 
-      await AppSessionStore.saveSession(token: token, userId: userId);
+      await AppSessionStore.saveSession(
+        token: token,
+        userId: userId,
+        role: role,
+      );
       await _syncFcmTokenForCurrentSession('login');
 
       state = state.copyWith(
@@ -142,6 +151,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: null,
         token: token,
         userId: userId,
+        role: role,
         isAuthenticated: true,
       );
     } on DioException catch (e) {
@@ -276,7 +286,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -340,7 +349,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -383,7 +391,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> resendEmailVerificationOtp(String email) async {
-
     final baseUrl = resolveApiBaseUrl();
 
     final dio = _buildDio(baseUrl);
@@ -405,16 +412,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String confirmNewPassword,
   }) async {
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
 
-      final token =
-          (await AppSessionStore.readToken(allowEnvFallback: false) ??
-                  state.token ??
-                  '')
-              .trim();
+      final token = (await AppSessionStore.readToken(allowEnvFallback: false) ??
+              state.token ??
+              '')
+          .trim();
       if (token.trim().isEmpty) {
         throw Exception('Bearer token tidak ditemukan. Silakan login ulang.');
       }
@@ -454,7 +459,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
   }) async {
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -482,7 +486,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String otp,
   }) async {
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -511,7 +514,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String confirmNewPassword,
   }) async {
     try {
-
       final baseUrl = resolveApiBaseUrl();
 
       final dio = _buildDio(baseUrl);
@@ -543,7 +545,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String idToken,
     required String role,
   }) async {
-
     final baseUrl = resolveApiBaseUrl();
 
     final dio = _buildDio(baseUrl);
@@ -575,8 +576,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final userId = _extractUserId(body) ?? _extractUserId(data);
+      final resolvedRole = _extractRole(body);
 
-      await AppSessionStore.saveSession(token: token, userId: userId);
+      await AppSessionStore.saveSession(
+        token: token,
+        userId: userId,
+        role: resolvedRole,
+      );
       await _syncFcmTokenForCurrentSession('google_home');
 
       _logGoogle('Session saved, auth success');
@@ -586,7 +592,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         message: message,
         token: token,
         userId: userId,
-        role: role,
+        role: resolvedRole,
         idToken: idToken,
       );
     }
@@ -610,7 +616,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         firstName: (googleProfile['firstName'] ?? '').toString(),
         lastName: (googleProfile['lastName'] ?? '').toString(),
         avatarPhoto: (googleProfile['avatarPhoto'] ?? '').toString(),
-        role: (data['role'] ?? role).toString(),
+        role: _extractRole(body),
         idToken: idToken,
       );
     }
@@ -621,7 +627,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         nextStep: GoogleAuthNextStep.verifyOtp,
         message: message,
         email: (data['email'] ?? '').toString(),
-        role: (data['role'] ?? role).toString(),
+        role: _extractRole(body),
         idToken: idToken,
       );
     }
@@ -741,6 +747,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return null;
   }
 
+  String _extractRole(Map<String, dynamic> json) {
+    const roleKeys = ['role', 'userRole', 'user_role'];
+
+    String? fromMap(Map<String, dynamic> map) {
+      for (final key in roleKeys) {
+        final value = map[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return value;
+        }
+      }
+      return null;
+    }
+
+    final rootRole = fromMap(json);
+    if (rootRole != null) return normalizeAppRole(rootRole);
+
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      final dataRole = fromMap(data);
+      if (dataRole != null) return normalizeAppRole(dataRole);
+
+      final user = data['user'];
+      if (user is Map<String, dynamic>) {
+        final userRole = fromMap(user);
+        if (userRole != null) return normalizeAppRole(userRole);
+      }
+    }
+
+    return AppRoles.patient;
+  }
+
   String _extractErrorMessage(DioException e) {
     final data = e.response?.data;
     if (data is Map<String, dynamic>) {
@@ -753,4 +790,3 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return 'Login gagal. Periksa email dan kata sandi.';
   }
 }
-

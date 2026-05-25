@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
@@ -24,6 +26,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     debugPrint('[LoginPage][Google] $message');
   }
 
+  void _navigateToRoleHome(String? role) {
+    if (!mounted) return;
+
+    final normalizedRole = normalizeAppRole(role);
+    if (normalizedRole == AppRoles.doctor) {
+      ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      context.go(homeRouteForRole(normalizedRole));
+      return;
+    }
+
+    ref.read(previousNavIndexProvider.notifier).state = 0;
+    ref.read(dashboardNavIndexProvider.notifier).state = 0;
+    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+    ref.invalidate(authMeProvider);
+    ref.invalidate(patientProfileProvider);
+    context.go(homeRouteForRole(normalizedRole));
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -40,13 +61,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       final authState = ref.read(authProvider);
       if (authState.isAuthenticated) {
-        ref.read(previousNavIndexProvider.notifier).state = 0;
-        ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-        // Invalidate profile-related providers so they refetch with the new token
-        ref.invalidate(authMeProvider);
-        ref.invalidate(patientProfileProvider);
-        context.go('/home');
+        _navigateToRoleHome(authState.role);
       } else if (authState.error != null && authState.error!.isNotEmpty) {
         AppToast.error(context, authState.error!);
       }
@@ -75,14 +90,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (result.nextStep == GoogleAuthNextStep.home &&
         authState.isAuthenticated) {
-      ref.read(previousNavIndexProvider.notifier).state = 0;
-      ref.read(dashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-      // Force refetch of auth/me and profile after Google login
-      ref.invalidate(authMeProvider);
-      ref.invalidate(patientProfileProvider);
-      _logGoogleUi('Navigation to /home');
-      context.go('/home');
+      _logGoogleUi(
+        'Navigation to ${homeRouteForRole(result.role)} for role=${result.role}',
+      );
+      _navigateToRoleHome(result.role);
       return;
     }
 

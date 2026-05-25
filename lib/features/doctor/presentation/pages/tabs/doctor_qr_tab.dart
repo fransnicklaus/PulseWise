@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,18 +6,22 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/core/widgets/custom_app_bar.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/diary/presentation/providers/dashboard_pairing_session_provider.dart';
+import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
+import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart'
+    as shell;
 
-class QrScannerPage extends ConsumerStatefulWidget {
-  const QrScannerPage({super.key});
+class DoctorQrTab extends ConsumerStatefulWidget {
+  const DoctorQrTab({super.key});
 
   @override
-  ConsumerState<QrScannerPage> createState() => _QrScannerPageState();
+  ConsumerState<DoctorQrTab> createState() => _DoctorQrTabState();
 }
 
-class _QrScannerPageState extends ConsumerState<QrScannerPage> {
+class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
+  static final RegExp _uuidRegex = RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
+  );
+
   final MobileScannerController _controller = MobileScannerController(
     autoStart: false,
     detectionSpeed: DetectionSpeed.noDuplicates,
@@ -26,19 +29,11 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
   );
 
   bool _handled = false;
-  bool _isConfirming = false;
+  bool _isResolvingPatient = false;
   bool _isRestartingScanner = false;
   bool _isCameraRunning = false;
   bool _isSyncingCamera = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      unawaited(_setCameraRunning(true));
-    });
-  }
+  bool? _lastShouldRunCamera;
 
   @override
   void dispose() {
@@ -47,9 +42,18 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
     super.dispose();
   }
 
+  void _syncCameraState(bool shouldRunCamera) {
+    if (_lastShouldRunCamera == shouldRunCamera) return;
+    _lastShouldRunCamera = shouldRunCamera;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_setCameraRunning(shouldRunCamera));
+    });
+  }
+
   Future<void> _setCameraRunning(bool shouldRunCamera) async {
     if (_isSyncingCamera) return;
-    if (_isCameraRunning == shouldRunCamera) return;
+    if (shouldRunCamera == _isCameraRunning) return;
 
     _isSyncingCamera = true;
     try {
@@ -67,112 +71,86 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_handled || _isConfirming) return;
+    if (_handled || _isResolvingPatient) return;
 
-    final code = capture.barcodes.firstOrNull?.rawValue?.trim();
-    if (code == null || code.isEmpty) return;
+    final rawValue = capture.barcodes.firstOrNull?.rawValue?.trim() ?? '';
+    if (rawValue.isEmpty) return;
+
+    if (!_uuidRegex.hasMatch(rawValue)) {
+      AppToast.warning(context, 'QR pasien tidak valid.');
+      unawaited(_restartScanner());
+      return;
+    }
 
     _handled = true;
-    unawaited(_confirmPairing(code));
+    unawaited(_openPatientDashboard(rawValue));
   }
 
   Future<void> _restartScanner() async {
-    if (_isRestartingScanner || _isConfirming) return;
+    if (_isRestartingScanner || _isResolvingPatient) return;
     _isRestartingScanner = true;
     try {
-      await _setCameraRunning(false);
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      await _setCameraRunning(true);
+      await _controller.stop();
+      _isCameraRunning = false;
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      await _controller.start();
+      _isCameraRunning = true;
+      if (mounted) {
+        setState(() {
+          _handled = false;
+        });
+      }
     } catch (_) {
-      // The MobileScanner widget reacts to controller.value.error.
+      // MobileScanner will surface controller.value.error.
     } finally {
       _isRestartingScanner = false;
     }
   }
 
-  Future<void> _confirmPairing(String qrPayload) async {
-    final pairingToken = _extractPairingToken(qrPayload);
-    if (pairingToken.isEmpty) {
-      if (!mounted) return;
-      AppToast.warning(context, 'QR pairing tidak valid.');
-      setState(() {
-        _handled = false;
-        _isConfirming = false;
-      });
-      return;
-    }
-
-    setState(() => _isConfirming = true);
-
+  Future<void> _openPatientDashboard(String patientId) async {
+    setState(() => _isResolvingPatient = true);
     try {
-      final message = await ref
-          .read(dashboardPairingSessionApiProvider)
-          .confirmPairing(pairingToken: pairingToken);
+      final summaryResponse = await ref
+          .read(doctorDashboardApiProvider)
+          .fetchPatientSummary(patientId);
+      final summary = summaryResponse.data;
+      if (summary == null) {
+        throw Exception('Data pasien dashboard dokter tidak tersedia.');
+      }
+
+      await _controller.stop();
+      _isCameraRunning = false;
 
       if (!mounted) return;
 
-      await _setCameraRunning(false);
-      if (!mounted) return;
-
-      ref.read(dashboardNavIndexProvider.notifier).state = 2;
-      ref.read(pendingDiaryToastMessageProvider.notifier).state = message;
-      context.go('/home');
+      await context.push(
+        '/doctor/home/patients/$patientId',
+        extra: summary,
+      );
     } catch (error) {
       if (!mounted) return;
       AppToast.error(
         context,
         error.toString().replaceFirst('Exception: ', ''),
       );
-      setState(() {
-        _handled = false;
-        _isConfirming = false;
-      });
-      unawaited(_restartScanner());
-    }
-  }
-
-  String _extractPairingToken(String rawValue) {
-    final normalized = rawValue.trim();
-    if (normalized.isEmpty) return '';
-
-    try {
-      final decoded = jsonDecode(normalized);
-      if (decoded is Map) {
-        final pairingToken = (decoded['pairingToken'] ??
-                decoded['pairing_token'] ??
-                decoded['token'])
-            ?.toString()
-            .trim();
-        if ((pairingToken ?? '').isNotEmpty) {
-          return pairingToken!;
-        }
-      }
-    } catch (_) {
-      // Fallback to URI/plain-string parsing.
-    }
-
-    final uri = Uri.tryParse(normalized);
-    if (uri != null) {
-      for (final key in const ['pairingToken', 'pairing_token', 'token']) {
-        final candidate = uri.queryParameters[key]?.trim() ?? '';
-        if (candidate.isNotEmpty) {
-          return candidate;
-        }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _handled = false;
+          _isResolvingPatient = false;
+        });
       }
     }
-
-    return normalized;
   }
 
   @override
   Widget build(BuildContext context) {
+    final navIndex = ref.watch(shell.doctorDashboardNavIndexProvider);
+    final isActive = navIndex == 2;
+    _syncCameraState(isActive && !_isResolvingPatient);
+
     return Scaffold(
       backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      appBar: CustomAppBar(
-        title: 'Scan QR',
-        onBackPressed: _isConfirming ? null : () => context.pop(),
-      ),
       body: Stack(
         children: [
           Positioned.fill(
@@ -180,13 +158,13 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
               controller: _controller,
               onDetect: _onDetect,
               overlayBuilder: (context, constraints) {
-                return _ScannerOverlay(constraints: constraints);
+                return _DoctorScannerOverlay(constraints: constraints);
               },
               errorBuilder: (context, error, child) {
                 final isPermissionDenied =
                     error.errorCode == MobileScannerErrorCode.permissionDenied;
                 final message = isPermissionDenied
-                    ? 'Izin kamera belum diberikan. Izinkan kamera agar QR bisa dipindai.'
+                    ? 'Izin kamera belum diberikan. Izinkan kamera agar QR pasien bisa dipindai.'
                     : (error.errorDetails?.message?.trim().isNotEmpty ?? false)
                         ? error.errorDetails!.message!
                         : 'Kamera gagal dibuka. Coba lagi.';
@@ -228,7 +206,8 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: _isConfirming ? null : _restartScanner,
+                              onPressed:
+                                  _isResolvingPatient ? null : _restartScanner,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFE64060),
                                 foregroundColor: Colors.white,
@@ -253,7 +232,7 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                onPressed: _isConfirming
+                                onPressed: _isResolvingPatient
                                     ? null
                                     : () => openAppSettings(),
                                 style: OutlinedButton.styleFrom(
@@ -284,35 +263,74 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
               },
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 172,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _ToolbarActionButton(
-                  icon: Icons.flash_on,
-                  onTap: _isConfirming ? null : () => _controller.toggleTorch(),
-                ),
-                _ToolbarActionButton(
-                  icon: Icons.cameraswitch_rounded,
-                  onTap:
-                      _isConfirming ? null : () => _controller.switchCamera(),
-                ),
-              ],
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.42),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Text(
+                      'Scan QR Pasien',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.36),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Text(
+                      'Arahkan kamera ke QR pasien. QR berisi userId pasien dan akan membuka dashboard metrik dokter.',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _DoctorToolbarActionButton(
+                        icon: Icons.flash_on,
+                        onTap: _isResolvingPatient
+                            ? null
+                            : () => _controller.toggleTorch(),
+                      ),
+                      _DoctorToolbarActionButton(
+                        icon: Icons.cameraswitch_rounded,
+                        onTap: _isResolvingPatient
+                            ? null
+                            : () => _controller.switchCamera(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 132),
+                ],
+              ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _ScannerBottomPanel(
-              isBusy: _isConfirming,
-              onShowQrCode: () => context.push('/home/diary-qr'),
-            ),
-          ),
-          if (_isConfirming)
+          if (_isResolvingPatient)
             Positioned.fill(
               child: Container(
                 color: Colors.black.withOpacity(0.55),
@@ -320,12 +338,10 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(
-                        color: Colors.white,
-                      ),
+                      CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 18),
                       Text(
-                        'Menghubungkan dashboard dokter...',
+                        'Membuka dashboard pasien...',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
@@ -344,8 +360,8 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage> {
   }
 }
 
-class _ToolbarActionButton extends StatelessWidget {
-  const _ToolbarActionButton({
+class _DoctorToolbarActionButton extends StatelessWidget {
+  const _DoctorToolbarActionButton({
     required this.icon,
     required this.onTap,
   });
@@ -385,8 +401,8 @@ class _ToolbarActionButton extends StatelessWidget {
   }
 }
 
-class _ScannerOverlay extends StatelessWidget {
-  const _ScannerOverlay({
+class _DoctorScannerOverlay extends StatelessWidget {
+  const _DoctorScannerOverlay({
     required this.constraints,
   });
 
@@ -396,7 +412,7 @@ class _ScannerOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = constraints.maxWidth;
     final frameSize = width * 0.68;
-    final topOffset = MediaQuery.of(context).padding.top + 118;
+    final topOffset = MediaQuery.of(context).padding.top + 180;
 
     return Align(
       alignment: Alignment.topCenter,
@@ -410,34 +426,22 @@ class _ScannerOverlay extends StatelessWidget {
               Positioned(
                 top: 0,
                 left: 0,
-                child: _ScannerCorner(
-                  top: true,
-                  left: true,
-                ),
+                child: _DoctorScannerCorner(top: true, left: true),
               ),
               Positioned(
                 top: 0,
                 right: 0,
-                child: _ScannerCorner(
-                  top: true,
-                  left: false,
-                ),
+                child: _DoctorScannerCorner(top: true, left: false),
               ),
               Positioned(
                 bottom: 0,
                 left: 0,
-                child: _ScannerCorner(
-                  top: false,
-                  left: true,
-                ),
+                child: _DoctorScannerCorner(top: false, left: true),
               ),
               Positioned(
                 bottom: 0,
                 right: 0,
-                child: _ScannerCorner(
-                  top: false,
-                  left: false,
-                ),
+                child: _DoctorScannerCorner(top: false, left: false),
               ),
             ],
           ),
@@ -447,8 +451,8 @@ class _ScannerOverlay extends StatelessWidget {
   }
 }
 
-class _ScannerCorner extends StatelessWidget {
-  const _ScannerCorner({
+class _DoctorScannerCorner extends StatelessWidget {
+  const _DoctorScannerCorner({
     required this.top,
     required this.left,
   });
@@ -475,91 +479,6 @@ class _ScannerCorner extends StatelessWidget {
           right: !left
               ? const BorderSide(color: Color(0xFF475467), width: 4)
               : BorderSide.none,
-        ),
-      ),
-    );
-  }
-}
-
-class _ScannerBottomPanel extends StatelessWidget {
-  const _ScannerBottomPanel({
-    required this.isBusy,
-    required this.onShowQrCode,
-  });
-
-  final bool isBusy;
-  final VoidCallback onShowQrCode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 20,
-            offset: Offset(0, -6),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Container(
-            //   width: 44,
-            //   height: 5,
-            //   decoration: BoxDecoration(
-            //     color: const Color(0xFFE2E8F0),
-            //     borderRadius: BorderRadius.circular(999),
-            //   ),
-            // ),
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: isBusy ? null : onShowQrCode,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.white.withOpacity(0.9),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(
-                    color: const Color(0xFF9E9E9E).withOpacity(0.3),
-                    width: 1.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                icon: const Icon(Icons.qr_code_2_rounded,
-                    color: Color(0xFF101828)),
-                label: const Text(
-                  'Tampilkan QR Kode',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'Arahkan kamera ke QR pairing dashboard dokter untuk menghubungkan sesi dengan cepat.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 14,
-                height: 1.45,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
         ),
       ),
     );

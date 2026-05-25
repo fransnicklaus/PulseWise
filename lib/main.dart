@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -26,7 +27,7 @@ void main() async {
   await initializeDateFormatting('id_ID');
 
   final initialLocation = await _resolveInitialLocation();
-  if (initialLocation == '/home') {
+  if (initialLocation != '/login') {
     await AppFcmService.instance.registerTokenForCurrentSession(
       trigger: 'app_launch',
     );
@@ -43,6 +44,7 @@ Future<String> _resolveInitialLocation() async {
   final session = await AppSessionStore.readSession(allowEnvFallback: false);
   final token = session.token ?? '';
   final userId = session.userId ?? '';
+  final role = session.role;
 
   if (token.isEmpty || userId.isEmpty) {
     return '/login';
@@ -54,7 +56,7 @@ Future<String> _resolveInitialLocation() async {
       await AppSessionStore.clearSession();
       return '/login';
     }
-    return '/home';
+    return homeRouteForRole(role);
   } catch (_) {
     await AppSessionStore.clearSession();
     return '/login';
@@ -105,6 +107,13 @@ class _MyAppState extends State<MyApp> {
     if (currentPath.startsWith('/login')) {
       debugPrint(
         '[ReminderNotification][Router] Still on login flow, keeping payload queued.',
+      );
+      return; 
+    }
+
+    if (currentPath.startsWith('/doctor')) {
+      debugPrint(
+        '[ReminderNotification][Router] Doctor flow active, keeping patient reminder payload queued.',
       );
       return;
     }

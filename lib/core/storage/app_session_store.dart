@@ -1,3 +1,4 @@
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -5,10 +6,12 @@ class AppSession {
   const AppSession({
     this.token,
     this.userId,
+    this.role,
   });
 
   final String? token;
   final String? userId;
+  final String? role;
 
   bool get hasValidSession =>
       (token ?? '').trim().isNotEmpty && (userId ?? '').trim().isNotEmpty;
@@ -19,6 +22,7 @@ class AppSessionStore {
 
   static const tokenPrefsKey = 'auth_token';
   static const userIdPrefsKey = 'auth_user_id';
+  static const rolePrefsKey = 'auth_role';
 
   static Future<AppSession> readSession({
     bool allowEnvFallback = true,
@@ -37,8 +41,19 @@ class AppSessionStore {
       prefs.getString(userIdPrefsKey),
       fallback: allowEnvFallback ? dotenv.env['PATIENT_ID'] : null,
     );
+    final role = normalizeAppRole(
+      _normalizeValue(
+        prefs.getString(rolePrefsKey),
+        fallback: allowEnvFallback
+            ? _firstNonEmpty(
+                dotenv.env['AUTH_ROLE'],
+                dotenv.env['USER_ROLE'],
+              )
+            : null,
+      ),
+    );
 
-    return AppSession(token: token, userId: userId);
+    return AppSession(token: token, userId: userId, role: role);
   }
 
   static Future<String?> readToken({
@@ -51,6 +66,12 @@ class AppSessionStore {
     bool allowEnvFallback = true,
   }) async {
     return (await readSession(allowEnvFallback: allowEnvFallback)).userId;
+  }
+
+  static Future<String?> readRole({
+    bool allowEnvFallback = true,
+  }) async {
+    return (await readSession(allowEnvFallback: allowEnvFallback)).role;
   }
 
   static Future<String> requireToken({
@@ -79,6 +100,7 @@ class AppSessionStore {
   static Future<void> saveSession({
     required String token,
     String? userId,
+    String? role,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenPrefsKey, token);
@@ -86,16 +108,19 @@ class AppSessionStore {
     final normalizedUserId = _normalizeValue(userId);
     if (normalizedUserId == null) {
       await prefs.remove(userIdPrefsKey);
+      await prefs.remove(rolePrefsKey);
       return;
     }
 
     await prefs.setString(userIdPrefsKey, normalizedUserId);
+    await prefs.setString(rolePrefsKey, normalizeAppRole(role));
   }
 
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(tokenPrefsKey);
     await prefs.remove(userIdPrefsKey);
+    await prefs.remove(rolePrefsKey);
   }
 
   static String? _normalizeValue(String? value, {String? fallback}) {

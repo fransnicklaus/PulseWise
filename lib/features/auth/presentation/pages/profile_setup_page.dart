@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -241,7 +242,11 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
     required String token,
     required String userId,
   }) async {
-    await AppSessionStore.saveSession(token: token, userId: userId);
+    await AppSessionStore.saveSession(
+      token: token,
+      userId: userId,
+      role: AppRoles.patient,
+    );
   }
 
   Future<void> _submitProfile() async {

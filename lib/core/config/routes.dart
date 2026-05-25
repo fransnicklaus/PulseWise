@@ -5,6 +5,11 @@ import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.da
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
+import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommendation_history_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/update_doctor_profile_page.dart';
+import 'package:pulsewise/features/doctor_shell/presentation/pages/doctor_home_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/add_diary_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/detail_diari_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/diary_qr_page.dart';
@@ -258,6 +263,39 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               GoRoute(
                 path: 'print',
                 builder: (context, state) => const PrintPage(),
+              ),
+            ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/doctor/home',
+        builder: (context, state) => const DoctorHomePage(),
+        routes: [
+          GoRoute(
+            path: 'update-profile',
+            builder: (context, state) => const UpdateDoctorProfilePage(),
+          ),
+          GoRoute(
+            path: 'patients/:patientId',
+            builder: (context, state) {
+              final patientId = state.pathParameters['patientId'] ?? '';
+              final extra = state.extra;
+              return DoctorPatientDashboardPage(
+                patientId: patientId,
+                initialSummary:
+                    extra is DoctorDashboardPatientSummaryData ? extra : null,
+              );
+            },
+            routes: [
+              GoRoute(
+                path: 'ml-recommendation-history',
+                builder: (context, state) {
+                  final patientId = state.pathParameters['patientId'] ?? '';
+                  return DoctorMlRecommendationHistoryPage(
+                    patientId: patientId,
+                  );
+                },
               ),
             ],
           ),
