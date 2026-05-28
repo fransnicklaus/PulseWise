@@ -95,8 +95,6 @@ class DoctorProfileApi {
   }
 
   Future<void> updateDoctorProfile({
-    required String firstName,
-    required String lastName,
     required String specialization,
     required String licenseNo,
     required String hospitalName,
@@ -107,11 +105,9 @@ class DoctorProfileApi {
     final response = await _dio.put<Map<String, dynamic>>(
       '/doctors/$doctorId/profile',
       data: {
-        'first_name': firstName,
-        'last_name': lastName,
         'specialization': specialization,
-        'license_no': licenseNo,
-        'hospital_name': hospitalName,
+        'licenseNo': licenseNo,
+        'hospitalName': hospitalName,
       },
       options: Options(
         headers: {

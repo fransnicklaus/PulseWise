@@ -6,6 +6,23 @@ class AppRoles {
   static const admin = 'admin';
 }
 
+class AppAuthNextSteps {
+  AppAuthNextSteps._();
+
+  static const home = 'HOME';
+  static const completeRegistration = 'COMPLETE_REGISTRATION';
+  static const verifyOtp = 'VERIFY_OTP';
+  static const waitAdminVerification = 'WAIT_ADMIN_VERIFICATION';
+}
+
+class AppAccountStatuses {
+  AppAccountStatuses._();
+
+  static const pendingAdminVerification = 'pending_admin_verification';
+}
+
+const doctorPendingVerificationRoute = '/doctor/wait-admin-verification';
+
 String normalizeAppRole(String? role) {
   switch ((role ?? '').trim().toLowerCase()) {
     case AppRoles.admin:
@@ -30,6 +47,27 @@ bool isAdminRole(String? role) {
   return normalizeAppRole(role) == AppRoles.admin;
 }
 
+String normalizeAuthNextStep(String? nextStep) {
+  return (nextStep ?? '').trim().toUpperCase();
+}
+
+String normalizeAccountStatus(String? accountStatus) {
+  return (accountStatus ?? '').trim().toLowerCase();
+}
+
+bool isDoctorPendingAdminVerification({
+  String? role,
+  String? nextStep,
+  String? accountStatus,
+}) {
+  if (!isDoctorRole(role)) return false;
+
+  return normalizeAuthNextStep(nextStep) ==
+          AppAuthNextSteps.waitAdminVerification ||
+      normalizeAccountStatus(accountStatus) ==
+          AppAccountStatuses.pendingAdminVerification;
+}
+
 String homeRouteForRole(String? role) {
   switch (normalizeAppRole(role)) {
     case AppRoles.doctor:
@@ -40,4 +78,20 @@ String homeRouteForRole(String? role) {
     default:
       return '/home';
   }
+}
+
+String routeForRoleSession({
+  String? role,
+  String? nextStep,
+  String? accountStatus,
+}) {
+  if (isDoctorPendingAdminVerification(
+    role: role,
+    nextStep: nextStep,
+    accountStatus: accountStatus,
+  )) {
+    return doctorPendingVerificationRoute;
+  }
+
+  return homeRouteForRole(role);
 }

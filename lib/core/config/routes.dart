@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
@@ -11,6 +12,7 @@ import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_pending_verification_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/update_doctor_profile_page.dart';
@@ -298,6 +300,16 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               final doctorId = state.pathParameters['doctorId'] ?? '';
               return AdminDoctorDetailPage(doctorId: doctorId);
             },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: doctorPendingVerificationRoute,
+        builder: (context, state) => const DoctorPendingVerificationPage(),
+        routes: [
+          GoRoute(
+            path: 'update-profile',
+            builder: (context, state) => const UpdateDoctorProfilePage(),
           ),
         ],
       ),

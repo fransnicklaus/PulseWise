@@ -115,7 +115,30 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
         ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
       }
       AppToast.success(context, 'Email berhasil diverifikasi');
-      context.go(homeRouteForRole(normalizedRole));
+      context.go(
+        routeForRoleSession(
+          role: normalizedRole,
+          nextStep: AppAuthNextSteps.home,
+          accountStatus: result.accountStatus,
+        ),
+      );
+      return;
+    }
+
+    if (result.nextStep == GoogleAuthNextStep.waitAdminVerification) {
+      ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      AppToast.info(
+        context,
+        'Email berhasil diverifikasi. Akun dokter Anda sedang menunggu verifikasi admin.',
+      );
+      context.go(
+        routeForRoleSession(
+          role: result.role,
+          nextStep: AppAuthNextSteps.waitAdminVerification,
+          accountStatus: result.accountStatus,
+        ),
+      );
       return;
     }
 

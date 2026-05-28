@@ -16,8 +16,6 @@ class UpdateDoctorProfilePage extends ConsumerStatefulWidget {
 
 class _UpdateDoctorProfilePageState
     extends ConsumerState<UpdateDoctorProfilePage> {
-  final firstNameController = TextEditingController();
-  final lastNameController = TextEditingController();
   final specializationController = TextEditingController();
   final licenseNoController = TextEditingController();
   final hospitalNameController = TextEditingController();
@@ -27,8 +25,6 @@ class _UpdateDoctorProfilePageState
 
   @override
   void dispose() {
-    firstNameController.dispose();
-    lastNameController.dispose();
     specializationController.dispose();
     licenseNoController.dispose();
     hospitalNameController.dispose();
@@ -39,8 +35,6 @@ class _UpdateDoctorProfilePageState
     if (isInitialized) return;
     isInitialized = true;
 
-    firstNameController.text = profile.firstName;
-    lastNameController.text = profile.lastName;
     specializationController.text = profile.specialization;
     licenseNoController.text = profile.licenseNo;
     hospitalNameController.text = profile.hospitalName;
@@ -49,21 +43,9 @@ class _UpdateDoctorProfilePageState
   Future<void> saveChanges() async {
     if (isSaving) return;
 
-    final firstName = firstNameController.text.trim();
-    final lastName = lastNameController.text.trim();
     final specialization = specializationController.text.trim();
     final licenseNo = licenseNoController.text.trim();
     final hospitalName = hospitalNameController.text.trim();
-
-    if (firstName.isEmpty) {
-      AppToast.warning(context, 'Nama depan wajib diisi');
-      return;
-    }
-
-    if (lastName.isEmpty) {
-      AppToast.warning(context, 'Nama belakang wajib diisi');
-      return;
-    }
 
     if (specialization.isEmpty) {
       AppToast.warning(context, 'Spesialisasi wajib diisi');
@@ -83,8 +65,6 @@ class _UpdateDoctorProfilePageState
     setState(() => isSaving = true);
     try {
       await ref.read(doctorProfileApiProvider).updateDoctorProfile(
-            firstName: firstName,
-            lastName: lastName,
             specialization: specialization,
             licenseNo: licenseNo,
             hospitalName: hospitalName,
@@ -138,16 +118,10 @@ class _UpdateDoctorProfilePageState
             children: [
               _buildSectionTitle('Informasi Dokter'),
               const SizedBox(height: 16),
-              _buildTextField(
-                controller: firstNameController,
-                label: 'Nama Depan',
+              _buildReadOnlyField(
+                label: 'Nama Lengkap',
+                value: profile.fullName.isEmpty ? '-' : profile.fullName,
                 icon: Icons.person_outline,
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                controller: lastNameController,
-                label: 'Nama Belakang',
-                icon: Icons.badge_outlined,
               ),
               const SizedBox(height: 20),
               _buildTextField(

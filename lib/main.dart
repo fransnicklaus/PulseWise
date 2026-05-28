@@ -45,6 +45,8 @@ Future<String> _resolveInitialLocation() async {
   final token = session.token ?? '';
   final userId = session.userId ?? '';
   final role = session.role;
+  final nextStep = session.nextStep;
+  final accountStatus = session.accountStatus;
 
   if (token.isEmpty || userId.isEmpty) {
     return '/login';
@@ -56,7 +58,11 @@ Future<String> _resolveInitialLocation() async {
       await AppSessionStore.clearSession();
       return '/login';
     }
-    return homeRouteForRole(role);
+    return routeForRoleSession(
+      role: role,
+      nextStep: nextStep,
+      accountStatus: accountStatus,
+    );
   } catch (_) {
     await AppSessionStore.clearSession();
     return '/login';

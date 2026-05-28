@@ -17,6 +17,7 @@ enum GoogleAuthNextStep {
   home,
   completeRegistration,
   verifyOtp,
+  waitAdminVerification,
   unknown,
 }
 
@@ -33,6 +34,8 @@ class GoogleAuthFlowResult {
   final String? firstName;
   final String? lastName;
   final String? avatarPhoto;
+  final String? accountStatus;
+  final bool restrictedAccess;
 
   const GoogleAuthFlowResult({
     required this.success,
@@ -47,6 +50,8 @@ class GoogleAuthFlowResult {
     this.firstName,
     this.lastName,
     this.avatarPhoto,
+    this.accountStatus,
+    this.restrictedAccess = false,
   });
 
   factory GoogleAuthFlowResult.error(String message) {
@@ -64,6 +69,9 @@ class AuthState {
   final String? token;
   final String? userId;
   final String role;
+  final String? nextStep;
+  final String? accountStatus;
+  final bool restrictedAccess;
   final bool isAuthenticated;
 
   AuthState({
@@ -72,6 +80,9 @@ class AuthState {
     this.token,
     this.userId,
     this.role = AppRoles.patient,
+    this.nextStep,
+    this.accountStatus,
+    this.restrictedAccess = false,
     this.isAuthenticated = false,
   });
 
@@ -81,6 +92,9 @@ class AuthState {
     String? token,
     String? userId,
     String? role,
+    String? nextStep,
+    String? accountStatus,
+    bool? restrictedAccess,
     bool? isAuthenticated,
   }) {
     return AuthState(
@@ -89,6 +103,9 @@ class AuthState {
       token: token ?? this.token,
       userId: userId ?? this.userId,
       role: role ?? this.role,
+      nextStep: nextStep,
+      accountStatus: accountStatus,
+      restrictedAccess: restrictedAccess ?? this.restrictedAccess,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
     );
   }
@@ -138,11 +155,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       final userId = _extractUserId(responseData);
       final role = _extractRole(responseData);
+      final nextStep = _extractNextStep(responseData);
+      final accountStatus = _extractAccountStatus(responseData);
+      final restrictedAccess = _extractRestrictedAccess(responseData);
 
       await AppSessionStore.saveSession(
         token: token,
         userId: userId,
         role: role,
+        nextStep: nextStep,
+        accountStatus: accountStatus,
       );
       await _syncFcmTokenForCurrentSession('login');
 
@@ -152,19 +174,29 @@ class AuthNotifier extends StateNotifier<AuthState> {
         token: token,
         userId: userId,
         role: role,
-        isAuthenticated: true,
+        nextStep: nextStep,
+        accountStatus: accountStatus,
+        restrictedAccess: restrictedAccess,
+        isAuthenticated:
+            normalizeAuthNextStep(nextStep) == AppAuthNextSteps.home,
       );
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
       state = state.copyWith(
         isLoading: false,
         error: message,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
         isAuthenticated: false,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
         isAuthenticated: false,
       );
     }
@@ -233,6 +265,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: flowResult.success ? null : flowResult.message,
         token: flowResult.token,
         userId: flowResult.userId,
+        role: flowResult.role,
+        nextStep: _googleNextStepToRaw(flowResult.nextStep),
+        accountStatus: flowResult.accountStatus,
+        restrictedAccess: flowResult.restrictedAccess,
         isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
       );
 
@@ -248,6 +284,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         error: errorMessage,
+        accountStatus: null,
+        restrictedAccess: false,
         isAuthenticated: false,
       );
       return GoogleAuthFlowResult.error(errorMessage);
@@ -260,6 +298,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         error: message,
+        accountStatus: null,
+        restrictedAccess: false,
         isAuthenticated: false,
       );
       return GoogleAuthFlowResult.error(message);
@@ -270,6 +310,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(
         isLoading: false,
         error: message,
+        accountStatus: null,
+        restrictedAccess: false,
         isAuthenticated: false,
       );
       return GoogleAuthFlowResult.error(message);
@@ -318,8 +360,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
 
-      state =
-          state.copyWith(isLoading: false, error: null, isAuthenticated: false);
+      state = state.copyWith(
+        isLoading: false,
+        error: null,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
       return GoogleAuthFlowResult(
         success: true,
         nextStep: GoogleAuthNextStep.verifyOtp,
@@ -331,12 +379,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
       state = state.copyWith(
-          isLoading: false, error: message, isAuthenticated: false);
+        isLoading: false,
+        error: message,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
       return GoogleAuthFlowResult.error(message);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
-          isLoading: false, error: message, isAuthenticated: false);
+        isLoading: false,
+        error: message,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
       return GoogleAuthFlowResult.error(message);
     }
   }
@@ -373,6 +433,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: flowResult.success ? null : flowResult.message,
         token: flowResult.token,
         userId: flowResult.userId,
+        role: flowResult.role,
+        nextStep: _googleNextStepToRaw(flowResult.nextStep),
+        accountStatus: flowResult.accountStatus,
+        restrictedAccess: flowResult.restrictedAccess,
         isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
       );
 
@@ -380,12 +444,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
       state = state.copyWith(
-          isLoading: false, error: message, isAuthenticated: false);
+        isLoading: false,
+        error: message,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
       return GoogleAuthFlowResult.error(message);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
-          isLoading: false, error: message, isAuthenticated: false);
+        isLoading: false,
+        error: message,
+        nextStep: null,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
       return GoogleAuthFlowResult.error(message);
     }
   }
@@ -568,6 +644,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final data = (body['data'] as Map<String, dynamic>?) ?? const {};
     final nextStep = _parseGoogleNextStep((data['nextStep'] ?? '').toString());
     final message = (body['message'] ?? '').toString();
+    final resolvedRole = _extractRole(body);
+    final accountStatus = _extractAccountStatus(body);
+    final restrictedAccess = _extractRestrictedAccess(body);
 
     if (nextStep == GoogleAuthNextStep.home) {
       final token = _extractToken(body) ?? _extractToken(data);
@@ -576,12 +655,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
 
       final userId = _extractUserId(body) ?? _extractUserId(data);
-      final resolvedRole = _extractRole(body);
 
       await AppSessionStore.saveSession(
         token: token,
         userId: userId,
         role: resolvedRole,
+        nextStep: AppAuthNextSteps.home,
+        accountStatus: accountStatus,
       );
       await _syncFcmTokenForCurrentSession('google_home');
 
@@ -594,6 +674,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
         userId: userId,
         role: resolvedRole,
         idToken: idToken,
+        accountStatus: accountStatus,
+      );
+    }
+
+    if (nextStep == GoogleAuthNextStep.waitAdminVerification) {
+      final token = _extractToken(body) ?? _extractToken(data);
+      if (token == null || token.isEmpty) {
+        throw Exception(
+          'Token tidak ditemukan pada respons verifikasi dokter Google',
+        );
+      }
+
+      final userId = _extractUserId(body) ?? _extractUserId(data);
+      await AppSessionStore.saveSession(
+        token: token,
+        userId: userId,
+        role: resolvedRole,
+        nextStep: AppAuthNextSteps.waitAdminVerification,
+        accountStatus: accountStatus,
+      );
+
+      return GoogleAuthFlowResult(
+        success: true,
+        nextStep: GoogleAuthNextStep.waitAdminVerification,
+        message: message,
+        token: token,
+        userId: userId,
+        role: resolvedRole,
+        idToken: idToken,
+        accountStatus: accountStatus,
+        restrictedAccess: restrictedAccess,
       );
     }
 
@@ -616,8 +727,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         firstName: (googleProfile['firstName'] ?? '').toString(),
         lastName: (googleProfile['lastName'] ?? '').toString(),
         avatarPhoto: (googleProfile['avatarPhoto'] ?? '').toString(),
-        role: _extractRole(body),
+        role: resolvedRole,
         idToken: idToken,
+        accountStatus: accountStatus,
       );
     }
 
@@ -627,8 +739,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         nextStep: GoogleAuthNextStep.verifyOtp,
         message: message,
         email: (data['email'] ?? '').toString(),
-        role: _extractRole(body),
+        role: resolvedRole,
         idToken: idToken,
+        accountStatus: accountStatus,
       );
     }
 
@@ -643,8 +756,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return GoogleAuthNextStep.completeRegistration;
       case 'VERIFY_OTP':
         return GoogleAuthNextStep.verifyOtp;
+      case 'WAIT_ADMIN_VERIFICATION':
+        return GoogleAuthNextStep.waitAdminVerification;
       default:
         return GoogleAuthNextStep.unknown;
+    }
+  }
+
+  String? _googleNextStepToRaw(GoogleAuthNextStep nextStep) {
+    switch (nextStep) {
+      case GoogleAuthNextStep.home:
+        return AppAuthNextSteps.home;
+      case GoogleAuthNextStep.completeRegistration:
+        return AppAuthNextSteps.completeRegistration;
+      case GoogleAuthNextStep.verifyOtp:
+        return AppAuthNextSteps.verifyOtp;
+      case GoogleAuthNextStep.waitAdminVerification:
+        return AppAuthNextSteps.waitAdminVerification;
+      case GoogleAuthNextStep.unknown:
+        return null;
     }
   }
 
@@ -776,6 +906,75 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     return AppRoles.patient;
+  }
+
+  String? _extractNextStep(Map<String, dynamic> json) {
+    String? fromMap(Map<String, dynamic> map) {
+      final value = map['nextStep'] ?? map['next_step'];
+      if (value is String && value.trim().isNotEmpty) {
+        return normalizeAuthNextStep(value);
+      }
+      return null;
+    }
+
+    final rootNextStep = fromMap(json);
+    if (rootNextStep != null) return rootNextStep;
+
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      final dataNextStep = fromMap(data);
+      if (dataNextStep != null) return dataNextStep;
+    }
+
+    return null;
+  }
+
+  String? _extractAccountStatus(Map<String, dynamic> json) {
+    String? fromMap(Map<String, dynamic> map) {
+      final value = map['accountStatus'] ?? map['account_status'];
+      if (value is String && value.trim().isNotEmpty) {
+        return normalizeAccountStatus(value);
+      }
+      return null;
+    }
+
+    final rootStatus = fromMap(json);
+    if (rootStatus != null) return rootStatus;
+
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      final dataStatus = fromMap(data);
+      if (dataStatus != null) return dataStatus;
+
+      final user = data['user'];
+      if (user is Map<String, dynamic>) {
+        final userStatus = fromMap(user);
+        if (userStatus != null) return userStatus;
+      }
+    }
+
+    return null;
+  }
+
+  bool _extractRestrictedAccess(Map<String, dynamic> json) {
+    bool? fromMap(Map<String, dynamic> map) {
+      final value = map['restrictedAccess'] ?? map['restricted_access'];
+      if (value is bool) {
+        return value;
+      }
+      return null;
+    }
+
+    final rootRestricted = fromMap(json);
+    if (rootRestricted != null) return rootRestricted;
+
+    final data = json['data'];
+    if (data is Map<String, dynamic>) {
+      final dataRestricted = fromMap(data);
+      if (dataRestricted != null) return dataRestricted;
+    }
+
+    return false;
   }
 
   String _extractErrorMessage(DioException e) {

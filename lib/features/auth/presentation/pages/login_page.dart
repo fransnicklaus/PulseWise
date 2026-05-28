@@ -27,21 +27,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     debugPrint('[LoginPage][Google] $message');
   }
 
-  void _navigateToRoleHome(String? role) {
+  void _navigateAfterLogin({
+    required String? role,
+    String? nextStep,
+    String? accountStatus,
+  }) {
     if (!mounted) return;
 
     final normalizedRole = normalizeAppRole(role);
+    final targetRoute = routeForRoleSession(
+      role: normalizedRole,
+      nextStep: nextStep,
+      accountStatus: accountStatus,
+    );
     if (normalizedRole == AppRoles.doctor) {
       ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
       ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      context.go(homeRouteForRole(normalizedRole));
+      context.go(targetRoute);
       return;
     }
 
     if (normalizedRole == AppRoles.admin) {
       ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
       ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      context.go(homeRouteForRole(normalizedRole));
+      context.go(targetRoute);
       return;
     }
 
@@ -50,7 +59,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
     ref.invalidate(authMeProvider);
     ref.invalidate(patientProfileProvider);
-    context.go(homeRouteForRole(normalizedRole));
+    context.go(targetRoute);
   }
 
   @override
@@ -69,7 +78,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       final authState = ref.read(authProvider);
       if (authState.isAuthenticated) {
-        _navigateToRoleHome(authState.role);
+        _navigateAfterLogin(
+          role: authState.role,
+          nextStep: authState.nextStep,
+          accountStatus: authState.accountStatus,
+        );
+      } else if (isDoctorPendingAdminVerification(
+        role: authState.role,
+        nextStep: authState.nextStep,
+        accountStatus: authState.accountStatus,
+      )) {
+        AppToast.info(
+          context,
+          'Akun dokter sedang menunggu verifikasi admin. Lengkapi profil dulu ya.',
+        );
+        _navigateAfterLogin(
+          role: authState.role,
+          nextStep: authState.nextStep,
+          accountStatus: authState.accountStatus,
+        );
       } else if (authState.error != null && authState.error!.isNotEmpty) {
         AppToast.error(context, authState.error!);
       }
@@ -101,7 +128,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _logGoogleUi(
         'Navigation to ${homeRouteForRole(result.role)} for role=${result.role}',
       );
-      _navigateToRoleHome(result.role);
+      _navigateAfterLogin(
+        role: result.role,
+        nextStep: AppAuthNextSteps.home,
+        accountStatus: result.accountStatus,
+      );
+      return;
+    }
+
+    if (result.nextStep == GoogleAuthNextStep.waitAdminVerification) {
+      AppToast.info(
+        context,
+        'Akun dokter sedang menunggu verifikasi admin. Lengkapi profil dulu ya.',
+      );
+      _navigateAfterLogin(
+        role: result.role,
+        nextStep: AppAuthNextSteps.waitAdminVerification,
+        accountStatus: result.accountStatus,
+      );
       return;
     }
 

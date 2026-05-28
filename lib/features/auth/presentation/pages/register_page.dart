@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
@@ -54,8 +55,9 @@ class _RegisterPageState extends State<RegisterPage> {
   int _otpResendCooldown = 0;
   Timer? _otpCooldownTimer;
   bool _googleRegistrationCompleted = false;
+  String _selectedRole = AppRoles.patient;
 
-  String? _registeredPatientId;
+  String? _registeredUserId;
   String _registrationEmail = '';
 
   bool get _isGoogleFlow {
@@ -63,9 +65,14 @@ class _RegisterPageState extends State<RegisterPage> {
         (widget.googleIdToken ?? '').isNotEmpty;
   }
 
+  String get _registrationRole {
+    return _isGoogleFlow ? normalizeAppRole(widget.googleRole) : _selectedRole;
+  }
+
   @override
   void initState() {
     super.initState();
+    _selectedRole = normalizeAppRole(widget.googleRole);
     _firstNameController.text = widget.googleFirstName ?? '';
     _lastNameController.text = widget.googleLastName ?? '';
 
@@ -140,7 +147,34 @@ class _RegisterPageState extends State<RegisterPage> {
     return '';
   }
 
-  Future<String> _registerAndGetPatientId() async {
+  String _extractRoleFromMap(Map<String, dynamic> map) {
+    const roleKeys = ['role', 'userRole', 'user_role'];
+    for (final key in roleKeys) {
+      final value = map[key];
+      if (value is String && value.trim().isNotEmpty) {
+        return normalizeAppRole(value);
+      }
+    }
+    return AppRoles.patient;
+  }
+
+  String? _extractNextStepFromMap(Map<String, dynamic> map) {
+    final value = map['nextStep'] ?? map['next_step'];
+    if (value is String && value.trim().isNotEmpty) {
+      return normalizeAuthNextStep(value);
+    }
+    return null;
+  }
+
+  String? _extractAccountStatusFromMap(Map<String, dynamic> map) {
+    final value = map['accountStatus'] ?? map['account_status'];
+    if (value is String && value.trim().isNotEmpty) {
+      return normalizeAccountStatus(value);
+    }
+    return null;
+  }
+
+  Future<String> _registerAndGetUserId() async {
     final dio = _buildDio();
     final response = await dio.post<Map<String, dynamic>>(
       '/auth/register',
@@ -150,7 +184,7 @@ class _RegisterPageState extends State<RegisterPage> {
         'lastName': _lastNameController.text.trim(),
         'email': _emailController.text.trim(),
         'password': _passwordController.text.trim(),
-        'role': 'patient',
+        'role': _registrationRole,
       },
     );
 
@@ -159,29 +193,29 @@ class _RegisterPageState extends State<RegisterPage> {
       throw Exception((body['message'] ?? 'Registrasi gagal').toString());
     }
 
-    String patientId = '';
+    String userId = '';
     final data = body['data'];
     if (data is Map<String, dynamic>) {
-      patientId = _extractIdFromMap(data);
+      userId = _extractIdFromMap(data);
 
-      if (patientId.isEmpty && data['patient'] is Map<String, dynamic>) {
-        patientId = _extractIdFromMap(data['patient'] as Map<String, dynamic>);
+      if (userId.isEmpty && data['patient'] is Map<String, dynamic>) {
+        userId = _extractIdFromMap(data['patient'] as Map<String, dynamic>);
       }
 
-      if (patientId.isEmpty && data['user'] is Map<String, dynamic>) {
-        patientId = _extractIdFromMap(data['user'] as Map<String, dynamic>);
+      if (userId.isEmpty && data['user'] is Map<String, dynamic>) {
+        userId = _extractIdFromMap(data['user'] as Map<String, dynamic>);
       }
     }
 
-    if (patientId.isEmpty) {
-      patientId = _extractIdFromMap(body);
+    if (userId.isEmpty) {
+      userId = _extractIdFromMap(body);
     }
 
-    if (patientId.isEmpty) {
-      throw Exception('patientId/userId tidak ditemukan pada respons register');
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan pada respons register');
     }
 
-    return patientId;
+    return userId;
   }
 
   Future<void> _sendEmailOtp({required String email}) async {
@@ -213,7 +247,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  Future<String> _loginAndGetBearerToken() async {
+  Future<_SessionData> _loginAndGetSessionData() async {
     final dio = _buildDio();
     final response = await dio.post<Map<String, dynamic>>(
       '/auth/login',
@@ -235,7 +269,41 @@ class _RegisterPageState extends State<RegisterPage> {
       throw Exception('Token login tidak ditemukan pada respons');
     }
 
-    return token;
+    var userId = _extractIdFromMap(body);
+    String role = _registrationRole;
+    String? nextStep = _extractNextStepFromMap(body);
+    String? accountStatus = _extractAccountStatusFromMap(body);
+
+    if (data is Map<String, dynamic>) {
+      if (userId.isEmpty) {
+        userId = _extractIdFromMap(data);
+      }
+
+      role = _extractRoleFromMap(data);
+      nextStep ??= _extractNextStepFromMap(data);
+      accountStatus ??= _extractAccountStatusFromMap(data);
+
+      final user = data['user'];
+      if (user is Map<String, dynamic>) {
+        if (userId.isEmpty) {
+          userId = _extractIdFromMap(user);
+        }
+        role = _extractRoleFromMap(user);
+        accountStatus ??= _extractAccountStatusFromMap(user);
+      }
+    }
+
+    if (userId.isEmpty) {
+      throw Exception('userId tidak ditemukan pada respons login');
+    }
+
+    return _SessionData(
+      token: token,
+      userId: userId,
+      role: role,
+      nextStep: nextStep,
+      accountStatus: accountStatus,
+    );
   }
 
   Future<void> _completeGoogleRegistrationAndPrepareOtp() async {
@@ -252,7 +320,7 @@ class _RegisterPageState extends State<RegisterPage> {
         'username': _usernameController.text.trim(),
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
-        'role': widget.googleRole,
+        'role': _registrationRole,
       },
     );
 
@@ -289,7 +357,7 @@ class _RegisterPageState extends State<RegisterPage> {
       '/auth/oauth/google',
       data: {
         'idToken': idToken,
-        'role': widget.googleRole,
+        'role': _registrationRole,
       },
     );
 
@@ -301,7 +369,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
     final data = (body['data'] as Map<String, dynamic>?) ?? const {};
     final nextStep = (data['nextStep'] ?? '').toString().toUpperCase().trim();
-    if (nextStep != 'HOME') {
+    if (nextStep != AppAuthNextSteps.home &&
+        nextStep != AppAuthNextSteps.waitAdminVerification) {
       throw Exception('Akun belum siap masuk. nextStep=$nextStep');
     }
 
@@ -332,7 +401,17 @@ class _RegisterPageState extends State<RegisterPage> {
       throw Exception('userId/patientId tidak ditemukan pada respons Google');
     }
 
-    return _SessionData(token: token, userId: userId);
+    return _SessionData(
+      token: token,
+      userId: userId,
+      role: _extractRoleFromMap((data['user'] as Map<String, dynamic>?) ?? data),
+      nextStep: nextStep,
+      accountStatus: _extractAccountStatusFromMap(body) ??
+          _extractAccountStatusFromMap(data) ??
+          _extractAccountStatusFromMap(
+            (data['user'] as Map<String, dynamic>?) ?? const {},
+          ),
+    );
   }
 
   void _startOtpCooldown() {
@@ -401,8 +480,8 @@ class _RegisterPageState extends State<RegisterPage> {
           AppToast.success(
               context, 'Registrasi Google selesai, OTP sudah dikirim');
         } else {
-          final patientId = await _registerAndGetPatientId();
-          _registeredPatientId = patientId;
+          final userId = await _registerAndGetUserId();
+          _registeredUserId = userId;
           _registrationEmail = _emailController.text.trim();
           if (!mounted) return;
           AppToast.success(context, 'Registrasi berhasil, OTP sudah dikirim');
@@ -430,16 +509,56 @@ class _RegisterPageState extends State<RegisterPage> {
         if (_isGoogleFlow) {
           session = await _finalizeGoogleAndGetSession();
         } else {
-          final token = await _loginAndGetBearerToken();
-          final patientId = _registeredPatientId;
-          if (patientId == null || patientId.isEmpty) {
+          final loginSession = await _loginAndGetSessionData();
+          final registeredUserId = _registeredUserId;
+          if (registeredUserId == null || registeredUserId.isEmpty) {
             throw Exception('Data akun belum terdaftar. Ulangi registrasi.');
           }
-          session = _SessionData(token: token, userId: patientId);
+          session = _SessionData(
+            token: loginSession.token,
+            userId: loginSession.userId.isEmpty
+                ? registeredUserId
+                : loginSession.userId,
+            role: loginSession.role,
+            nextStep: loginSession.nextStep,
+            accountStatus: loginSession.accountStatus,
+          );
         }
 
         if (!mounted) return;
         setState(() => _isSubmitting = false);
+
+        if (normalizeAppRole(session.role) == AppRoles.doctor) {
+          await AppSessionStore.saveSession(
+            token: session.token,
+            userId: session.userId,
+            role: session.role,
+            nextStep: session.nextStep,
+            accountStatus: session.accountStatus,
+          );
+          if (!mounted) return;
+          if (isDoctorPendingAdminVerification(
+            role: session.role,
+            nextStep: session.nextStep,
+            accountStatus: session.accountStatus,
+          )) {
+            AppToast.info(
+              context,
+              'Email dokter berhasil diverifikasi. Lengkapi profil sambil menunggu verifikasi admin.',
+            );
+          } else {
+            AppToast.success(context, 'Akun dokter berhasil dibuat');
+          }
+          context.go(
+            routeForRoleSession(
+              role: session.role,
+              nextStep: session.nextStep,
+              accountStatus: session.accountStatus,
+            ),
+          );
+          return;
+        }
+
         context.push(
           '/login/register/profile-setup',
           extra: {
@@ -510,12 +629,62 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
+  Widget _buildRoleSelector() {
+    final isDoctor = _selectedRole == AppRoles.doctor;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFD),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _RoleOptionChip(
+              label: 'Pasien',
+              icon: Icons.favorite_outline_rounded,
+              selected: !isDoctor,
+              onTap: () => setState(() => _selectedRole = AppRoles.patient),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _RoleOptionChip(
+              label: 'Dokter',
+              icon: Icons.medical_services_outlined,
+              selected: isDoctor,
+              onTap: () => setState(() => _selectedRole = AppRoles.doctor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStepContent() {
     return switch (_currentStep) {
       0 => Form(
           key: _step1Key,
           child: Column(
             children: [
+              if (!_isGoogleFlow) ...[
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Daftar sebagai',
+                    style: TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _buildRoleSelector(),
+                const SizedBox(height: 12),
+              ],
               TextFormField(
                 controller: _usernameController,
                 style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
@@ -1004,8 +1173,79 @@ class _StepIndicator extends StatelessWidget {
 class _SessionData {
   final String token;
   final String userId;
+  final String role;
+  final String? nextStep;
+  final String? accountStatus;
 
-  const _SessionData({required this.token, required this.userId});
+  const _SessionData({
+    required this.token,
+    required this.userId,
+    this.role = AppRoles.patient,
+    this.nextStep,
+    this.accountStatus,
+  });
+}
+
+class _RoleOptionChip extends StatelessWidget {
+  const _RoleOptionChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE64060) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFE64060).withOpacity(0.18),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: selected ? Colors.white : const Color(0xFF536278),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : const Color(0xFF334155),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _OtpDotField extends StatefulWidget {
