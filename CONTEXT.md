@@ -7,51 +7,76 @@ It describes:
 - the target architecture we want to move toward
 - the rules future refactors should follow
 
-Important: PulseWise is not fully clean architecture yet. This repository is in a transitional state. We are documenting the target architecture now so future refactors can move toward it feature by feature instead of doing one risky rewrite.
+Important: PulseWise is no longer in the old `dashboard/profile_provider.dart` phase. The patient-side refactor has already landed, and the app is now role-aware with both patient and doctor flows. This document should guide future work from that newer baseline, especially because an `admin` role is likely next.
 
 ## Current Reality
 
-The project already uses Flutter + Riverpod + go_router and is partially organized by feature, but most non-auth business logic is still concentrated inside the `dashboard` area.
+The project already uses Flutter + Riverpod + go_router and is now mostly organized by feature.
 
 Today:
-- `lib/features/auth` is already a real feature module.
-- `lib/features/dashboard` is overloaded and currently contains many unrelated concerns.
-- `lib/features/dashboard/presentation/providers/profile_provider.dart` acts as a large shared API/provider hub.
-- many screens outside "profile" still import `profile_provider.dart`
-- shared Dio setup is also currently defined inside `profile_provider.dart`
+- `lib/features/auth` is a shared feature for login / registration / OTP flows.
+- patient flows live under role-neutral patient-owned features such as:
+  - `dashboard_shell`
+  - `home_dashboard`
+  - `profile`
+  - `diary`
+  - `medication`
+  - `ml_questionnaire`
+  - `ml_assessment`
+  - `ml_recommendation`
+  - `reports`
+  - `health_connect`
+  - `emergency_contacts`
+  - `food_analysis`
+- doctor flows now live in:
+  - `lib/features/doctor_shell`
+  - `lib/features/doctor`
+- centralized patient legacy files like `lib/features/dashboard/presentation/providers/profile_provider.dart` are gone.
 
-That means the current structure looks feature-first on the surface, but in practice it is still too centralized.
+That means the codebase is no longer "fake feature-first". It now has real feature ownership for patient and doctor, but it is still early in its multi-role architecture.
 
-## Main Problem To Fix Later
+## Main Architecture Problem To Solve Next
 
-The biggest architectural issue right now is this:
+The main problem is no longer one giant provider file.
 
-- almost every patient-facing API call is routed through `lib/features/dashboard/presentation/providers/profile_provider.dart`
+The next architectural challenge is role growth:
+- patient is implemented
+- doctor is implemented
+- admin is likely next
 
-That file currently mixes responsibilities such as:
-- profile
-- avatar upload
-- auth-me
-- dashboard vitals / quick dashboard
-- ML profile questionnaire
-- ML assessment
-- ML recommendations and recommendation history
-- diary
-- medications / reminders / logs / calendar
+So the main thing future work must protect is:
+- shared auth stays shared
+- each role gets its own shell
+- each role gets its own role-specific feature area
+- patient, doctor, and admin should not drift back into one mixed "dashboard" bucket
 
-This is exactly what we do not want going forward.
+## Current Role Model
+
+Right now the app behaves like this:
+
+- shared auth decides the user role from the login response
+- session stores:
+  - `auth_token`
+  - `auth_user_id`
+  - `auth_role`
+- app startup chooses home by role:
+  - patient -> `/home`
+  - doctor -> `/doctor/home`
+- the doctor app already has its own bottom-nav shell and feature modules
+
+This pattern should be preserved and extended for any new role.
 
 ## Target Architecture
 
-The target is a real feature-first clean architecture:
+The target is a real feature-first, role-aware architecture:
 
 - every feature owns its own folder
 - every feature owns its own providers
 - every feature owns its own API/data access layer
-- `dashboard` stops being a catch-all folder
 - `core` only contains shared cross-feature infrastructure
+- each app role gets its own shell and role-specific entry flow
 
-We are not doing the full refactor yet. From this point on, this is the architecture future work should move toward.
+We are not doing a big rewrite from scratch. From this point on, this is the architecture future work should move toward.
 
 ## Architecture Rules
 
@@ -74,12 +99,13 @@ Another feature should not depend on that feature's presentation provider just t
 Each feature must have its own provider layer.
 
 Examples:
-- `profile` owns profile providers
+- `profile` owns patient profile providers
+- `doctor` owns doctor patient-monitoring providers
 - `diary` owns diary providers
 - `medication` owns medication providers
 - `ml_questionnaire` owns ML questionnaire providers
 - `ml_assessment` owns ML assessment providers
-- `ml_recommendation` owns ML recommendation providers
+- `ml_recommendation` owns patient ML recommendation providers
 
 Rule:
 - do not put unrelated API methods into one giant provider file
@@ -95,18 +121,51 @@ Only truly shared code belongs in `core`, such as:
 - shared UI primitives
 - generic utilities
 
-Important:
-- `dioProvider` should eventually live in `core`, not inside a feature provider file
+Examples already living here:
+- role constants
+- session storage
+- shared Dio / API setup
 
-### 4. Dashboard is a shell, not a domain dump
+### 4. Shells are shells, not domain dumps
 
-The `dashboard` feature should eventually become mostly:
+Shell features should mostly contain:
 - app shell
 - tab scaffolding
-- home composition
-- navigation entry points
+- role home composition
+- role navigation entry points
 
-It should not own the data layer for profile, diary, medication, ML, and other unrelated domains.
+Shells should not own the data layer for unrelated business domains.
+
+Current examples:
+- `dashboard_shell` -> patient shell
+- `doctor_shell` -> doctor shell
+
+Future example:
+- `admin_shell` -> admin shell
+
+### 5. Role boundaries matter
+
+Auth is shared, but role features are not.
+
+Rules:
+- patient-only business logic should not be placed in `doctor`
+- doctor-only business logic should not be placed in patient features
+- future admin logic should not be added into `doctor` or patient features just because it is "also dashboard"
+- if multiple roles need the same low-level helper, move that helper to `core`
+
+### 6. Use role shells as the scaling pattern
+
+For new roles, follow the same structure:
+
+- shared auth resolves the role
+- session persists the role
+- router sends the user to that role's shell
+- that role gets its own feature root
+
+For `admin`, the expected pattern should be:
+- `/admin/home`
+- `features/admin_shell`
+- `features/admin`
 
 ## Recommended Target Folder Structure
 
@@ -115,6 +174,7 @@ lib/
 |-- core/
 |   |-- config/
 |   |-- constants/
+|   |-- data/
 |   |-- network/
 |   |-- storage/
 |   |-- ui/
@@ -136,7 +196,7 @@ lib/
 |   |       |-- providers/
 |   |       `-- widgets/
 |   |
-|   |-- dashboard_shell/
+|   |-- dashboard_shell/        # patient shell
 |   |   |-- data/
 |   |   |-- domain/
 |   |   `-- presentation/
@@ -144,7 +204,7 @@ lib/
 |   |       |-- providers/
 |   |       `-- widgets/
 |   |
-|   |-- home_dashboard/
+|   |-- home_dashboard/         # patient home composition
 |   |   |-- data/
 |   |   |-- domain/
 |   |   `-- presentation/
@@ -153,62 +213,17 @@ lib/
 |   |       `-- widgets/
 |   |
 |   |-- profile/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- emergency_contacts/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- diary/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- medication/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- ml_questionnaire/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- ml_assessment/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- ml_recommendation/
-|   |   |-- data/
-|   |   |-- domain/
-|   |   `-- presentation/
-|   |       |-- pages/
-|   |       |-- providers/
-|   |       `-- widgets/
-|   |
 |   |-- reports/
+|   |-- health_connect/
+|   |-- food_analysis/
+|   |
+|   |-- doctor_shell/
 |   |   |-- data/
 |   |   |-- domain/
 |   |   `-- presentation/
@@ -216,7 +231,29 @@ lib/
 |   |       |-- providers/
 |   |       `-- widgets/
 |   |
-|   `-- health_connect/
+|   |-- doctor/
+|   |   |-- data/
+|   |   |   |-- datasources/
+|   |   |   |-- models/
+|   |   |   `-- repositories/
+|   |   |-- domain/
+|   |   |   |-- entities/
+|   |   |   |-- repositories/
+|   |   |   `-- usecases/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   |-- admin_shell/            # planned next
+|   |   |-- data/
+|   |   |-- domain/
+|   |   `-- presentation/
+|   |       |-- pages/
+|   |       |-- providers/
+|   |       `-- widgets/
+|   |
+|   `-- admin/                  # planned next
 |       |-- data/
 |       |-- domain/
 |       `-- presentation/
@@ -224,28 +261,52 @@ lib/
 |           |-- providers/
 |           `-- widgets/
 |
-|-- injection_container.dart
 `-- main.dart
 ```
 
-This structure is the target direction. We can adjust feature names slightly during the refactor if a better boundary becomes obvious, but the rule stays the same: one feature, one ownership boundary.
+Notes:
+- patient features are not wrapped inside `features/patient/` right now
+- that is acceptable as long as ownership remains clear
+- doctor and future admin should follow the explicit `role_shell + role` pattern
 
-## How Current Code Maps To Future Features
+## How Current Code Maps To Role Boundaries
 
-The current `dashboard` folder should eventually be split roughly like this:
+### Shared
 
-- profile-related pages/providers -> `features/profile`
-- emergency contact pages/providers -> `features/emergency_contacts`
-- diary pages/providers -> `features/diary`
+- auth / login / OTP / register -> `features/auth`
+- routing -> `core/config/routes.dart`
+- role/session/bootstrap -> `core/constants`, `core/storage`, `main.dart`
+
+### Patient-owned
+
+- patient tab shell / app shell -> `features/dashboard_shell`
+- patient home dashboard -> `features/home_dashboard`
+- patient profile -> `features/profile`
+- emergency contacts -> `features/emergency_contacts`
+- diary -> `features/diary`
+- food analysis -> `features/food_analysis`
 - medication reminder pages/providers -> `features/medication`
 - ML questionnaire flow -> `features/ml_questionnaire`
 - ML assessment flow -> `features/ml_assessment`
 - ML recommendation history/detail -> `features/ml_recommendation`
 - report / print pages -> `features/reports`
 - Health Connect integration -> `features/health_connect`
-- tab shell / home shell -> `features/dashboard_shell`
 
-If a screen mostly exists to compose data from multiple features, it can stay in a shell/composition feature, but the underlying providers should still live with their own domains.
+### Doctor-owned
+
+- doctor bottom-nav shell -> `features/doctor_shell`
+- doctor profile -> `features/doctor`
+- doctor QR scan / patient selection -> `features/doctor`
+- doctor patient dashboard -> `features/doctor`
+- doctor prediction + recommendation history -> `features/doctor`
+
+### Planned admin-owned
+
+When admin starts, it should not be mixed into `doctor_shell` or patient shells.
+
+Expected ownership:
+- admin app shell -> `features/admin_shell`
+- admin business pages/providers -> `features/admin`
 
 ## Data Flow We Want
 
@@ -264,21 +325,26 @@ Short version:
 
 Not this:
 
-`random page -> dashboard/profile_provider.dart -> everything`
+`random role page -> some unrelated feature provider -> everything`
 
 ## Current App Notes That Still Matter
 
-These are real implementation details that still matter right now, even before the refactor.
+These are real implementation details that still matter right now.
 
 ### Session keys
 
 SharedPreferences keys currently used across the app:
 - `auth_token`
 - `auth_user_id`
+- `auth_role`
 
 App start logic in `lib/main.dart` uses those keys to choose:
 - `/login`
 - `/home`
+- `/doctor/home`
+
+Future expectation:
+- `/admin/home`
 
 It also clears the session if the JWT is expired.
 
@@ -287,11 +353,15 @@ It also clears the session if the JWT is expired.
 Routing is currently centralized in:
 - `lib/core/config/routes.dart`
 
+Important current role entry paths:
+- patient -> `/home`
+- doctor -> `/doctor/home`
+
 Important auth flow paths:
 - `/login/register/profile-setup`
 - `/login/register/ml-questionnaire`
 
-For now, centralized routing is acceptable. The main architectural problem is provider/data ownership, not the route file itself.
+Centralized routing is still acceptable. The main thing to protect is ownership by feature and by role.
 
 ### ML questionnaire mapping
 
@@ -351,36 +421,41 @@ Current core stack in this repository:
 - google_sign_in
 - image_cropper
 - jwt_decoder
+- fl_chart
+- mobile_scanner
 
 ## Refactor Guidance For Future Work
 
-When we start the actual refactor later, follow this order:
+When future role work continues, follow this order:
 
-1. move shared networking setup out of `profile_provider.dart` into `core`
-2. split `profile_provider.dart` by domain responsibility
-3. move pages/widgets/providers into their feature folders
-4. keep refactors incremental and working at every step
-5. do not rewrite the whole app in one pass
+1. keep shared auth and shared infra in `core` / `auth`
+2. add a new role shell before adding lots of role pages
+3. add a role root feature for that role's domain pages/providers
+4. keep feature ownership incremental and working at every step
+5. do not collapse patient, doctor, and admin into one dashboard layer
 
 ## Rules For Future Agents
 
-- do not add new unrelated API methods into `features/dashboard/presentation/providers/profile_provider.dart`
+- do not reintroduce a giant shared provider for unrelated domains
 - prefer creating or using a provider inside the correct feature instead
-- if a new feature is introduced, give it its own folder with its own layers
-- if something is truly shared, move it to `core`, not to `dashboard`
+- if a new role is introduced, give it:
+  - a role shell
+  - a role feature root
+  - a route namespace
+- if something is truly shared, move it to `core`, not to patient or doctor features
 - preserve existing app behavior unless the task explicitly asks for product changes
 
 ## Summary
 
-PulseWise is currently in a transitional architecture.
+PulseWise is now:
+- feature-first for patient flows
+- role-aware for patient and doctor
+- ready to scale to more roles if we stay disciplined
 
-What it is now:
-- partially feature-based
-- still too centralized around `dashboard/profile_provider.dart`
-
-What it should become:
-- truly feature-first
-- clean provider ownership
-- clean data ownership
-- shared infra in `core`
-- one feature folder per domain
+What it should become next:
+- patient remains stable
+- doctor continues inside `doctor_shell` + `doctor`
+- admin should follow the same role-shell pattern
+- shared infra stays in `core`
+- one feature boundary per domain
+- one shell boundary per role
