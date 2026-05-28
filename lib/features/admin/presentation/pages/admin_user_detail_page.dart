@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
@@ -56,7 +57,7 @@ class AdminUserDetailPage extends ConsumerWidget {
   }
 }
 
-class _AdminUserDetailContent extends StatelessWidget {
+class _AdminUserDetailContent extends ConsumerWidget {
   const _AdminUserDetailContent({
     required this.user,
   });
@@ -64,7 +65,7 @@ class _AdminUserDetailContent extends StatelessWidget {
   final AdminUserDetail user;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final doctorProfile = user.doctorProfile;
     final canOpenDoctorDetail =
         doctorProfile != null && doctorProfile.doctorId.trim().isNotEmpty;
@@ -80,12 +81,17 @@ class _AdminUserDetailContent extends StatelessWidget {
           subtitle: 'Data dasar akun yang dipakai admin untuk identifikasi.',
           children: [
             AdminInfoRow(
-                label: 'User ID', value: adminValueOrDash(user.userId)),
+              label: 'User ID',
+              value: adminValueOrDash(user.userId),
+            ),
             AdminInfoRow(
               label: 'Username',
               value: adminValueOrDash(user.username),
             ),
-            AdminInfoRow(label: 'Email', value: adminValueOrDash(user.email)),
+            AdminInfoRow(
+              label: 'Email',
+              value: adminValueOrDash(user.email),
+            ),
             AdminInfoRow(
               label: 'Role utama',
               value: adminRoleLabel(user.role),
@@ -125,6 +131,10 @@ class _AdminUserDetailContent extends StatelessWidget {
             ),
           ],
         ),
+        if (!user.isDoctorUser) ...[
+          const SizedBox(height: 16),
+          _AdminUserActionSection(user: user),
+        ],
         if (user.isDoctorUser) ...[
           const SizedBox(height: 16),
           AdminCalloutCard(
@@ -191,19 +201,208 @@ class _AdminUserDetailContent extends StatelessWidget {
             ],
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _AdminUserActionSection extends ConsumerWidget {
+  const _AdminUserActionSection({
+    required this.user,
+  });
+
+  final AdminUserDetail user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actionState = ref.watch(adminUserStatusActionProvider);
+    final shouldActivate = user.accountStatus != AdminAccountStatuses.active;
+
+    return AdminSectionCard(
+      title: 'Aksi Akun',
+      subtitle:
+          'Gunakan endpoint status pengguna umum hanya untuk akun non-dokter.',
+      children: [
+        Text(
+          shouldActivate
+              ? 'Akun ini bisa diaktifkan kembali dengan status `active`.'
+              : 'Akun ini sedang aktif dan bisa ditangguhkan sementara dengan status `suspended`.',
+          style: const TextStyle(
+            color: AdminPalette.subtext,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            height: 1.5,
+          ),
+        ),
         const SizedBox(height: 16),
-        const AdminCalloutCard(
-          icon: Icons.visibility_outlined,
-          title: 'Termin ini masih read-only',
-          description:
-              'Halaman detail ini baru menampilkan data. Tombol ubah status dan aksi review akan ditambahkan di termin berikutnya.',
-          foregroundColor: Color(0xFF1D4ED8),
-          backgroundColor: Color(0xFFEFF6FF),
-          borderColor: Color(0xFFBFDBFE),
+        AdminActionButton(
+          label: shouldActivate ? 'Aktifkan Akun' : 'Tangguhkan Akun',
+          icon: shouldActivate
+              ? Icons.check_circle_outline_rounded
+              : Icons.pause_circle_outline_rounded,
+          isPrimary: shouldActivate,
+          backgroundColor: shouldActivate ? const Color(0xFF15803D) : null,
+          foregroundColor:
+              shouldActivate ? Colors.white : const Color(0xFFB91C1C),
+          borderColor: shouldActivate
+              ? const Color(0xFF15803D)
+              : const Color(0xFFFCA5A5),
+          isLoading: actionState.isLoading,
+          onPressed: () => _confirmUserStatusChange(
+            context: context,
+            ref: ref,
+            user: user,
+            nextStatus: shouldActivate
+                ? AdminAccountStatuses.active
+                : AdminAccountStatuses.suspended,
+          ),
         ),
       ],
     );
   }
+}
+
+Future<void> _confirmUserStatusChange({
+  required BuildContext context,
+  required WidgetRef ref,
+  required AdminUserDetail user,
+  required String nextStatus,
+}) async {
+  final isActivation = nextStatus == AdminAccountStatuses.active;
+  final confirmed = await _showAdminConfirmationSheet(
+    context: context,
+    title: isActivation ? 'Aktifkan akun ini?' : 'Tangguhkan akun ini?',
+    description: isActivation
+        ? 'Akun ${user.fullName} akan diubah menjadi aktif kembali.'
+        : 'Akun ${user.fullName} akan ditangguhkan sementara sampai admin mengaktifkannya lagi.',
+    confirmLabel: isActivation ? 'Ya, Aktifkan' : 'Ya, Tangguhkan',
+    confirmColor:
+        isActivation ? const Color(0xFF15803D) : const Color(0xFFE11D48),
+  );
+
+  if (confirmed != true) return;
+  if (!context.mounted) return;
+
+  final result = await ref
+      .read(adminUserStatusActionProvider.notifier)
+      .updateStatus(user.userId, nextStatus);
+
+  if (!context.mounted) return;
+  if (result != null) {
+    AppToast.success(
+      context,
+      result.message.isEmpty
+          ? 'Status pengguna berhasil diperbarui'
+          : result.message,
+    );
+    return;
+  }
+
+  final error = ref.read(adminUserStatusActionProvider).error ??
+      'Status pengguna gagal diperbarui';
+  AppToast.error(context, error);
+}
+
+Future<bool?> _showAdminConfirmationSheet({
+  required BuildContext context,
+  required String title,
+  required String description,
+  required String confirmLabel,
+  required Color confirmColor,
+}) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 46,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF475569),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: confirmColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    confirmLabel,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF334155),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _AdminUserHeroCard extends StatelessWidget {

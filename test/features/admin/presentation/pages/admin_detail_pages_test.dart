@@ -10,6 +10,50 @@ import 'package:pulsewise/features/admin/presentation/providers/admin_providers.
 
 void main() {
   group('Admin detail pages', () {
+    testWidgets('renders non-doctor user status action', (tester) async {
+      const userId = 'user-patient-1';
+
+      final userDetail = AdminUserDetail(
+        userId: userId,
+        username: 'patientone',
+        email: 'patient@pulsewise.local',
+        firstName: 'Patient',
+        lastName: 'One',
+        avatarPhoto: null,
+        accountStatus: AdminAccountStatuses.active,
+        isActive: true,
+        emailVerifiedAt: DateTime.parse('2026-05-28T10:00:00.000Z'),
+        createdAt: DateTime.parse('2026-05-27T10:00:00.000Z'),
+        updatedAt: DateTime.parse('2026-05-28T11:00:00.000Z'),
+        role: AdminManagedRoles.patient,
+        roles: const [AdminManagedRoles.patient],
+        doctorProfile: null,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            adminApiProvider.overrideWithValue(
+              _FakeAdminApi(userDetail: userDetail),
+            ),
+          ],
+          child: const MaterialApp(
+            home: AdminUserDetailPage(userId: userId),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Tangguhkan Akun'),
+        300,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aksi Akun'), findsOneWidget);
+      expect(find.text('Tangguhkan Akun'), findsOneWidget);
+    });
+
     testWidgets('renders doctor user detail with review CTA', (tester) async {
       const userId = 'user-doctor-1';
       const doctorId = 'doctor-1';
@@ -113,6 +157,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Tangguhkan Dokter'),
+        300,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Tangguhkan Dokter'), findsOneWidget);
 
       await tester.scrollUntilVisible(
         find.text('Catatan Admin'),

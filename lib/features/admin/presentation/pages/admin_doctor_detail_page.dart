@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
@@ -56,7 +57,7 @@ class AdminDoctorDetailPage extends ConsumerWidget {
   }
 }
 
-class _AdminDoctorDetailContent extends StatelessWidget {
+class _AdminDoctorDetailContent extends ConsumerWidget {
   const _AdminDoctorDetailContent({
     required this.doctor,
   });
@@ -64,7 +65,7 @@ class _AdminDoctorDetailContent extends StatelessWidget {
   final AdminDoctorDetail doctor;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final profile = doctor.doctorProfile;
 
     return ListView(
@@ -73,15 +74,7 @@ class _AdminDoctorDetailContent extends StatelessWidget {
       children: [
         _AdminDoctorHeroCard(doctor: doctor),
         const SizedBox(height: 16),
-        const AdminCalloutCard(
-          icon: Icons.visibility_outlined,
-          title: 'Termin ini masih read-only',
-          description:
-              'Halaman ini baru menampilkan status review dan catatan admin. Tombol approve, reject, suspend, dan reactivate akan ditambahkan di termin berikutnya.',
-          foregroundColor: Color(0xFF1D4ED8),
-          backgroundColor: Color(0xFFEFF6FF),
-          borderColor: Color(0xFFBFDBFE),
-        ),
+        _AdminDoctorActionSection(doctor: doctor),
         const SizedBox(height: 16),
         AdminSectionCard(
           title: 'Status Review',
@@ -138,12 +131,17 @@ class _AdminDoctorDetailContent extends StatelessWidget {
           subtitle: 'Metadata akun user yang terkait dengan profil dokter ini.',
           children: [
             AdminInfoRow(
-                label: 'User ID', value: adminValueOrDash(doctor.userId)),
+              label: 'User ID',
+              value: adminValueOrDash(doctor.userId),
+            ),
             AdminInfoRow(
               label: 'Username',
               value: adminValueOrDash(doctor.username),
             ),
-            AdminInfoRow(label: 'Email', value: adminValueOrDash(doctor.email)),
+            AdminInfoRow(
+              label: 'Email',
+              value: adminValueOrDash(doctor.email),
+            ),
             AdminInfoRow(
               label: 'Semua role',
               value: doctor.roles.isEmpty
@@ -180,6 +178,539 @@ class _AdminDoctorDetailContent extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _AdminDoctorActionSection extends ConsumerWidget {
+  const _AdminDoctorActionSection({
+    required this.doctor,
+  });
+
+  final AdminDoctorDetail doctor;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actionState = ref.watch(adminDoctorReviewActionProvider);
+
+    switch (doctor.accountStatus) {
+      case AdminAccountStatuses.pendingAdminVerification:
+        return AdminSectionCard(
+          title: 'Aksi Review',
+          subtitle:
+              'Akun dokter ini sedang menunggu verifikasi admin. Pilih approve atau reject dengan catatan yang sesuai.',
+          children: [
+            AdminActionButton(
+              label: 'Setujui Dokter',
+              icon: Icons.verified_rounded,
+              isPrimary: true,
+              backgroundColor: const Color(0xFF15803D),
+              foregroundColor: Colors.white,
+              isLoading: actionState.isLoading,
+              onPressed: () => _promptAndApproveDoctor(
+                context: context,
+                ref: ref,
+                doctor: doctor,
+              ),
+            ),
+            const SizedBox(height: 12),
+            AdminActionButton(
+              label: 'Tolak Dokter',
+              icon: Icons.cancel_outlined,
+              foregroundColor: const Color(0xFFB91C1C),
+              borderColor: const Color(0xFFFCA5A5),
+              isLoading: actionState.isLoading,
+              onPressed: () => _promptAndRejectDoctor(
+                context: context,
+                ref: ref,
+                doctor: doctor,
+              ),
+            ),
+          ],
+        );
+      case AdminAccountStatuses.active:
+        return AdminSectionCard(
+          title: 'Aksi Review',
+          subtitle:
+              'Dokter ini sudah aktif. Anda bisa menangguhkan akun bila perlu untuk review lanjutan.',
+          children: [
+            AdminActionButton(
+              label: 'Tangguhkan Dokter',
+              icon: Icons.pause_circle_outline_rounded,
+              foregroundColor: const Color(0xFFB45309),
+              borderColor: const Color(0xFFFCD34D),
+              isLoading: actionState.isLoading,
+              onPressed: () => _promptAndSuspendDoctor(
+                context: context,
+                ref: ref,
+                doctor: doctor,
+              ),
+            ),
+          ],
+        );
+      case AdminAccountStatuses.rejected:
+      case AdminAccountStatuses.suspended:
+        return AdminSectionCard(
+          title: 'Aksi Review',
+          subtitle:
+              'Dokter ini bisa diaktifkan kembali. Backend akan menentukan apakah hasilnya kembali ke `active` atau `pending_admin_verification` sesuai status verifikasi.',
+          children: [
+            AdminActionButton(
+              label: 'Aktifkan Kembali Dokter',
+              icon: Icons.refresh_rounded,
+              isPrimary: true,
+              backgroundColor: const Color(0xFF15803D),
+              foregroundColor: Colors.white,
+              isLoading: actionState.isLoading,
+              onPressed: () => _confirmReactivateDoctor(
+                context: context,
+                ref: ref,
+                doctor: doctor,
+              ),
+            ),
+          ],
+        );
+      default:
+        return const AdminCalloutCard(
+          icon: Icons.info_outline_rounded,
+          title: 'Belum ada aksi untuk status ini',
+          description:
+              'Status dokter saat ini belum memiliki tombol tindakan khusus di panel admin.',
+          foregroundColor: Color(0xFF1D4ED8),
+          backgroundColor: Color(0xFFEFF6FF),
+          borderColor: Color(0xFFBFDBFE),
+        );
+    }
+  }
+}
+
+Future<void> _promptAndApproveDoctor({
+  required BuildContext context,
+  required WidgetRef ref,
+  required AdminDoctorDetail doctor,
+}) async {
+  final note = await _showAdminTextPromptSheet(
+    context: context,
+    title: 'Setujui dokter ini?',
+    description:
+        'Masukkan catatan verifikasi untuk menyetujui akun ${doctor.fullName}.',
+    fieldLabel: 'Catatan verifikasi',
+    confirmLabel: 'Setujui Dokter',
+    confirmColor: const Color(0xFF15803D),
+  );
+
+  if (note == null || !context.mounted) return;
+  final result = await ref
+      .read(adminDoctorReviewActionProvider.notifier)
+      .approveDoctor(doctor.doctorId, note);
+
+  if (!context.mounted) return;
+  if (result != null) {
+    AppToast.success(
+      context,
+      result.message.isEmpty ? 'Dokter berhasil disetujui' : result.message,
+    );
+    return;
+  }
+
+  final error = ref.read(adminDoctorReviewActionProvider).error ??
+      'Dokter gagal disetujui';
+  AppToast.error(context, error);
+}
+
+Future<void> _promptAndRejectDoctor({
+  required BuildContext context,
+  required WidgetRef ref,
+  required AdminDoctorDetail doctor,
+}) async {
+  final reason = await _showAdminTextPromptSheet(
+    context: context,
+    title: 'Tolak dokter ini?',
+    description: 'Masukkan alasan penolakan untuk akun ${doctor.fullName}.',
+    fieldLabel: 'Alasan penolakan',
+    confirmLabel: 'Tolak Dokter',
+    confirmColor: const Color(0xFFB91C1C),
+  );
+
+  if (reason == null || !context.mounted) return;
+  final result = await ref
+      .read(adminDoctorReviewActionProvider.notifier)
+      .rejectDoctor(doctor.doctorId, reason);
+
+  if (!context.mounted) return;
+  if (result != null) {
+    AppToast.success(
+      context,
+      result.message.isEmpty ? 'Dokter berhasil ditolak' : result.message,
+    );
+    return;
+  }
+
+  final error =
+      ref.read(adminDoctorReviewActionProvider).error ?? 'Dokter gagal ditolak';
+  AppToast.error(context, error);
+}
+
+Future<void> _promptAndSuspendDoctor({
+  required BuildContext context,
+  required WidgetRef ref,
+  required AdminDoctorDetail doctor,
+}) async {
+  final note = await _showAdminTextPromptSheet(
+    context: context,
+    title: 'Tangguhkan dokter ini?',
+    description:
+        'Masukkan catatan review sebelum menangguhkan akun ${doctor.fullName}.',
+    fieldLabel: 'Catatan penangguhan',
+    confirmLabel: 'Tangguhkan Dokter',
+    confirmColor: const Color(0xFFB45309),
+  );
+
+  if (note == null || !context.mounted) return;
+  final result = await ref
+      .read(adminDoctorReviewActionProvider.notifier)
+      .suspendDoctor(doctor.doctorId, note);
+
+  if (!context.mounted) return;
+  if (result != null) {
+    AppToast.success(
+      context,
+      result.message.isEmpty ? 'Dokter berhasil ditangguhkan' : result.message,
+    );
+    return;
+  }
+
+  final error = ref.read(adminDoctorReviewActionProvider).error ??
+      'Dokter gagal ditangguhkan';
+  AppToast.error(context, error);
+}
+
+Future<void> _confirmReactivateDoctor({
+  required BuildContext context,
+  required WidgetRef ref,
+  required AdminDoctorDetail doctor,
+}) async {
+  final confirmed = await _showAdminConfirmationSheet(
+    context: context,
+    title: 'Aktifkan kembali dokter ini?',
+    description:
+        'Akun ${doctor.fullName} akan diaktifkan kembali. Backend akan menentukan apakah status akhirnya kembali aktif atau kembali ke antrian review admin.',
+    confirmLabel: 'Ya, Aktifkan Kembali',
+    confirmColor: const Color(0xFF15803D),
+  );
+
+  if (confirmed != true || !context.mounted) return;
+  final result = await ref
+      .read(adminDoctorReviewActionProvider.notifier)
+      .reactivateDoctor(doctor.doctorId);
+
+  if (!context.mounted) return;
+  if (result != null) {
+    AppToast.success(
+      context,
+      result.message.isEmpty
+          ? 'Dokter berhasil diaktifkan kembali'
+          : result.message,
+    );
+    return;
+  }
+
+  final error = ref.read(adminDoctorReviewActionProvider).error ??
+      'Dokter gagal diaktifkan kembali';
+  AppToast.error(context, error);
+}
+
+Future<bool?> _showAdminConfirmationSheet({
+  required BuildContext context,
+  required String title,
+  required String description,
+  required String confirmLabel,
+  required Color confirmColor,
+}) {
+  return showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 46,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF475569),
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: confirmColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    confirmLabel,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF334155),
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Future<String?> _showAdminTextPromptSheet({
+  required BuildContext context,
+  required String title,
+  required String description,
+  required String fieldLabel,
+  required String confirmLabel,
+  required Color confirmColor,
+}) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) {
+      return _AdminTextPromptSheet(
+        title: title,
+        description: description,
+        fieldLabel: fieldLabel,
+        confirmLabel: confirmLabel,
+        confirmColor: confirmColor,
+      );
+    },
+  );
+}
+
+class _AdminTextPromptSheet extends StatefulWidget {
+  const _AdminTextPromptSheet({
+    required this.title,
+    required this.description,
+    required this.fieldLabel,
+    required this.confirmLabel,
+    required this.confirmColor,
+  });
+
+  final String title;
+  final String description;
+  final String fieldLabel;
+  final String confirmLabel;
+  final Color confirmColor;
+
+  @override
+  State<_AdminTextPromptSheet> createState() => _AdminTextPromptSheetState();
+}
+
+class _AdminTextPromptSheetState extends State<_AdminTextPromptSheet> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final value = _controller.text.trim();
+    if (value.isEmpty) {
+      setState(() {
+        _errorText = '${widget.fieldLabel} wajib diisi';
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          12,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              widget.description,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF475569),
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _controller,
+              minLines: 3,
+              maxLines: 5,
+              decoration: InputDecoration(
+                labelText: widget.fieldLabel,
+                errorText: _errorText,
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AdminPalette.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AdminPalette.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide:
+                      BorderSide(color: widget.confirmColor, width: 1.3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.confirmColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  widget.confirmLabel,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF334155),
+                  side: const BorderSide(color: Color(0xFFCBD5E1)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

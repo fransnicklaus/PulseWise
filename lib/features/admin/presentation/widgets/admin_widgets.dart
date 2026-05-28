@@ -643,3 +643,95 @@ class AdminCalloutCard extends StatelessWidget {
     );
   }
 }
+
+class AdminActionButton extends StatelessWidget {
+  const AdminActionButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.isLoading = false,
+    this.isPrimary = false,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.borderColor,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final bool isLoading;
+  final bool isPrimary;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final Color? borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveForeground =
+        foregroundColor ?? (isPrimary ? Colors.white : const Color(0xFF334155));
+    final effectiveBackground =
+        backgroundColor ?? (isPrimary ? AdminPalette.accent : Colors.white);
+    final effectiveBorder = borderColor ??
+        (isPrimary ? effectiveBackground : const Color(0xFFCBD5E1));
+    final child = isLoading
+        ? SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: effectiveForeground,
+            ),
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          );
+
+    if (isPrimary) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: effectiveBackground,
+            foregroundColor: effectiveForeground,
+            elevation: 0,
+            minimumSize: const Size.fromHeight(50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+          child: child,
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: effectiveForeground,
+          side: BorderSide(color: effectiveBorder),
+          minimumSize: const Size.fromHeight(50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
