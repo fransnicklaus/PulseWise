@@ -182,3 +182,74 @@ class DoctorDashboardPatientVitalsResponse {
     );
   }
 }
+
+class DoctorDashboardPagination {
+  const DoctorDashboardPagination({
+    required this.page,
+    required this.limit,
+    required this.totalItems,
+    required this.totalPages,
+  });
+
+  final int page;
+  final int limit;
+  final int totalItems;
+  final int totalPages;
+
+  factory DoctorDashboardPagination.fromJson(Map<String, dynamic> json) {
+    return DoctorDashboardPagination(
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      limit: (json['limit'] as num?)?.toInt() ?? 20,
+      totalItems: (json['totalItems'] as num?)?.toInt() ?? 0,
+      totalPages: (json['totalPages'] as num?)?.toInt() ?? 1,
+    );
+  }
+}
+
+class DoctorDashboardPatientListItem {
+  const DoctorDashboardPatientListItem({
+    required this.patient,
+    required this.latestVitals,
+  });
+
+  final DashboardPatient patient;
+  final DashboardLatestVitals? latestVitals;
+
+  factory DoctorDashboardPatientListItem.fromJson(Map<String, dynamic> json) {
+    return DoctorDashboardPatientListItem(
+      patient: DashboardPatient.fromJson(json),
+      latestVitals: json['latestVitals'] is Map<String, dynamic>
+          ? DashboardLatestVitals.fromJson(
+              json['latestVitals'] as Map<String, dynamic>,
+            )
+          : null,
+    );
+  }
+}
+
+class DoctorDashboardPatientsListResponse {
+  const DoctorDashboardPatientsListResponse({
+    required this.items,
+    required this.pagination,
+  });
+
+  final List<DoctorDashboardPatientListItem> items;
+  final DoctorDashboardPagination pagination;
+
+  factory DoctorDashboardPatientsListResponse.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return DoctorDashboardPatientsListResponse(
+      items: ((json['items'] as List?) ?? const [])
+          .map(
+            (item) => DoctorDashboardPatientListItem.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList(),
+      pagination: DoctorDashboardPagination.fromJson(
+        (json['pagination'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}

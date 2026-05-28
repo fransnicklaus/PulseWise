@@ -15,7 +15,7 @@ class DoctorDashboardPage extends ConsumerWidget {
 
     const tabs = [
       DoctorHomeTab(),
-      DoctorPredictionTab(),
+      DoctorPatientsTab(),
       DoctorQrTab(),
       DoctorDiaryTab(),
       DoctorProfileTab(),
@@ -69,9 +69,9 @@ class DoctorDashboardPage extends ConsumerWidget {
                     label: 'Home',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(FluentIcons.data_pie_24_regular),
-                    activeIcon: Icon(FluentIcons.data_pie_24_filled),
-                    label: 'Prediksi',
+                    icon: Icon(Icons.groups_outlined),
+                    activeIcon: Icon(Icons.groups_rounded),
+                    label: 'Pasien',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.qr_code_2_outlined),

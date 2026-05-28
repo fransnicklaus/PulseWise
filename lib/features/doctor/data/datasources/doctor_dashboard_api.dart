@@ -47,6 +47,37 @@ class DoctorDashboardApi {
     return DoctorDashboardPatientSummaryResponse.fromJson(body);
   }
 
+  Future<DoctorDashboardPatientsListResponse> fetchPatients({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final token = await _readBearerToken();
+    final doctorId = await _readDoctorId();
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/doctors/$doctorId/dashboard/patients',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['success'] != true) {
+      throw Exception(
+        (body?['message'] ?? 'Gagal mengambil daftar pasien dokter').toString(),
+      );
+    }
+
+    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+    return DoctorDashboardPatientsListResponse.fromJson(data);
+  }
+
   Future<DoctorDashboardPatientVitalsResponse> fetchPatientVitals(
     String patientId, {
     String timePeriod = 'last_30_days',
