@@ -1,6 +1,11 @@
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
+import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
+import 'package:pulsewise/features/admin/presentation/pages/admin_doctors_review_page.dart';
+import 'package:pulsewise/features/admin/presentation/pages/admin_user_detail_page.dart';
+import 'package:pulsewise/features/admin/presentation/pages/admin_users_page.dart';
+import 'package:pulsewise/features/admin_shell/presentation/pages/admin_home_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
@@ -265,6 +270,34 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                 builder: (context, state) => const PrintPage(),
               ),
             ],
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/admin/home',
+        builder: (context, state) => const AdminHomePage(),
+        routes: [
+          GoRoute(
+            path: 'users',
+            builder: (context, state) => const AdminUsersPage(),
+          ),
+          GoRoute(
+            path: 'users/:userId',
+            builder: (context, state) {
+              final userId = state.pathParameters['userId'] ?? '';
+              return AdminUserDetailPage(userId: userId);
+            },
+          ),
+          GoRoute(
+            path: 'doctors',
+            builder: (context, state) => const AdminDoctorsReviewPage(),
+          ),
+          GoRoute(
+            path: 'doctors/:doctorId',
+            builder: (context, state) {
+              final doctorId = state.pathParameters['doctorId'] ?? '';
+              return AdminDoctorDetailPage(doctorId: doctorId);
+            },
           ),
         ],
       ),

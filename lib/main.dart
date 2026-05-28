@@ -108,12 +108,12 @@ class _MyAppState extends State<MyApp> {
       debugPrint(
         '[ReminderNotification][Router] Still on login flow, keeping payload queued.',
       );
-      return; 
+      return;
     }
 
-    if (currentPath.startsWith('/doctor')) {
+    if (currentPath.startsWith('/doctor') || currentPath.startsWith('/admin')) {
       debugPrint(
-        '[ReminderNotification][Router] Doctor flow active, keeping patient reminder payload queued.',
+        '[ReminderNotification][Router] Non-patient flow active, keeping patient reminder payload queued.',
       );
       return;
     }
