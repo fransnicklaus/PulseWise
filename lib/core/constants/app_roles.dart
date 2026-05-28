@@ -73,7 +73,7 @@ String homeRouteForRole(String? role) {
     case AppRoles.doctor:
       return '/doctor/home';
     case AppRoles.admin:
-      return '/admin/home';
+      return '/home';
     case AppRoles.patient:
     default:
       return '/home';

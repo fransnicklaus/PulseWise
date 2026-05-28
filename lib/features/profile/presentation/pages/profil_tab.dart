@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
@@ -539,7 +540,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     final profileAsync = ref.watch(patientProfileProvider);
     final authMeAsync = ref.watch(authMeProvider);
     final emergencyState = ref.watch(emergencyContactsProvider);
+    final authMe = authMeAsync.asData?.value;
     final profile = profileAsync.asData?.value;
+    final isAdminViewer = isAdminRole(authMe?.role);
     final isSkeleton = profile == null;
     final isRefreshing = profileAsync.isLoading && profileAsync.hasValue;
 
@@ -646,30 +649,34 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _copyAndPrintAuthToken,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF7C3AED),
-                          side: const BorderSide(color: Color(0xFFC4B5FD)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  if (isAdminViewer) ...[
+                    const SizedBox(height: 12),
+                    _buildAdminPanelButton(),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _copyAndPrintAuthToken,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF7C3AED),
+                            side: const BorderSide(color: Color(0xFFC4B5FD)),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        icon: const Icon(Icons.key_outlined, size: 22),
-                        label: const Text(
-                          'Copy Auth Token',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700),
+                          icon: const Icon(Icons.key_outlined, size: 22),
+                          label: const Text(
+                            'Copy Auth Token',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 12),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -832,107 +839,120 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           const _ActionRow(label: 'Notifikasi'),
                         ],
                       ),
+                      if (isAdminViewer) ...[
+                        const SizedBox(height: 14),
+                        _buildAdminPanelButton(),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _showToastDebugSheet(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side:
+                                    const BorderSide(color: Color(0xFF93C5FD)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.bug_report_outlined,
+                                  size: 22),
+                              label: const Text(
+                                'Debug Toast Tester',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _copyAndPrintAuthToken,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF7C3AED),
+                                side:
+                                    const BorderSide(color: Color(0xFFC4B5FD)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.key_outlined, size: 22),
+                              label: const Text(
+                                'Copy Auth Token',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  context.push('/home/picker-demo'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFB45309),
+                                side:
+                                    const BorderSide(color: Color(0xFFFCD34D)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.watch_later_outlined,
+                                  size: 22),
+                              label: const Text(
+                                'Demo Date & Time Picker',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => context.push('/home/fcm-token'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0F766E),
+                                side:
+                                    const BorderSide(color: Color(0xFF99F6E4)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 22),
+                              label: const Text(
+                                'FCM Device Token',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => _showToastDebugSheet(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF2563EB),
-                              side: const BorderSide(color: Color(0xFF93C5FD)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon:
-                                const Icon(Icons.bug_report_outlined, size: 22),
-                            label: const Text(
-                              'Debug Toast Tester',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _copyAndPrintAuthToken,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF7C3AED),
-                              side: const BorderSide(color: Color(0xFFC4B5FD)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.key_outlined, size: 22),
-                            label: const Text(
-                              'Copy Auth Token',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.push('/home/picker-demo'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFB45309),
-                              side: const BorderSide(color: Color(0xFFFCD34D)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.watch_later_outlined,
-                                size: 22),
-                            label: const Text(
-                              'Demo Date & Time Picker',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () => context.push('/home/fcm-token'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF0F766E),
-                              side: const BorderSide(color: Color(0xFF99F6E4)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(
-                                Icons.notifications_active_outlined,
-                                size: 22),
-                            label: const Text(
-                              'FCM Device Token',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: SizedBox(
@@ -1276,6 +1296,31 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminPanelButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: () => context.push('/admin/home'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF7C3AED),
+            side: const BorderSide(color: Color(0xFFC4B5FD)),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: const Icon(Icons.admin_panel_settings_outlined, size: 22),
+          label: const Text(
+            'Buka Admin Panel',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        ),
       ),
     );
   }

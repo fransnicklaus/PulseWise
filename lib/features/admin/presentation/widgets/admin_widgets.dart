@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 
 class AdminPalette {
   AdminPalette._();
@@ -10,6 +11,11 @@ class AdminPalette {
   static const subtext = Color(0xFF64748B);
   static const accent = Color(0xFFE64060);
   static const accentSoft = Color(0xFFFFEDF1);
+}
+
+enum AdminShellSection {
+  home,
+  users,
 }
 
 class AdminStatusStyle {
@@ -245,7 +251,6 @@ class AdminSummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 160,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AdminPalette.surface,
@@ -731,6 +736,250 @@ class AdminActionButton extends StatelessWidget {
           ),
         ),
         child: child,
+      ),
+    );
+  }
+}
+
+class AdminShellScaffold extends StatelessWidget {
+  const AdminShellScaffold({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.currentSection,
+    required this.body,
+    required this.onHomeTap,
+    required this.onUsersTap,
+    required this.onLogoutTap,
+    this.onBackPressed,
+  });
+
+  final String title;
+  final String subtitle;
+  final AdminShellSection currentSection;
+  final Widget body;
+  final VoidCallback onHomeTap;
+  final VoidCallback onUsersTap;
+  final VoidCallback onLogoutTap;
+  final VoidCallback? onBackPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showSidebar = constraints.maxWidth >= 980;
+        final panel = _AdminSidePanel(
+          currentSection: currentSection,
+          onHomeTap: onHomeTap,
+          onUsersTap: onUsersTap,
+          onLogoutTap: onLogoutTap,
+          showLeadingBorder: showSidebar,
+        );
+
+        return Scaffold(
+          backgroundColor: AdminPalette.background,
+          endDrawer: showSidebar
+              ? null
+              : Drawer(
+                  width: 286,
+                  backgroundColor: AdminPalette.surface,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(28),
+                      bottomLeft: Radius.circular(28),
+                    ),
+                  ),
+                  child: panel,
+                ),
+          appBar: CustomAppBar(
+            title: title,
+            subtitle: subtitle,
+            onBackPressed: onBackPressed,
+            action: showSidebar
+                ? null
+                : Builder(
+                    builder: (actionContext) {
+                      return IconButton(
+                        onPressed: () =>
+                            Scaffold.of(actionContext).openEndDrawer(),
+                        icon: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.menu_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+          body: SafeArea(
+            top: false,
+            child: showSidebar
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: body),
+                      SizedBox(width: 286, child: panel),
+                    ],
+                  )
+                : body,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AdminSidePanel extends StatelessWidget {
+  const _AdminSidePanel({
+    required this.currentSection,
+    required this.onHomeTap,
+    required this.onUsersTap,
+    required this.onLogoutTap,
+    required this.showLeadingBorder,
+  });
+
+  final AdminShellSection currentSection;
+  final VoidCallback onHomeTap;
+  final VoidCallback onUsersTap;
+  final VoidCallback onLogoutTap;
+  final bool showLeadingBorder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AdminPalette.surface,
+        border: showLeadingBorder
+            ? const Border(
+                left: BorderSide(color: AdminPalette.border),
+              )
+            : null,
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Admin Panel',
+                style: TextStyle(
+                  color: AdminPalette.text,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Home, users, dan logout ada di sini.',
+                style: TextStyle(
+                  color: AdminPalette.subtext,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              _AdminSidePanelButton(
+                label: 'Home',
+                icon: Icons.space_dashboard_rounded,
+                isSelected: currentSection == AdminShellSection.home,
+                onTap: onHomeTap,
+              ),
+              const SizedBox(height: 12),
+              _AdminSidePanelButton(
+                label: 'Users',
+                icon: Icons.groups_rounded,
+                isSelected: currentSection == AdminShellSection.users,
+                onTap: onUsersTap,
+              ),
+              const Spacer(),
+              const Divider(color: AdminPalette.border),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onLogoutTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AdminPalette.accent,
+                    side: const BorderSide(color: AdminPalette.accent),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  icon: const Icon(Icons.logout_rounded, size: 20),
+                  label: const Text(
+                    'Keluar',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminSidePanelButton extends StatelessWidget {
+  const _AdminSidePanelButton({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: onTap,
+      child: Ink(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: isSelected ? AdminPalette.accentSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isSelected ? AdminPalette.accent : AdminPalette.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AdminPalette.accent : AdminPalette.subtext,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AdminPalette.accent : AdminPalette.text,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

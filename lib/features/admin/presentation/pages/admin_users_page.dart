@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
+import 'package:pulsewise/features/admin_shell/presentation/providers/admin_dashboard_provider.dart';
+import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 
 class AdminUsersPage extends ConsumerStatefulWidget {
   const AdminUsersPage({super.key});
@@ -19,6 +21,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Timer? _searchDebounce;
+  String? _navigatingUserId;
 
   @override
   void initState() {
@@ -60,17 +63,164 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     });
   }
 
+  Future<void> _openUserDestination(AdminUserListItem item) async {
+    if (_navigatingUserId != null) return;
+
+    if (!item.isDoctorUser) {
+      context.push('/admin/home/users/${item.userId}');
+      return;
+    }
+
+    setState(() => _navigatingUserId = item.userId);
+
+    try {
+      final detail =
+          await ref.read(adminApiProvider).fetchUserDetail(item.userId);
+      final doctorId = detail.doctorProfile?.doctorId.trim() ?? '';
+
+      if (!mounted) return;
+
+      if (doctorId.isNotEmpty) {
+        context.push('/admin/home/doctors/$doctorId');
+        return;
+      }
+
+      AppToast.warning(
+        context,
+        'Profil dokter tidak ditemukan. Membuka detail pengguna biasa.',
+      );
+      context.push('/admin/home/users/${item.userId}');
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _navigatingUserId = null);
+      }
+    }
+  }
+
+  Future<void> _onLogout() async {
+    await ref.read(authProvider.notifier).logout();
+    ref.invalidate(adminOverviewProvider);
+    ref.invalidate(adminPendingDoctorsProvider);
+    ref.invalidate(adminUsersNotifierProvider);
+    ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
+    if (!mounted) return;
+    AppToast.success(context, 'Berhasil keluar dari akun admin');
+    context.go('/login');
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Konfirmasi Keluar',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Apakah Anda yakin ingin keluar dari akun admin ini?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Ya, Keluar',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF334155),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      await _onLogout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(adminUsersNotifierProvider);
 
-    return Scaffold(
-      backgroundColor: AdminPalette.background,
-      appBar: CustomAppBar(
-        title: 'Kelola Pengguna',
-        subtitle: '${state.totalItems} akun terdeteksi',
-        onBackPressed: () => context.pop(),
-      ),
+    return AdminShellScaffold(
+      title: 'Kelola Pengguna',
+      subtitle: '${state.totalItems} akun terdeteksi',
+      currentSection: AdminShellSection.users,
+      onBackPressed: () => context.pop(),
+      onHomeTap: () => context.pushReplacement('/admin/home'),
+      onUsersTap: () {},
+      onLogoutTap: _confirmLogout,
       body: RefreshIndicator(
         color: AdminPalette.accent,
         backgroundColor: Colors.white,
@@ -207,7 +357,11 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               ...state.items.map(
                 (item) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _AdminUserListCard(item: item),
+                  child: _AdminUserListCard(
+                    item: item,
+                    isNavigating: _navigatingUserId == item.userId,
+                    onTap: () => _openUserDestination(item),
+                  ),
                 ),
               ),
             if (state.isLoadingMore)
@@ -286,9 +440,13 @@ class _UsersFilterDropdown extends StatelessWidget {
 class _AdminUserListCard extends StatelessWidget {
   const _AdminUserListCard({
     required this.item,
+    required this.onTap,
+    this.isNavigating = false,
   });
 
   final AdminUserListItem item;
+  final VoidCallback onTap;
+  final bool isNavigating;
 
   @override
   Widget build(BuildContext context) {
@@ -296,7 +454,7 @@ class _AdminUserListCard extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(22),
-      onTap: () => context.push('/admin/home/users/${item.userId}'),
+      onTap: isNavigating ? null : onTap,
       child: Ink(
         width: double.infinity,
         padding: const EdgeInsets.all(18),
@@ -376,10 +534,19 @@ class _AdminUserListCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF94A3B8),
-            ),
+            isNavigating
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.2,
+                      color: AdminPalette.accent,
+                    ),
+                  )
+                : const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF94A3B8),
+                  ),
           ],
         ),
       ),

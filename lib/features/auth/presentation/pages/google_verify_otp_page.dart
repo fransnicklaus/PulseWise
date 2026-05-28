@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/admin_shell/presentation/providers/admin_dashboard_provider.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
@@ -103,16 +102,13 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
 
     if (result.nextStep == GoogleAuthNextStep.home) {
       final normalizedRole = normalizeAppRole(result.role);
-      if (normalizedRole == AppRoles.patient) {
-        ref.read(previousNavIndexProvider.notifier).state = 0;
-        ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-      } else if (normalizedRole == AppRoles.doctor) {
+      if (normalizedRole == AppRoles.doctor) {
         ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
         ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
       } else {
-        ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+        ref.read(previousNavIndexProvider.notifier).state = 0;
+        ref.read(dashboardNavIndexProvider.notifier).state = 0;
+        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
       }
       AppToast.success(context, 'Email berhasil diverifikasi');
       context.go(

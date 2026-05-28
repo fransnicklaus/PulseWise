@@ -5,7 +5,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/admin_shell/presentation/providers/admin_dashboard_provider.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
@@ -42,13 +41,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
     if (normalizedRole == AppRoles.doctor) {
       ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      context.go(targetRoute);
-      return;
-    }
-
-    if (normalizedRole == AppRoles.admin) {
-      ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
       ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
       context.go(targetRoute);
       return;

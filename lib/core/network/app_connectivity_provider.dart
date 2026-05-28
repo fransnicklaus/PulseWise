@@ -97,7 +97,7 @@ class AppConnectivityNotifier extends StateNotifier<AppConnectivityState> {
     _initialize();
   }
 
-  static const _probeInterval = Duration(seconds: 30);
+  static const _probeInterval = Duration(minutes: 3);
 
   final Connectivity _connectivity;
   final Dio _healthDio;
