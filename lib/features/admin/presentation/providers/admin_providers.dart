@@ -9,22 +9,23 @@ final adminApiProvider = Provider<AdminApi>((ref) {
   return AdminApi(ref.watch(apiDioProvider));
 });
 
-final adminOverviewProvider = FutureProvider<AdminOverview>((ref) async {
+final adminOverviewProvider =
+    FutureProvider.autoDispose<AdminOverview>((ref) async {
   return ref.watch(adminApiProvider).fetchOverview();
 });
 
 final adminPendingDoctorsProvider =
-    FutureProvider<List<AdminDoctorReviewItem>>((ref) async {
+    FutureProvider.autoDispose<List<AdminDoctorReviewItem>>((ref) async {
   return ref.watch(adminApiProvider).fetchPendingDoctors();
 });
 
-final adminUserDetailProvider =
-    FutureProvider.family<AdminUserDetail, String>((ref, userId) async {
+final adminUserDetailProvider = FutureProvider.autoDispose
+    .family<AdminUserDetail, String>((ref, userId) async {
   return ref.watch(adminApiProvider).fetchUserDetail(userId);
 });
 
-final adminDoctorDetailProvider =
-    FutureProvider.family<AdminDoctorDetail, String>((ref, doctorId) async {
+final adminDoctorDetailProvider = FutureProvider.autoDispose
+    .family<AdminDoctorDetail, String>((ref, doctorId) async {
   return ref.watch(adminApiProvider).fetchDoctorDetail(doctorId);
 });
 

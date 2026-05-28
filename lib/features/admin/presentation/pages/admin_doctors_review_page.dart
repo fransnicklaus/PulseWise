@@ -141,86 +141,95 @@ class _AdminDoctorReviewCard extends StatelessWidget {
       item.doctorProfile.licenseNo,
     ].where((part) => (part ?? '').trim().isNotEmpty).cast<String>().toList();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AdminPalette.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AdminAvatar(
-            name: item.fullName,
-            photoUrl: item.avatarPhoto,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.fullName,
-                  style: const TextStyle(
-                    color: AdminPalette.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.email,
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (subtitleParts.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => context.push('/admin/home/doctors/${item.doctorId}'),
+      child: Ink(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AdminPalette.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AdminAvatar(
+              name: item.fullName,
+              photoUrl: item.avatarPhoto,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    subtitleParts.join(' | '),
+                    item.fullName,
+                    style: const TextStyle(
+                      color: AdminPalette.text,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item.email,
                     style: const TextStyle(
                       color: AdminPalette.subtext,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      height: 1.45,
+                    ),
+                  ),
+                  if (subtitleParts.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitleParts.join(' | '),
+                      style: const TextStyle(
+                        color: AdminPalette.subtext,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      AdminRoleChip(role: item.role),
+                      AdminStatusChip(status: item.accountStatus),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Masuk antrian ${formatAdminDateTime(item.createdAt)}',
+                    style: const TextStyle(
+                      color: AdminPalette.subtext,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Terakhir diperbarui ${formatAdminDateTime(item.updatedAt)}',
+                    style: const TextStyle(
+                      color: AdminPalette.subtext,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    AdminRoleChip(role: item.role),
-                    AdminStatusChip(status: item.accountStatus),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Masuk antrian ${formatAdminDateTime(item.createdAt)}',
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Terakhir diperbarui ${formatAdminDateTime(item.updatedAt)}',
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF94A3B8),
+            ),
+          ],
+        ),
       ),
     );
   }

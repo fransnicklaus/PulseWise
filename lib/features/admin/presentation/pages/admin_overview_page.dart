@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
+import 'package:pulsewise/features/admin_shell/presentation/providers/admin_dashboard_provider.dart';
+import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 
 class AdminOverviewPage extends ConsumerWidget {
   const AdminOverviewPage({super.key});
@@ -14,6 +17,112 @@ class AdminOverviewPage extends ConsumerWidget {
       ref.refresh(adminOverviewProvider.future),
       ref.refresh(adminPendingDoctorsProvider.future),
     ]);
+  }
+
+  Future<void> _onLogout(BuildContext context, WidgetRef ref) async {
+    await ref.read(authProvider.notifier).logout();
+    ref.invalidate(adminOverviewProvider);
+    ref.invalidate(adminPendingDoctorsProvider);
+    ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
+    if (!context.mounted) return;
+    AppToast.success(context, 'Berhasil keluar dari akun admin');
+    context.go('/login');
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 46,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Konfirmasi Keluar',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Apakah Anda yakin ingin keluar dari akun admin ini?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Ya, Keluar',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF334155),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: const Text(
+                      'Batal',
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      if (!context.mounted) return;
+      await _onLogout(context, ref);
+    }
   }
 
   @override
@@ -90,6 +199,38 @@ class AdminOverviewPage extends ConsumerWidget {
                   'Buka daftar dokter untuk melihat akun yang menunggu verifikasi admin.',
               icon: Icons.medical_services_outlined,
               onTap: () => context.push('/admin/home/doctors'),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Akun Admin',
+              style: TextStyle(
+                color: AdminPalette.text,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _confirmLogout(context, ref),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AdminPalette.accent,
+                  side: const BorderSide(color: AdminPalette.accent),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                icon: const Icon(Icons.logout_rounded, size: 22),
+                label: const Text(
+                  'Keluar',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Row(
@@ -251,7 +392,7 @@ class _PendingDoctorPreviewCard extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(22),
-      onTap: () => context.push('/admin/home/doctors'),
+      onTap: () => context.push('/admin/home/doctors/${item.doctorId}'),
       child: Ink(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(

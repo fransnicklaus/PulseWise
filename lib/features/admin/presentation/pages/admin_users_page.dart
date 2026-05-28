@@ -294,85 +294,94 @@ class _AdminUserListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasUsername = item.username.trim().isNotEmpty;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AdminPalette.border),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AdminAvatar(
-            name: item.fullName,
-            photoUrl: item.avatarPhoto,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.fullName,
-                  style: const TextStyle(
-                    color: AdminPalette.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => context.push('/admin/home/users/${item.userId}'),
+      child: Ink(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AdminPalette.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AdminAvatar(
+              name: item.fullName,
+              photoUrl: item.avatarPhoto,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.fullName,
+                    style: const TextStyle(
+                      color: AdminPalette.text,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  item.email,
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 6),
+                  Text(
+                    item.email,
+                    style: const TextStyle(
+                      color: AdminPalette.subtext,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                if (hasUsername) ...[
+                  if (hasUsername) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      '@${item.username}',
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final role in item.roles) AdminRoleChip(role: role),
+                      AdminStatusChip(status: item.accountStatus),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Dibuat ${formatAdminDateTime(item.createdAt)}',
+                    style: const TextStyle(
+                      color: AdminPalette.subtext,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
-                    '@${item.username}',
+                    'Terakhir diperbarui ${formatAdminDateTime(item.updatedAt)}',
                     style: const TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: AdminPalette.subtext,
                       fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final role in item.roles) AdminRoleChip(role: role),
-                    AdminStatusChip(status: item.accountStatus),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Dibuat ${formatAdminDateTime(item.createdAt)}',
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Terakhir diperbarui ${formatAdminDateTime(item.updatedAt)}',
-                  style: const TextStyle(
-                    color: AdminPalette.subtext,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF94A3B8),
+            ),
+          ],
+        ),
       ),
     );
   }
