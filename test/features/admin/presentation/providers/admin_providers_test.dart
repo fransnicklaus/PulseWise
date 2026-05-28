@@ -82,6 +82,48 @@ void main() {
       expect(notifier.state.role, AdminManagedRoles.doctor);
       expect(notifier.state.page, 1);
     });
+
+    test('allows clearing role and status filters back to all', () async {
+      String? observedRole;
+      String? observedStatus;
+
+      final notifier = AdminUsersNotifier(_FakeAdminApi(
+        fetchUsersHandler: ({
+          required int page,
+          required int limit,
+          required String query,
+          String? role,
+          String? accountStatus,
+        }) async {
+          observedRole = role;
+          observedStatus = accountStatus;
+          return const AdminUsersPageData(
+            items: [],
+            pagination: AdminPagination(
+              page: 1,
+              limit: 20,
+              totalItems: 0,
+              totalPages: 1,
+            ),
+          );
+        },
+      ));
+
+      await notifier.loadUsers(
+        role: AdminManagedRoles.doctor,
+        accountStatus: AdminAccountStatuses.suspended,
+      );
+      await notifier.loadUsers(
+        page: 1,
+        role: null,
+        accountStatus: null,
+      );
+
+      expect(observedRole, isNull);
+      expect(observedStatus, isNull);
+      expect(notifier.state.role, isNull);
+      expect(notifier.state.accountStatus, isNull);
+    });
   });
 
   group('AdminDoctorsReviewNotifier', () {

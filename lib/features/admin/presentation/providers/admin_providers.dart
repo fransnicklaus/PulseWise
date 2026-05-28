@@ -3,6 +3,8 @@ import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/features/admin/data/datasources/admin_api.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 
+const _adminUsersValueNotSet = Object();
+
 final adminApiProvider = Provider<AdminApi>((ref) {
   return AdminApi(ref.watch(apiDioProvider));
 });
@@ -54,18 +56,23 @@ class AdminUsersNotifier extends StateNotifier<AdminUsersState> {
   Future<void> loadUsers({
     int page = 1,
     int? limit,
-    String? query,
-    String? role,
-    String? accountStatus,
+    Object? query = _adminUsersValueNotSet,
+    Object? role = _adminUsersValueNotSet,
+    Object? accountStatus = _adminUsersValueNotSet,
     bool append = false,
   }) async {
     if (append && (state.isLoading || state.isLoadingMore)) return;
     if (!mounted) return;
 
     final nextLimit = limit ?? state.limit;
-    final nextQuery = query ?? state.query;
-    final nextRole = role ?? state.role;
-    final nextAccountStatus = accountStatus ?? state.accountStatus;
+    final nextQuery = identical(query, _adminUsersValueNotSet)
+        ? state.query
+        : (query as String? ?? '');
+    final nextRole =
+        identical(role, _adminUsersValueNotSet) ? state.role : role as String?;
+    final nextAccountStatus = identical(accountStatus, _adminUsersValueNotSet)
+        ? state.accountStatus
+        : accountStatus as String?;
 
     state = state.copyWith(
       isLoading: !append,
@@ -162,28 +169,35 @@ class AdminUsersState {
   AdminUsersState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
-    String? error,
+    Object? error = _adminUsersValueNotSet,
     List<AdminUserListItem>? items,
     int? page,
     int? limit,
     int? totalItems,
     int? totalPages,
-    String? query,
-    String? role,
-    String? accountStatus,
+    Object? query = _adminUsersValueNotSet,
+    Object? role = _adminUsersValueNotSet,
+    Object? accountStatus = _adminUsersValueNotSet,
   }) {
     return AdminUsersState(
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      error: error,
+      error: identical(error, _adminUsersValueNotSet)
+          ? this.error
+          : error as String?,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,
       totalItems: totalItems ?? this.totalItems,
       totalPages: totalPages ?? this.totalPages,
-      query: query ?? this.query,
-      role: role ?? this.role,
-      accountStatus: accountStatus ?? this.accountStatus,
+      query: identical(query, _adminUsersValueNotSet)
+          ? this.query
+          : (query as String? ?? ''),
+      role:
+          identical(role, _adminUsersValueNotSet) ? this.role : role as String?,
+      accountStatus: identical(accountStatus, _adminUsersValueNotSet)
+          ? this.accountStatus
+          : accountStatus as String?,
     );
   }
 }
