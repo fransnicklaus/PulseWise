@@ -28,25 +28,8 @@ class DiaryApi {
   }
 
   Future<DiaryDetail> fetchDiaryDetail(DateTime diaryDate) async {
-    final token = await _readBearerToken();
     final patientId = await _readPatientId();
-    final cleanDiaryDate = diaryDate.toIso8601String().split('T')[0];
-
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$patientId/diaries/by-date?date=$cleanDiaryDate',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null || body['data'] == null) {
-      throw Exception('Respons detail diary tidak valid dari server');
-    }
-
-    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+    return fetchDiaryDetailForUser(patientId, diaryDate);
   }
 
   Future<DiaryDetail?> fetchDiaryDetailByDate(DateTime date) async {
@@ -86,14 +69,57 @@ class DiaryApi {
     return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
+  Future<DiaryDetail> fetchDiaryDetailForUser(
+    String userId,
+    DateTime diaryDate,
+  ) async {
+    final token = await _readBearerToken();
+    final cleanDiaryDate = diaryDate.toIso8601String().split('T')[0];
+
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/users/$userId/diaries/by-date',
+      queryParameters: {
+        'date': cleanDiaryDate,
+      },
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+
+    final body = response.data;
+    if (body == null || body['data'] == null) {
+      throw Exception('Respons detail diary tidak valid dari server');
+    }
+
+    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+  }
+
   Future<DiaryHistoryResponse> fetchDiaryHistory({
     int page = 1,
     int limit = 20,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    final token = await _readBearerToken();
     final userId = await _readUserId();
+    return fetchDiaryHistoryForUser(
+      userId,
+      page: page,
+      limit: limit,
+      startDate: startDate,
+      endDate: endDate,
+    );
+  }
+
+  Future<DiaryHistoryResponse> fetchDiaryHistoryForUser(
+    String userId, {
+    int page = 1,
+    int limit = 20,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    final token = await _readBearerToken();
 
     String formatDate(DateTime date) {
       return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
@@ -130,8 +156,15 @@ class DiaryApi {
   }
 
   Future<Map<String, dynamic>?> fetchSleepDiaryByDate(DateTime date) async {
-    final token = await _readBearerToken();
     final userId = await _readUserId();
+    return fetchSleepDiaryByDateForUser(userId, date);
+  }
+
+  Future<Map<String, dynamic>?> fetchSleepDiaryByDateForUser(
+    String userId,
+    DateTime date,
+  ) async {
+    final token = await _readBearerToken();
     final dateParam =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 

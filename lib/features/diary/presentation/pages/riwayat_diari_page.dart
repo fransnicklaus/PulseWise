@@ -8,7 +8,14 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/expandable_text.dart';
 
 class RiwayatDiariPage extends ConsumerStatefulWidget {
-  const RiwayatDiariPage({super.key});
+  const RiwayatDiariPage({
+    super.key,
+    this.title = 'Riwayat Diari',
+    this.subtitle = 'Semua catatan kesehatan Anda',
+  });
+
+  final String title;
+  final String subtitle;
 
   @override
   ConsumerState<RiwayatDiariPage> createState() => _RiwayatDiariPageState();
@@ -210,8 +217,8 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
       backgroundColor: const Color(0xFFF8F9FA),
       extendBody: true,
       appBar: CustomAppBar(
-        title: 'Riwayat Diari',
-        subtitle: 'Semua catatan kesehatan Anda',
+        title: widget.title,
+        subtitle: widget.subtitle,
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),

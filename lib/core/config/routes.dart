@@ -13,6 +13,7 @@ import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_pending_verification_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_diary_history_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/update_doctor_profile_page.dart';
@@ -333,6 +334,13 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               );
             },
             routes: [
+              GoRoute(
+                path: 'diary-history',
+                builder: (context, state) {
+                  final patientId = state.pathParameters['patientId'] ?? '';
+                  return DoctorPatientDiaryHistoryPage(patientId: patientId);
+                },
+              ),
               GoRoute(
                 path: 'ml-recommendation-history',
                 builder: (context, state) {

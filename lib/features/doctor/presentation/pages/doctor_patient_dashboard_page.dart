@@ -312,6 +312,9 @@ class _DoctorPatientDashboardPageState
                             refreshRecommendation: false,
                           ),
                           onRetry: () => _loadDashboard(refreshSummary: false),
+                          onOpenDiaryHistory: () => context.push(
+                            '/doctor/home/patients/${widget.patientId}/diary-history',
+                          ),
                           onOpenHistory: () => context.push(
                             '/doctor/home/patients/${widget.patientId}/ml-recommendation-history',
                           ),
@@ -342,6 +345,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
     required this.recommendationError,
     required this.onPeriodChanged,
     required this.onRetry,
+    required this.onOpenDiaryHistory,
     required this.onOpenHistory,
     required this.onReloadRecommendation,
     required this.formatDate,
@@ -360,6 +364,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
   final String? recommendationError;
   final ValueChanged<_DoctorDashboardTimePeriodOption> onPeriodChanged;
   final VoidCallback onRetry;
+  final VoidCallback onOpenDiaryHistory;
   final VoidCallback onOpenHistory;
   final VoidCallback onReloadRecommendation;
   final String Function(DateTime? date) formatDate;
@@ -399,6 +404,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
                   patient: patient,
                   latestUpdatedLabel:
                       'Terakhir diperbarui ${formatDateTime(latestVitals?.measuredAt)}',
+                  onOpenDiaryHistory: onOpenDiaryHistory,
                 ),
               ),
             ),
@@ -793,10 +799,12 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
   const _DoctorPatientHeaderCard({
     required this.patient,
     required this.latestUpdatedLabel,
+    required this.onOpenDiaryHistory,
   });
 
   final DashboardPatient patient;
   final String latestUpdatedLabel;
+  final VoidCallback onOpenDiaryHistory;
 
   @override
   Widget build(BuildContext context) {
@@ -885,6 +893,29 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
                 label: latestUpdatedLabel,
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onOpenDiaryHistory,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE13D5A),
+                side: const BorderSide(color: Color(0xFFF3A5B6)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.menu_book_rounded, size: 22),
+              label: const Text(
+                'Lihat Riwayat Diari',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
           ),
         ],
       ),
