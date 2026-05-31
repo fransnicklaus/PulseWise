@@ -14,10 +14,10 @@ class DoctorDashboardPage extends ConsumerWidget {
     final navIndex = ref.watch(doctorDashboardNavIndexProvider);
 
     const tabs = [
-      DoctorHomeTab(),
+      // DoctorHomeTab(),
       DoctorPatientsTab(),
       DoctorQrTab(),
-      DoctorDiaryTab(),
+      // DoctorDiaryTab(),
       DoctorProfileTab(),
     ];
 
@@ -63,11 +63,11 @@ class DoctorDashboardPage extends ConsumerWidget {
                 ),
                 elevation: 0,
                 items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(FluentIcons.home_24_regular),
-                    activeIcon: Icon(FluentIcons.home_24_filled),
-                    label: 'Home',
-                  ),
+                  // BottomNavigationBarItem(
+                  //   icon: Icon(FluentIcons.home_24_regular),
+                  //   activeIcon: Icon(FluentIcons.home_24_filled),
+                  //   label: 'Home',
+                  // ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.groups_outlined),
                     activeIcon: Icon(Icons.groups_rounded),
@@ -78,11 +78,11 @@ class DoctorDashboardPage extends ConsumerWidget {
                     activeIcon: Icon(Icons.qr_code_2_rounded),
                     label: 'QR',
                   ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.favorite_border),
-                    activeIcon: Icon(Icons.favorite),
-                    label: 'Diari',
-                  ),
+                  // BottomNavigationBarItem(
+                  //   icon: Icon(Icons.favorite_border),
+                  //   activeIcon: Icon(Icons.favorite),
+                  //   label: 'Diari',
+                  // ),
                   BottomNavigationBarItem(
                     icon: Icon(FluentIcons.person_24_regular),
                     activeIcon: Icon(FluentIcons.person_24_filled),

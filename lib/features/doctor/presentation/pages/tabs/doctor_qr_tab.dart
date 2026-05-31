@@ -18,6 +18,7 @@ class DoctorQrTab extends ConsumerStatefulWidget {
 }
 
 class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
+  static const int _doctorQrTabIndex = 1;
   static final RegExp _uuidRegex = RegExp(
     r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
   );
@@ -146,7 +147,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
   @override
   Widget build(BuildContext context) {
     final navIndex = ref.watch(shell.doctorDashboardNavIndexProvider);
-    final isActive = navIndex == 2;
+    final isActive = navIndex == _doctorQrTabIndex;
     _syncCameraState(isActive && !_isResolvingPatient);
 
     return Scaffold(

@@ -257,7 +257,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final flowResult = await _resolveGoogleNextStep(
         idToken: idToken,
-        role: 'patient',
       );
 
       state = state.copyWith(
@@ -619,7 +618,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<GoogleAuthFlowResult> _resolveGoogleNextStep({
     required String idToken,
-    required String role,
+    String? role,
   }) async {
     final baseUrl = resolveApiBaseUrl();
 
@@ -629,7 +628,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       '/auth/oauth/google',
       data: {
         'idToken': idToken,
-        'role': role,
+        if ((role ?? '').trim().isNotEmpty) 'role': normalizeAppRole(role),
       },
     );
     _logGoogle('Backend response status=${response.statusCode}');

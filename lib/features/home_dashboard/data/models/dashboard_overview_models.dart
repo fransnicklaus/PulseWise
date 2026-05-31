@@ -49,6 +49,7 @@ class DashboardPatient {
   final String patientId;
   final String firstName;
   final String lastName;
+  final String? avatarPhoto;
   final String? email;
   final String? phone;
   final String? dateOfBirth;
@@ -59,6 +60,7 @@ class DashboardPatient {
     required this.patientId,
     required this.firstName,
     required this.lastName,
+    this.avatarPhoto,
     this.email,
     this.phone,
     this.dateOfBirth,
@@ -71,6 +73,8 @@ class DashboardPatient {
       patientId: json['patientId'] ?? '',
       firstName: json['firstName'] ?? '',
       lastName: json['lastName'] ?? '',
+      avatarPhoto:
+          (json['avatarPhoto'] ?? json['avatar_photo'])?.toString().trim(),
       email: json['email'],
       phone: json['phone'],
       dateOfBirth: json['dateOfBirth'],

@@ -833,7 +833,10 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DoctorPatientAvatar(initials: patient.initials),
+              _DoctorPatientAvatar(
+                avatarUrl: patient.avatarPhoto,
+                initials: patient.initials,
+              ),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
@@ -924,12 +927,18 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
 }
 
 class _DoctorPatientAvatar extends StatelessWidget {
-  const _DoctorPatientAvatar({required this.initials});
+  const _DoctorPatientAvatar({
+    required this.avatarUrl,
+    required this.initials,
+  });
 
+  final String? avatarUrl;
   final String initials;
 
   @override
   Widget build(BuildContext context) {
+    final hasAvatar = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -957,15 +966,14 @@ class _DoctorPatientAvatar extends StatelessWidget {
               color: Colors.white,
               shape: BoxShape.circle,
             ),
-            child: Center(
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  color: Color(0xFFE64060),
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+            child: ClipOval(
+              child: hasAvatar
+                  ? Image.network(
+                      avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildFallbackAvatar(),
+                    )
+                  : _buildFallbackAvatar(),
             ),
           ),
         ),
@@ -988,6 +996,19 @@ class _DoctorPatientAvatar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFallbackAvatar() {
+    return Center(
+      child: Text(
+        initials,
+        style: const TextStyle(
+          color: Color(0xFFE64060),
+          fontSize: 28,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

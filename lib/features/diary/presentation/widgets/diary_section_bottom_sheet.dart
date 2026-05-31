@@ -908,6 +908,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     final initial = isStart ? _sleepTime : _wakeTime;
     final picked = await showTimePicker(
       context: context,
+      barrierColor: Colors.white,
       initialTime: initial,
     );
     if (picked == null) return;

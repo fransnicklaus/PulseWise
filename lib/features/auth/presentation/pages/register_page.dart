@@ -66,7 +66,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   String get _registrationRole {
-    return _isGoogleFlow ? normalizeAppRole(widget.googleRole) : _selectedRole;
+    return _selectedRole;
   }
 
   @override
@@ -404,7 +404,8 @@ class _RegisterPageState extends State<RegisterPage> {
     return _SessionData(
       token: token,
       userId: userId,
-      role: _extractRoleFromMap((data['user'] as Map<String, dynamic>?) ?? data),
+      role:
+          _extractRoleFromMap((data['user'] as Map<String, dynamic>?) ?? data),
       nextStep: nextStep,
       accountStatus: _extractAccountStatusFromMap(body) ??
           _extractAccountStatusFromMap(data) ??
@@ -669,22 +670,22 @@ class _RegisterPageState extends State<RegisterPage> {
           key: _step1Key,
           child: Column(
             children: [
-              if (!_isGoogleFlow) ...[
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Daftar sebagai',
-                    style: TextStyle(
-                      color: Color(0xFF475569),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _isGoogleFlow
+                      ? 'Lanjutkan akun Google sebagai'
+                      : 'Daftar sebagai',
+                  style: const TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 10),
-                _buildRoleSelector(),
-                const SizedBox(height: 12),
-              ],
+              ),
+              const SizedBox(height: 10),
+              _buildRoleSelector(),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _usernameController,
                 style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
