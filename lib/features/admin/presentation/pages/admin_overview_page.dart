@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
@@ -13,9 +15,45 @@ class AdminOverviewPage extends ConsumerWidget {
 
   Future<void> _refresh(WidgetRef ref) async {
     await Future.wait([
-      ref.refresh(adminOverviewProvider.future),
-      ref.refresh(adminPendingDoctorsProvider.future),
+      _refreshProviderSilently(() => ref.refresh(adminOverviewProvider.future)),
+      _refreshProviderSilently(
+        () => ref.refresh(adminPendingDoctorsProvider.future),
+      ),
     ]);
+  }
+
+  Future<void> _refreshProviderSilently(
+    Future<Object?> Function() refresh,
+  ) async {
+    try {
+      await refresh();
+    } catch (_) {
+      // Let each section render its own fallback state.
+    }
+  }
+
+  bool _isNetworkAsyncError<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null && isNetworkRequestError(error);
+  }
+
+  bool _hasInitialNetworkFailure<T>(AsyncValue<T> asyncValue) {
+    return _isNetworkAsyncError(asyncValue) && !asyncValue.hasValue;
+  }
+
+  bool _hasRefreshNetworkFailure<T>(AsyncValue<T> asyncValue) {
+    return _isNetworkAsyncError(asyncValue) && asyncValue.hasValue;
+  }
+
+  bool _hasInitialNonNetworkFailure<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null &&
+        !isNetworkRequestError(error) &&
+        !asyncValue.hasValue;
+  }
+
+  String _errorMessage(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
   }
 
   Future<void> _onLogout(BuildContext context, WidgetRef ref) async {
@@ -129,6 +167,11 @@ class AdminOverviewPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overviewAsync = ref.watch(adminOverviewProvider);
     final pendingDoctorsAsync = ref.watch(adminPendingDoctorsProvider);
+    final showOverviewLoadingState = overviewAsync.isLoading;
+    final showPendingDoctorsLoadingState = pendingDoctorsAsync.isLoading;
+    final showOverviewRefreshNotice = _hasRefreshNetworkFailure(overviewAsync);
+    final showPendingDoctorsRefreshNotice =
+        _hasRefreshNetworkFailure(pendingDoctorsAsync);
 
     return AdminShellScaffold(
       title: 'Panel Admin',
@@ -146,17 +189,42 @@ class AdminOverviewPage extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [
-            overviewAsync.when(
-              data: (overview) => _OverviewStatsSection(overview: overview),
-              loading: () => const _OverviewLoadingSection(),
-              error: (error, _) => AdminMessageCard(
+            if (showOverviewLoadingState && overviewAsync.hasValue) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(
+                  color: AdminPalette.accent,
+                  backgroundColor: Color(0xFFF8FAFC),
+                ),
+              ),
+            ] else if (showOverviewRefreshNotice) ...[
+              NoConnectionState.compact(
+                title: 'Koneksi terputus',
+                message:
+                    'Ringkasan admin terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                onRetry: () => ref.invalidate(adminOverviewProvider),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (overviewAsync.isLoading && !overviewAsync.hasValue)
+              const _OverviewLoadingSection()
+            else if (_hasInitialNetworkFailure(overviewAsync))
+              NoConnectionState.card(
+                title: 'Ringkasan admin belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil ringkasan admin karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () => ref.invalidate(adminOverviewProvider),
+              )
+            else if (_hasInitialNonNetworkFailure(overviewAsync))
+              AdminMessageCard(
                 icon: Icons.monitor_heart_outlined,
                 title: 'Ringkasan admin belum tersedia',
-                description: error.toString().replaceFirst('Exception: ', ''),
+                description: _errorMessage(overviewAsync.asError!.error),
                 actionLabel: 'Muat Ulang',
                 onActionTap: () => ref.invalidate(adminOverviewProvider),
-              ),
-            ),
+              )
+            else if (overviewAsync.valueOrNull case final overview?)
+              _OverviewStatsSection(overview: overview),
             const SizedBox(height: 28),
             const Text(
               'Dokter yang Butuh Review',
@@ -177,35 +245,58 @@ class AdminOverviewPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 14),
-            pendingDoctorsAsync.when(
-              data: (items) {
-                if (items.isEmpty) {
-                  return const AdminMessageCard(
-                    icon: Icons.verified_user_outlined,
-                    title: 'Tidak ada dokter yang menunggu review',
-                    description:
-                        'Semua akun dokter yang masuk ke antrian admin sudah tertangani.',
-                  );
-                }
-
-                return Column(
+            if (showPendingDoctorsLoadingState &&
+                pendingDoctorsAsync.hasValue) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(
+                  color: AdminPalette.accent,
+                  backgroundColor: Color(0xFFF8FAFC),
+                ),
+              ),
+            ] else if (showPendingDoctorsRefreshNotice) ...[
+              NoConnectionState.compact(
+                title: 'Koneksi terputus',
+                message:
+                    'Daftar dokter terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                onRetry: () => ref.invalidate(adminPendingDoctorsProvider),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (pendingDoctorsAsync.isLoading && !pendingDoctorsAsync.hasValue)
+              const _PendingDoctorsLoadingSection()
+            else if (_hasInitialNetworkFailure(pendingDoctorsAsync))
+              NoConnectionState.card(
+                title: 'Daftar dokter belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil daftar dokter yang butuh review karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () => ref.invalidate(adminPendingDoctorsProvider),
+              )
+            else if (_hasInitialNonNetworkFailure(pendingDoctorsAsync))
+              AdminMessageCard(
+                icon: Icons.person_search_outlined,
+                title: 'Daftar dokter belum tersedia',
+                description: _errorMessage(pendingDoctorsAsync.asError!.error),
+                actionLabel: 'Muat Ulang',
+                onActionTap: () => ref.invalidate(adminPendingDoctorsProvider),
+              )
+            else if (pendingDoctorsAsync.valueOrNull case final items?)
+              if (items.isEmpty)
+                const AdminMessageCard(
+                  icon: Icons.verified_user_outlined,
+                  title: 'Tidak ada dokter yang menunggu review',
+                  description:
+                      'Semua akun dokter yang masuk ke antrian admin sudah tertangani.',
+                )
+              else
+                Column(
                   children: [
                     for (final item in items) ...[
                       _PendingDoctorPreviewCard(item: item),
                       const SizedBox(height: 12),
                     ],
                   ],
-                );
-              },
-              loading: () => const _PendingDoctorsLoadingSection(),
-              error: (error, _) => AdminMessageCard(
-                icon: Icons.person_search_outlined,
-                title: 'Daftar dokter belum tersedia',
-                description: error.toString().replaceFirst('Exception: ', ''),
-                actionLabel: 'Muat Ulang',
-                onActionTap: () => ref.invalidate(adminPendingDoctorsProvider),
-              ),
-            ),
+                ),
           ],
         ),
       ),

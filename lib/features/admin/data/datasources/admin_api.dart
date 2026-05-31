@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 
@@ -23,17 +24,37 @@ class AdminApi {
     );
   }
 
-  Future<AdminOverview> fetchOverview() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/overview',
-      options: await _authorizedOptions(),
-    );
+  Exception _requestError(DioException error, String fallbackMessage) {
+    if (isNetworkRequestError(error)) {
+      throw error;
+    }
 
-    final data = _extractDataMap(
-      response.data,
-      fallbackMessage: 'Gagal mengambil ringkasan admin',
-    );
-    return AdminOverview.fromJson(data);
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return Exception(message);
+      }
+    }
+
+    return Exception(fallbackMessage);
+  }
+
+  Future<AdminOverview> fetchOverview() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/overview',
+        options: await _authorizedOptions(),
+      );
+
+      final data = _extractDataMap(
+        response.data,
+        fallbackMessage: 'Gagal mengambil ringkasan admin',
+      );
+      return AdminOverview.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil ringkasan admin.');
+    }
   }
 
   Future<AdminUsersPageData> fetchUsers({
@@ -57,30 +78,38 @@ class AdminApi {
       params['accountStatus'] = accountStatus!.trim();
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/users',
-      queryParameters: params,
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/users',
+        queryParameters: params,
+        options: await _authorizedOptions(),
+      );
 
-    final data = _extractDataMap(
-      response.data,
-      fallbackMessage: 'Gagal mengambil daftar pengguna admin',
-    );
-    return AdminUsersPageData.fromJson(data);
+      final data = _extractDataMap(
+        response.data,
+        fallbackMessage: 'Gagal mengambil daftar pengguna admin',
+      );
+      return AdminUsersPageData.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil daftar pengguna admin.');
+    }
   }
 
   Future<AdminUserDetail> fetchUserDetail(String userId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/users/$userId',
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/users/$userId',
+        options: await _authorizedOptions(),
+      );
 
-    final data = _extractDataMap(
-      response.data,
-      fallbackMessage: 'Gagal mengambil detail pengguna',
-    );
-    return AdminUserDetail.fromJson(data);
+      final data = _extractDataMap(
+        response.data,
+        fallbackMessage: 'Gagal mengambil detail pengguna',
+      );
+      return AdminUserDetail.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil detail pengguna.');
+    }
   }
 
   Future<AdminMutationResult> updateUserStatus(
@@ -100,22 +129,26 @@ class AdminApi {
   }
 
   Future<List<AdminDoctorReviewItem>> fetchPendingDoctors() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/doctors/pending',
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/doctors/pending',
+        options: await _authorizedOptions(),
+      );
 
-    final items = _extractDataList(
-      response.data,
-      fallbackMessage: 'Gagal mengambil daftar dokter pending',
-    );
-    return items
-        .map(
-          (item) => AdminDoctorReviewItem.fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
+      final items = _extractDataList(
+        response.data,
+        fallbackMessage: 'Gagal mengambil daftar dokter pending',
+      );
+      return items
+          .map(
+            (item) => AdminDoctorReviewItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil daftar dokter pending.');
+    }
   }
 
   Future<List<AdminDoctorReviewItem>> fetchDoctors({
@@ -126,36 +159,44 @@ class AdminApi {
       params['status'] = status.trim();
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/doctors',
-      queryParameters: params,
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/doctors',
+        queryParameters: params,
+        options: await _authorizedOptions(),
+      );
 
-    final items = _extractDataList(
-      response.data,
-      fallbackMessage: 'Gagal mengambil daftar review dokter',
-    );
-    return items
-        .map(
-          (item) => AdminDoctorReviewItem.fromJson(
-            Map<String, dynamic>.from(item),
-          ),
-        )
-        .toList();
+      final items = _extractDataList(
+        response.data,
+        fallbackMessage: 'Gagal mengambil daftar review dokter',
+      );
+      return items
+          .map(
+            (item) => AdminDoctorReviewItem.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil daftar review dokter.');
+    }
   }
 
   Future<AdminDoctorDetail> fetchDoctorDetail(String doctorId) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/admin/doctors/$doctorId',
-      options: await _authorizedOptions(),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/admin/doctors/$doctorId',
+        options: await _authorizedOptions(),
+      );
 
-    final data = _extractDataMap(
-      response.data,
-      fallbackMessage: 'Gagal mengambil detail dokter',
-    );
-    return AdminDoctorDetail.fromJson(data);
+      final data = _extractDataMap(
+        response.data,
+        fallbackMessage: 'Gagal mengambil detail dokter',
+      );
+      return AdminDoctorDetail.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil detail dokter.');
+    }
   }
 
   Future<AdminMutationResult> approveDoctor(
