@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
@@ -126,9 +128,18 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
           }
 
           if (snapshot.hasError) {
+            final error = snapshot.error;
+            if (error != null && isNetworkRequestError(error)) {
+              return NoConnectionState.page(
+                title: 'Form edit belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil detail pengingat untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: _retry,
+              );
+            }
+
             return _ErrorState(
-              message:
-                  snapshot.error.toString().replaceFirst('Exception: ', ''),
+              message: error.toString().replaceFirst('Exception: ', ''),
               onRetry: _retry,
             );
           }
@@ -835,9 +846,8 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
       return _medicationColors.first;
     }
 
-    final color = cleaned.length <= 6
-        ? Color(0xFF000000 | parsed)
-        : Color(parsed);
+    final color =
+        cleaned.length <= 6 ? Color(0xFF000000 | parsed) : Color(parsed);
 
     for (final paletteColor in _medicationColors) {
       if (paletteColor.value == color.value) {

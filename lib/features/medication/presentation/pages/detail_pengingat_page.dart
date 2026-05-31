@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
@@ -99,12 +101,23 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
           loading: () => const Center(
             child: CircularProgressIndicator(color: Color(0xFFE64060)),
           ),
-          error: (error, _) => _ErrorState(
-            message: error.toString().replaceFirst('Exception: ', ''),
-            onRetry: () {
-              ref.invalidate(medicationDetailProvider(widget.medicationId));
-            },
-          ),
+          error: (error, _) => isNetworkRequestError(error)
+              ? NoConnectionState.page(
+                  title: 'Detail pengingat belum bisa dimuat',
+                  message:
+                      'Kami belum bisa mengambil detail pengingat obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                  onRetry: () {
+                    ref.invalidate(
+                        medicationDetailProvider(widget.medicationId));
+                  },
+                )
+              : _ErrorState(
+                  message: error.toString().replaceFirst('Exception: ', ''),
+                  onRetry: () {
+                    ref.invalidate(
+                        medicationDetailProvider(widget.medicationId));
+                  },
+                ),
           data: (item) => SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 24),
             child: Column(

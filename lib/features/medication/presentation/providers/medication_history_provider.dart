@@ -32,6 +32,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
     );
@@ -48,6 +49,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
         isLoading: false,
         isLoadingMore: false,
         items: append ? [...state.items, ...response.items] : response.items,
+        errorCause: null,
         page: response.pagination.page,
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
@@ -59,6 +61,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
         isLoading: false,
         isLoadingMore: false,
         error: e.toString().replaceFirst('Exception: ', ''),
+        errorCause: e,
       );
     }
   }
@@ -83,6 +86,7 @@ class MedicationHistoryState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<MedicationItem> items;
   final int page;
   final int limit;
@@ -93,6 +97,7 @@ class MedicationHistoryState {
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 10,
@@ -104,6 +109,7 @@ class MedicationHistoryState {
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
+    Object? errorCause,
     List<MedicationItem>? items,
     int? page,
     int? limit,
@@ -114,6 +120,7 @@ class MedicationHistoryState {
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
+      errorCause: errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,

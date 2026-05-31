@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
 import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
@@ -36,9 +38,12 @@ class _MedicationConsumptionTrackingCardState
   int _requestSerial = 0;
 
   bool _isLoading = true;
+  bool _isRefreshing = false;
   bool _isLoadingMore = false;
   bool _hasMore = true;
   String? _errorMessage;
+  Object? _errorCause;
+  bool _hasLoadedOnce = false;
   int _page = 1;
   int _totalPages = 1;
   List<MedicationLogItem> _items = const [];
@@ -61,7 +66,7 @@ class _MedicationConsumptionTrackingCardState
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    if (_isLoading || _isLoadingMore || _isRefreshing || !_hasMore) return;
 
     final threshold = _scrollController.position.maxScrollExtent - 180;
     if (_scrollController.position.pixels >= threshold) {
@@ -69,45 +74,56 @@ class _MedicationConsumptionTrackingCardState
     }
   }
 
-  Future<void> _loadLogs({bool reset = false}) async {
+  Future<void> _loadLogs({
+    bool reset = false,
+    bool preserveVisibleData = false,
+  }) async {
     final requestId = ++_requestSerial;
     final range = _rangeOptions[_selectedRangeIndex];
     final now = DateTime.now();
     final endDate = _dateOnly(now);
     final startDate = _resolveStartDate(now, range);
     final nextPage = reset ? 1 : _page + 1;
+    final keepVisibleData = reset && preserveVisibleData && _hasLoadedOnce;
 
     if (reset) {
       if (mounted) {
         setState(() {
-          _isLoading = true;
+          _isLoading = !keepVisibleData;
+          _isRefreshing = keepVisibleData;
           _isLoadingMore = false;
           _errorMessage = null;
+          _errorCause = null;
           _page = 1;
           _totalPages = 1;
           _hasMore = true;
-          _items = const [];
+          if (!keepVisibleData) {
+            _items = const [];
+            _hasLoadedOnce = false;
+          }
         });
       }
     } else {
-      if (_isLoading || _isLoadingMore || !_hasMore) return;
+      if (_isLoading || _isLoadingMore || _isRefreshing || !_hasMore) return;
       if (mounted) {
         setState(() {
           _isLoadingMore = true;
           _errorMessage = null;
+          _errorCause = null;
         });
       }
     }
 
     try {
-      final response = await ref.read(medicationApiProvider).fetchMedicationLogs(
-            patientId: widget.patientId,
-            medicationId: widget.medicationId,
-            page: nextPage,
-            limit: _pageSize,
-            startDate: startDate,
-            endDate: endDate,
-          );
+      final response =
+          await ref.read(medicationApiProvider).fetchMedicationLogs(
+                patientId: widget.patientId,
+                medicationId: widget.medicationId,
+                page: nextPage,
+                limit: _pageSize,
+                startDate: startDate,
+                endDate: endDate,
+              );
 
       if (!mounted || requestId != _requestSerial) return;
 
@@ -118,21 +134,32 @@ class _MedicationConsumptionTrackingCardState
         _totalPages = response.pagination.totalPages;
         _hasMore = _page < _totalPages;
         _isLoading = false;
+        _isRefreshing = false;
         _isLoadingMore = false;
         _errorMessage = null;
+        _errorCause = null;
+        _hasLoadedOnce = true;
       });
     } catch (e) {
       if (!mounted || requestId != _requestSerial) return;
       setState(() {
         _isLoading = false;
+        _isRefreshing = false;
         _isLoadingMore = false;
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _errorCause = e;
+        if (!keepVisibleData) {
+          _hasLoadedOnce = false;
+        }
       });
     }
   }
 
   Future<void> _refresh() async {
-    await _loadLogs(reset: true);
+    await _loadLogs(
+      reset: true,
+      preserveVisibleData: _hasLoadedOnce,
+    );
   }
 
   Future<void> _changeRange(int index) async {
@@ -148,6 +175,89 @@ class _MedicationConsumptionTrackingCardState
     final takenCount = _countByStatus('taken');
     final skippedCount = _countByStatus('skipped');
     final missedCount = _countByStatus('missed');
+    final hasNetworkError =
+        _errorCause != null && isNetworkRequestError(_errorCause!);
+    final showInitialNoConnection = hasNetworkError && !_hasLoadedOnce;
+    final showRefreshNoConnection = hasNetworkError && _hasLoadedOnce;
+    final showInitialError =
+        _errorMessage != null && !_hasLoadedOnce && !showInitialNoConnection;
+    final showInlineError =
+        _errorMessage != null && _hasLoadedOnce && !showRefreshNoConnection;
+    final Widget trackingBody;
+
+    if (_isLoading && !_hasLoadedOnce) {
+      trackingBody = const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFFE64060),
+        ),
+      );
+    } else if (showInitialNoConnection) {
+      trackingBody = NoConnectionState.card(
+        title: 'Riwayat konsumsi belum bisa dimuat',
+        message:
+            'Kami belum bisa mengambil log konsumsi obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+        onRetry: () {
+          _loadLogs(reset: true);
+        },
+      );
+    } else if (showInitialError) {
+      trackingBody = _TrackingErrorState(
+        message: _errorMessage!,
+        onRetry: () {
+          _loadLogs(reset: true);
+        },
+      );
+    } else {
+      trackingBody = RefreshIndicator(
+        onRefresh: _refresh,
+        color: const Color(0xFFE64060),
+        backgroundColor: Colors.white,
+        child: _items.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 80),
+                  Center(
+                    child: Text(
+                      'Belum ada log konsumsi pada periode ini.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              )
+            : ListView.separated(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: _items.length + (_isLoadingMore ? 1 : 0),
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  if (index >= _items.length) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
+                      child: Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Color(0xFFE64060),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final item = _items[index];
+                  return _MedicationLogListTile(item: item);
+                },
+              ),
+      );
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -251,7 +361,25 @@ class _MedicationConsumptionTrackingCardState
             ],
           ),
           const SizedBox(height: 12),
-          if (_errorMessage != null) ...[
+          if (_isRefreshing) ...[
+            const LinearProgressIndicator(
+              minHeight: 3,
+              color: Color(0xFFE64060),
+              backgroundColor: Color(0xFFFFE1E7),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (showRefreshNoConnection) ...[
+            NoConnectionState.compact(
+              title: 'Koneksi terputus',
+              message:
+                  'Menampilkan log konsumsi terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui riwayat terbaru.',
+              onRetry: () {
+                _refresh();
+              },
+            ),
+            const SizedBox(height: 12),
+          ] else if (showInlineError) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
@@ -282,62 +410,7 @@ class _MedicationConsumptionTrackingCardState
           ],
           SizedBox(
             height: 300,
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFE64060),
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _refresh,
-                    color: const Color(0xFFE64060),
-                    backgroundColor: Colors.white,
-                    child: _items.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: const [
-                              SizedBox(height: 80),
-                              Center(
-                                child: Text(
-                                  'Belum ada log konsumsi pada periode ini.',
-                                  style: TextStyle(
-                                    color: Color(0xFF64748B),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ],
-                          )
-                        : ListView.separated(
-                            controller: _scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            itemCount: _items.length + (_isLoadingMore ? 1 : 0),
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              if (index >= _items.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 10),
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.2,
-                                        color: Color(0xFFE64060),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final item = _items[index];
-                              return _MedicationLogListTile(item: item);
-                            },
-                          ),
-                  ),
+            child: trackingBody,
           ),
         ],
       ),
@@ -358,6 +431,48 @@ class _MedicationConsumptionTrackingCardState
     }
     final days = option.days ?? 7;
     return _dateOnly(now.subtract(Duration(days: days - 1)));
+  }
+}
+
+class _TrackingErrorState extends StatelessWidget {
+  const _TrackingErrorState({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF475569),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE64060),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

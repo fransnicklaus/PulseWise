@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
 
@@ -103,13 +105,18 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(medicationHistoryProvider);
+    final hasNetworkError =
+        state.errorCause != null && isNetworkRequestError(state.errorCause!);
 
     final showInitialLoader = state.isLoading && state.items.isEmpty;
     final showInitialError =
         state.error != null && state.error!.isNotEmpty && state.items.isEmpty;
+    final showInitialNoConnection = showInitialError && hasNetworkError;
     final showEmptyState =
         !state.isLoading && !showInitialError && state.items.isEmpty;
     final showRefreshing = state.isLoading && state.items.isNotEmpty;
+    final showRefreshNoConnection =
+        hasNetworkError && state.error != null && state.items.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -132,6 +139,8 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
           )),
       body: SafeArea(
         child: RefreshIndicator(
+          color: const Color(0xFFE64060),
+          backgroundColor: Colors.white,
           onRefresh: _onRefresh,
           child: ListView.builder(
             controller: _scrollController,
@@ -141,6 +150,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                 (showInitialLoader || showInitialError || showEmptyState
                     ? 1
                     : state.items.length +
+                        (showRefreshNoConnection ? 1 : 0) +
                         (showRefreshing ? 1 : 0) +
                         (state.isLoadingMore ? 1 : 0)),
             itemBuilder: (context, index) {
@@ -168,10 +178,33 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
               if (showInitialError) {
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: _StateCard(
-                    message: state.error!,
-                    actionLabel: 'Coba Lagi',
-                    onTap: _retryLoad,
+                  child: showInitialNoConnection
+                      ? NoConnectionState.page(
+                          title: 'Daftar pengingat belum bisa dimuat',
+                          message:
+                              'Kami belum bisa mengambil daftar pengingat obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                          onRetry: () {
+                            _retryLoad();
+                          },
+                        )
+                      : _StateCard(
+                          message: state.error!,
+                          actionLabel: 'Coba Lagi',
+                          onTap: _retryLoad,
+                        ),
+                );
+              }
+
+              if (showRefreshNoConnection && index == 1) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  child: NoConnectionState.compact(
+                    title: 'Koneksi terputus',
+                    message:
+                        'Menampilkan daftar pengingat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                    onRetry: () {
+                      _retryLoad();
+                    },
                   ),
                 );
               }
@@ -197,7 +230,10 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                 );
               }
 
-              final dataIndex = index - 1 - (showRefreshing ? 1 : 0);
+              final dataIndex = index -
+                  1 -
+                  (showRefreshing ? 1 : 0) -
+                  (showRefreshNoConnection ? 1 : 0);
               if (dataIndex >= state.items.length) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 18),
@@ -536,4 +572,3 @@ String _detailText(MedicationItem item) {
 //     );
 //   }
 // }
-

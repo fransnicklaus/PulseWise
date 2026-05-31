@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
@@ -41,14 +41,38 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
         .addListener(_handlePendingReminderSignal);
   }
 
-  String _networkFailureMessage({
-    required String fallbackMessage,
-  }) {
-    final connectivity = ref.read(appConnectivityProvider);
-    if (connectivity.isOffline || !connectivity.hasNetworkTransport) {
-      return connectivity.message;
+  bool _isNoConnectionErrorWithoutValue<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null &&
+        isNetworkRequestError(error) &&
+        !asyncValue.hasValue;
+  }
+
+  bool _isNoConnectionErrorWithValue<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null && isNetworkRequestError(error) && asyncValue.hasValue;
+  }
+
+  bool _hasNonNetworkErrorWithoutValue<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null &&
+        !isNetworkRequestError(error) &&
+        !asyncValue.hasValue;
+  }
+
+  void _retryCalendarSection(MedicationCalendarRangeQuery query) {
+    ref.invalidate(medicationCalendarRangeProvider(query));
+  }
+
+  Future<void> _refreshCalendarSilently(
+    MedicationCalendarRangeQuery query,
+  ) async {
+    try {
+      ref.invalidate(medicationCalendarRangeProvider(query));
+      await ref.read(medicationCalendarRangeProvider(query).future);
+    } catch (_) {
+      // Let the UI reflect the provider's AsyncValue state.
     }
-    return fallbackMessage;
   }
 
   @override
@@ -74,7 +98,8 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     );
 
     final calendarAsync = ref.watch(medicationCalendarRangeProvider(query));
-    final calendarData = calendarAsync.asData?.value;
+    final calendarData = calendarAsync.valueOrNull;
+    final calendarError = calendarAsync.asError?.error;
     final events = calendarData == null
         ? <MedicationCalendarItem>[]
         : [...calendarData.items]
@@ -89,7 +114,13 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
         .where((item) => _isSameDay(item.scheduledDate, _selectedDate))
         .toList();
     final errorMessage =
-        calendarAsync.asError?.error.toString().replaceFirst('Exception: ', '');
+        calendarError?.toString().replaceFirst('Exception: ', '');
+    final showInitialNoConnection =
+        _isNoConnectionErrorWithoutValue(calendarAsync);
+    final showRefreshNoConnection =
+        _isNoConnectionErrorWithValue(calendarAsync);
+    final showInitialNonNetworkError =
+        _hasNonNetworkErrorWithoutValue(calendarAsync);
 
     if (calendarData != null) {
       _maybeHandlePendingReminder(events, query);
@@ -97,31 +128,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async {
-          final connectivity = ref.read(appConnectivityProvider);
-          if (connectivity.isOffline) {
-            AppToast.warning(context, connectivity.message);
-            return;
-          }
-
-          ref.invalidate(medicationCalendarRangeProvider(query));
-          try {
-            await ref.read(medicationCalendarRangeProvider(query).future);
-          } catch (e) {
-            if (!mounted) return;
-            if (isNetworkRequestError(e)) {
-              AppToast.warning(
-                this.context,
-                _networkFailureMessage(
-                  fallbackMessage:
-                      'Koneksi internet bermasalah. Kalender obat belum bisa dimuat ulang.',
-                ),
-              );
-              return;
-            }
-            rethrow;
-          }
-        },
+        onRefresh: () => _refreshCalendarSilently(query),
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
         child: ListView(
@@ -216,19 +223,39 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
               ),
             ),
             const SizedBox(height: 8),
+            if (showRefreshNoConnection) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: NoConnectionState.compact(
+                  title: 'Koneksi terputus',
+                  message:
+                      'Menampilkan kalender obat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui jadwal terbaru.',
+                  onRetry: () => _retryCalendarSection(query),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             if (calendarAsync.isLoading && calendarData == null)
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: _LoadingDayCard(),
               )
-            else if (errorMessage != null)
+            else if (showInitialNoConnection)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: NoConnectionState.card(
+                  title: 'Kalender obat belum bisa dimuat',
+                  message:
+                      'Kami belum bisa mengambil kalender obat bulan ini karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                  onRetry: () => _retryCalendarSection(query),
+                ),
+              )
+            else if (showInitialNonNetworkError && errorMessage != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _InlineErrorCard(
                   message: errorMessage,
-                  onRetry: () {
-                    ref.invalidate(medicationCalendarRangeProvider(query));
-                  },
+                  onRetry: () => _retryCalendarSection(query),
                 ),
               )
             else if (selectedEvents.isEmpty)

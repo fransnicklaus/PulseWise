@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 
@@ -20,6 +21,27 @@ class MedicationApi {
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
+  }
+
+  Exception _requestError(DioException error, String fallbackMessage) {
+    if (isNetworkRequestError(error)) {
+      throw error;
+    }
+
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return Exception(message.trim());
+      }
+    }
+
+    final responseMessage = error.response?.statusMessage?.trim();
+    if (responseMessage != null && responseMessage.isNotEmpty) {
+      return Exception(responseMessage);
+    }
+
+    return Exception(fallbackMessage);
   }
 
   Future<void> addMedication({
@@ -78,60 +100,68 @@ class MedicationApi {
     final token = await _readBearerToken();
     final userId = await _readUserId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/medications',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/medications',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons daftar medication tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil daftar medication').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MedicationListResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons daftar medication tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil daftar medication').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MedicationListResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil daftar medication.');
+    }
   }
 
   Future<MedicationItem> fetchMedicationDetail(String medicationId) async {
     final token = await _readBearerToken();
     final userId = await _readUserId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/medications/$medicationId',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons detail medication tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil detail medication').toString(),
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/medications/$medicationId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MedicationItem.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons detail medication tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil detail medication').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MedicationItem.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil detail medication.');
+    }
   }
 
   Future<void> updateMedication({
@@ -239,8 +269,7 @@ class MedicationApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ??
-                'Gagal menandai medication sebagai sudah diminum')
+        (body?['message'] ?? 'Gagal menandai medication sebagai sudah diminum')
             .toString(),
       );
     }
@@ -264,34 +293,38 @@ class MedicationApi {
       throw Exception('medicationId tidak ditemukan. Silakan login ulang.');
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$patientId/medications/$medicationId/logs',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-        'startDate': _formatDate(startDate),
-        'endDate': _formatDate(endDate),
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$patientId/medications/$medicationId/logs',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          'startDate': _formatDate(startDate),
+          'endDate': _formatDate(endDate),
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons medication logs tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil medication logs').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MedicationLogResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons medication logs tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil medication logs').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MedicationLogResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil medication logs.');
+    }
   }
 
   Future<MedicationCalendarResponse> fetchMedicationCalendar({
@@ -301,31 +334,35 @@ class MedicationApi {
     final token = await _readBearerToken();
     final userId = await _readUserId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/medications/calendar',
-      queryParameters: {
-        'from': _formatDate(from),
-        'to': _formatDate(to),
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/medications/calendar',
+        queryParameters: {
+          'from': _formatDate(from),
+          'to': _formatDate(to),
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons kalender medication tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil kalender medication').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MedicationCalendarResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons kalender medication tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil kalender medication').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MedicationCalendarResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil kalender medication.');
+    }
   }
 }
