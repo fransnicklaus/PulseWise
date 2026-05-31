@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/emergency_contacts/data/models/emergency_contact_models.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
 
@@ -45,7 +47,11 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
   }
 
   Future<void> _refresh() async {
-    await ref.read(emergencyContactsProvider.notifier).fetchInitial();
+    try {
+      await ref.read(emergencyContactsProvider.notifier).fetchInitial();
+    } catch (_) {
+      // Let the page keep stale data or render its fallback state.
+    }
   }
 
   Future<void> _openDialer(String number) async {
@@ -92,6 +98,14 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
   @override
   Widget build(BuildContext context) {
     final contactsState = ref.watch(emergencyContactsProvider);
+    final hasNetworkError = contactsState.errorCause != null &&
+        isNetworkRequestError(contactsState.errorCause!);
+    final showInitialNoConnection = contactsState.error != null &&
+        contactsState.items.isEmpty &&
+        hasNetworkError;
+    final showRefreshNoConnection = contactsState.error != null &&
+        contactsState.items.isNotEmpty &&
+        hasNetworkError;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -108,7 +122,9 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
         child: ListView.builder(
           controller: _scrollController,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          itemCount: contactsState.items.length + 3,
+          itemCount: contactsState.items.length +
+              3 +
+              (showRefreshNoConnection ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == 0) {
               return _buildEmergencyCallCard();
@@ -183,50 +199,79 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                 contactsState.items.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    border: Border.all(color: const Color(0xFFFECACA)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Gagal memuat kontak',
-                        style: TextStyle(
-                          color: Color(0xFF991B1B),
-                          fontWeight: FontWeight.bold,
+                child: showInitialNoConnection
+                    ? NoConnectionState.card(
+                        title: 'Kontak darurat belum bisa dimuat',
+                        message:
+                            'Kami belum bisa mengambil daftar kontak darurat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                        onRetry: () {
+                          ref
+                              .read(emergencyContactsProvider.notifier)
+                              .fetchInitial();
+                        },
+                      )
+                    : Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF1F2),
+                          border: Border.all(color: const Color(0xFFFECACA)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Gagal memuat kontak',
+                              style: TextStyle(
+                                color: Color(0xFF991B1B),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              contactsState.error!,
+                              style: const TextStyle(
+                                color: Color(0xFF7F1D1D),
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ElevatedButton(
+                              onPressed: () => ref
+                                  .read(emergencyContactsProvider.notifier)
+                                  .fetchInitial(),
+                              child: const Text('Coba Lagi'),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        contactsState.error!,
-                        style: const TextStyle(
-                          color: Color(0xFF7F1D1D),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () => ref
-                            .read(emergencyContactsProvider.notifier)
-                            .fetchInitial(),
-                        child: const Text('Coba Lagi'),
-                      ),
-                    ],
-                  ),
-                ),
               );
             }
 
             const firstItemIndex = 2;
+            final adjustedFirstItemIndex =
+                firstItemIndex + (showRefreshNoConnection ? 1 : 0);
             final lastItemIndexExclusive =
-                firstItemIndex + contactsState.items.length;
+                adjustedFirstItemIndex + contactsState.items.length;
 
-            if (index >= firstItemIndex && index < lastItemIndexExclusive) {
-              final contact = contactsState.items[index - firstItemIndex];
+            if (showRefreshNoConnection && index == firstItemIndex) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: NoConnectionState.compact(
+                  title: 'Koneksi terputus',
+                  message:
+                      'Menampilkan kontak darurat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                  onRetry: () {
+                    ref.read(emergencyContactsProvider.notifier).fetchInitial();
+                  },
+                ),
+              );
+            }
+
+            if (index >= adjustedFirstItemIndex &&
+                index < lastItemIndexExclusive) {
+              final contact =
+                  contactsState.items[index - adjustedFirstItemIndex];
               return _EmergencyContactCard(
                 contact: contact,
                 onCallPressed: () => _openDialer(contact.contactNumber),

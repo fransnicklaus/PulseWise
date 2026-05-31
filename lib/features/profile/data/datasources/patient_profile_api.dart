@@ -253,20 +253,36 @@ class PatientProfileApi {
   Future<AuthMeUser> fetchAuthMe() async {
     final token = await _readBearerToken();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/auth/me',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/auth/me',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['data'] == null) {
-      throw Exception('Respons auth me tidak valid dari server');
+      final body = response.data;
+      if (body == null || body['data'] == null) {
+        throw Exception('Respons auth me tidak valid dari server');
+      }
+
+      return AuthMeUser.fromJson(body['data'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      if (isNetworkRequestError(e)) {
+        rethrow;
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil data auth me.');
     }
-
-    return AuthMeUser.fromJson(body['data'] as Map<String, dynamic>);
   }
 }

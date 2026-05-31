@@ -26,9 +26,7 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
       isLoadingInitial: true,
       isLoadingMore: false,
       error: null,
-      items: const [],
-      page: 1,
-      hasMore: true,
+      errorCause: null,
     );
 
     try {
@@ -38,11 +36,14 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
         items: result.items,
         page: result.page,
         hasMore: result.hasMore,
+        error: null,
+        errorCause: null,
       );
     } catch (e) {
       state = state.copyWith(
         isLoadingInitial: false,
-        error: e.toString(),
+        error: e.toString().replaceFirst('Exception: ', ''),
+        errorCause: e,
       );
     }
   }
@@ -50,7 +51,11 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
   Future<void> fetchNextPage() async {
     if (state.isLoadingInitial || state.isLoadingMore || !state.hasMore) return;
 
-    state = state.copyWith(isLoadingMore: true, error: null);
+    state = state.copyWith(
+      isLoadingMore: true,
+      error: null,
+      errorCause: null,
+    );
 
     try {
       final nextPage = state.page + 1;
@@ -60,11 +65,14 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
         items: [...state.items, ...result.items],
         page: result.page,
         hasMore: result.hasMore,
+        error: null,
+        errorCause: null,
       );
     } catch (e) {
       state = state.copyWith(
         isLoadingMore: false,
-        error: e.toString(),
+        error: e.toString().replaceFirst('Exception: ', ''),
+        errorCause: e,
       );
     }
   }
@@ -160,6 +168,7 @@ class EmergencyContactsState {
   final bool hasMore;
   final int page;
   final String? error;
+  final Object? errorCause;
 
   const EmergencyContactsState({
     this.items = const [],
@@ -168,6 +177,7 @@ class EmergencyContactsState {
     this.hasMore = true,
     this.page = 1,
     this.error,
+    this.errorCause,
   });
 
   EmergencyContactsState copyWith({
@@ -177,6 +187,7 @@ class EmergencyContactsState {
     bool? hasMore,
     int? page,
     String? error,
+    Object? errorCause,
   }) {
     return EmergencyContactsState(
       items: items ?? this.items,
@@ -185,6 +196,7 @@ class EmergencyContactsState {
       hasMore: hasMore ?? this.hasMore,
       page: page ?? this.page,
       error: error,
+      errorCause: errorCause,
     );
   }
 }

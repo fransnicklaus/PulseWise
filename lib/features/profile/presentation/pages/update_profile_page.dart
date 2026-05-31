@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/profile/data/models/profile_models.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
@@ -279,13 +281,25 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(
-          child: Text(
-            'Gagal memuat profil:\n$err',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-          ),
-        ),
+        error: (err, stack) => isNetworkRequestError(err)
+            ? NoConnectionState.page(
+                title: 'Profil edit belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil data profil untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () {
+                  ref.invalidate(patientProfileProvider);
+                },
+              )
+            : Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Gagal memuat profil:\n$err',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                  ),
+                ),
+              ),
       ),
     );
   }

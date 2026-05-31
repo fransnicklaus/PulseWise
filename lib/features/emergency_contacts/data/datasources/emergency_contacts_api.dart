@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/emergency_contacts/data/models/emergency_contact_models.dart';
 
@@ -127,35 +128,52 @@ class EmergencyContactsApi {
     final token = await _readBearerToken();
     final patientId = await _readPatientId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$patientId/emergency-contacts',
-      queryParameters: {'page': page, 'limit': limit},
-      options: Options(
-        headers: {'Authorization': 'Bearer $token'},
-      ),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$patientId/emergency-contacts',
+        queryParameters: {'page': page, 'limit': limit},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['data'] == null) {
-      throw Exception('Respons emergency contact tidak valid.');
+      final body = response.data;
+      if (body == null || body['data'] == null) {
+        throw Exception('Respons emergency contact tidak valid.');
+      }
+
+      final data = body['data'] as Map<String, dynamic>;
+      final rawItems = (data['items'] as List?) ?? const [];
+      final items = rawItems
+          .map(
+              (item) => EmergencyContact.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      final pagination =
+          (data['pagination'] as Map<String, dynamic>?) ?? const {};
+      final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? page;
+      final currentPage = (pagination['page'] as num?)?.toInt() ?? page;
+      final hasMore = currentPage < totalPages;
+
+      return EmergencyContactsPageResult(
+        items: items,
+        page: currentPage,
+        hasMore: hasMore,
+      );
+    } on DioException catch (e) {
+      if (isNetworkRequestError(e)) {
+        rethrow;
+      }
+
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil kontak darurat.');
     }
-
-    final data = body['data'] as Map<String, dynamic>;
-    final rawItems = (data['items'] as List?) ?? const [];
-    final items = rawItems
-        .map((item) => EmergencyContact.fromJson(item as Map<String, dynamic>))
-        .toList();
-
-    final pagination =
-        (data['pagination'] as Map<String, dynamic>?) ?? const {};
-    final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? page;
-    final currentPage = (pagination['page'] as num?)?.toInt() ?? page;
-    final hasMore = currentPage < totalPages;
-
-    return EmergencyContactsPageResult(
-      items: items,
-      page: currentPage,
-      hasMore: hasMore,
-    );
   }
 }

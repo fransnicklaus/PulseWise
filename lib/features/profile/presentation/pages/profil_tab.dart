@@ -49,22 +49,44 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     });
   }
 
+  Future<void> _refreshSilently(Future<void> Function() refresh) async {
+    try {
+      await refresh();
+    } catch (_) {
+      // Let the existing screen state render stale data or fallback UI.
+    }
+  }
+
   Future<void> _refreshProfile() async {
     if (!mounted) return;
-    final profileFuture = ref.refresh(patientProfileProvider.future);
-    await profileFuture;
+    await Future.wait([
+      _refreshSilently(() async {
+        final profileFuture = ref.refresh(patientProfileProvider.future);
+        await profileFuture;
+      }),
+      _refreshSilently(() async {
+        final authFuture = ref.refresh(authMeProvider.future);
+        await authFuture;
+      }),
+      _refreshSilently(() async {
+        await ref.read(emergencyContactsProvider.notifier).fetchInitial();
+      }),
+    ]);
 
-    if (!mounted) return;
-    await ref.read(emergencyContactsProvider.notifier).fetchInitial();
-
-    if (!mounted) return;
-    _didAutoRetryAuthFetch = false;
+    if (mounted) {
+      _didAutoRetryAuthFetch = false;
+    }
   }
 
   void _retryProfileData() {
     _didAutoRetryAuthFetch = false;
     ref.invalidate(patientProfileProvider);
     ref.invalidate(authMeProvider);
+  }
+
+  void _retryEmergencyContactsData() {
+    ref.invalidate(emergencyContactsProvider);
+    ref.read(emergencyContactsProvider.notifier).fetchInitial();
   }
 
   String _formatDate(DateTime? date) {
@@ -548,8 +570,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     final profileAsync = ref.watch(patientProfileProvider);
     final authMeAsync = ref.watch(authMeProvider);
     final emergencyState = ref.watch(emergencyContactsProvider);
-    final authMe = authMeAsync.asData?.value;
-    final profile = profileAsync.asData?.value;
+    final authMe = authMeAsync.valueOrNull;
+    final profile = profileAsync.valueOrNull;
     final profileError = profileAsync.asError?.error;
     final isAdminViewer = isAdminRole(authMe?.role);
     final isSkeleton = profile == null;
@@ -1105,6 +1127,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   }
 
   List<Widget> _buildEmergencyContactChildren(EmergencyContactsState state) {
+    final hasNetworkError =
+        state.errorCause != null && isNetworkRequestError(state.errorCause!);
+
     if (state.isLoadingInitial && state.items.isEmpty) {
       return const [
         Padding(
@@ -1115,33 +1140,54 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     }
 
     if (state.error != null && state.items.isEmpty) {
+      return hasNetworkError
+          ? [
+              NoConnectionState.card(
+                title: 'Kontak darurat belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil kontak darurat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: _retryEmergencyContactsData,
+              ),
+            ]
+          : [
+              Text(
+                state.error!,
+                style: const TextStyle(
+                  color: Color(0xFFB91C1C),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _retryEmergencyContactsData,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE64060),
+                    side: const BorderSide(color: Color(0xFFE64060)),
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  icon: const Icon(Icons.refresh, size: 20),
+                  label: const Text(
+                    'Muat Ulang Kontak',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ];
+    }
+
+    if (state.error != null && state.items.isNotEmpty && hasNetworkError) {
       return [
-        Text(
-          state.error!.replaceFirst('Exception: ', ''),
-          style: const TextStyle(
-            color: Color(0xFFB91C1C),
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+        NoConnectionState.compact(
+          title: 'Koneksi terputus',
+          message:
+              'Menampilkan kontak darurat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+          onRetry: _retryEmergencyContactsData,
         ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () =>
-                ref.read(emergencyContactsProvider.notifier).fetchInitial(),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFFE64060),
-              side: const BorderSide(color: Color(0xFFE64060)),
-              minimumSize: const Size.fromHeight(48),
-            ),
-            icon: const Icon(Icons.refresh, size: 20),
-            label: const Text(
-              'Muat Ulang Kontak',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
+        const SizedBox(height: 14),
+        ..._buildEmergencyContactRows(state),
       ];
     }
 
@@ -1152,6 +1198,10 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       ];
     }
 
+    return _buildEmergencyContactRows(state);
+  }
+
+  List<Widget> _buildEmergencyContactRows(EmergencyContactsState state) {
     final prioritized = state.items.where((item) => item.isPrioritas == true);
     final mainContact =
         prioritized.isNotEmpty ? prioritized.first : state.items.first;
