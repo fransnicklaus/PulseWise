@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
@@ -209,9 +211,18 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
     }
   }
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(adminUsersNotifierProvider);
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
 
     return AdminShellScaffold(
       title: 'Kelola Pengguna',
@@ -330,12 +341,39 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
               },
             ),
             const SizedBox(height: 18),
-            if (state.isLoading)
+            if (state.isLoading && state.items.isNotEmpty) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(
+                  color: AdminPalette.accent,
+                  backgroundColor: Color(0xFFF8FAFC),
+                ),
+              ),
+            ] else if (showOfflineBanner) ...[
+              NoConnectionState.compact(
+                title: 'Koneksi terputus',
+                message:
+                    'Daftar pengguna terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                onRetry: () => ref
+                    .read(adminUsersNotifierProvider.notifier)
+                    .refreshUsers(),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (state.isLoading && state.items.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 100),
                 child: Center(
                   child: CircularProgressIndicator(color: AdminPalette.accent),
                 ),
+              )
+            else if (showOfflinePage)
+              NoConnectionState.card(
+                title: 'Daftar pengguna belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil daftar pengguna karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () =>
+                    ref.read(adminUsersNotifierProvider.notifier).loadUsers(),
               )
             else if (state.error != null && state.items.isEmpty)
               AdminMessageCard(

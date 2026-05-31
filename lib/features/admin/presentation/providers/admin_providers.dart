@@ -79,6 +79,7 @@ class AdminUsersNotifier extends StateNotifier<AdminUsersState> {
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: nextLimit,
       query: nextQuery,
@@ -104,6 +105,7 @@ class AdminUsersNotifier extends StateNotifier<AdminUsersState> {
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        errorCause: null,
       );
     } catch (error) {
       if (!mounted) return;
@@ -111,6 +113,7 @@ class AdminUsersNotifier extends StateNotifier<AdminUsersState> {
         isLoading: false,
         isLoadingMore: false,
         error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
       );
     }
   }
@@ -145,6 +148,7 @@ class AdminUsersState {
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 20,
@@ -158,6 +162,7 @@ class AdminUsersState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<AdminUserListItem> items;
   final int page;
   final int limit;
@@ -171,6 +176,7 @@ class AdminUsersState {
     bool? isLoading,
     bool? isLoadingMore,
     Object? error = _adminUsersValueNotSet,
+    Object? errorCause = _adminUsersValueNotSet,
     List<AdminUserListItem>? items,
     int? page,
     int? limit,
@@ -186,6 +192,9 @@ class AdminUsersState {
       error: identical(error, _adminUsersValueNotSet)
           ? this.error
           : error as String?,
+      errorCause: identical(errorCause, _adminUsersValueNotSet)
+          ? this.errorCause
+          : errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,
