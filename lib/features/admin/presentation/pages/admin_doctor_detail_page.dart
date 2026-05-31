@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
@@ -16,12 +18,30 @@ class AdminDoctorDetailPage extends ConsumerWidget {
   final String doctorId;
 
   Future<void> _refresh(WidgetRef ref) async {
-    return ref.refresh(adminDoctorDetailProvider(doctorId).future);
+    await ref.read(adminDoctorDetailProvider(doctorId).notifier).fetchInitial();
+  }
+
+  bool _isNetworkError(Object error) {
+    return isNetworkRequestError(error);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(adminDoctorDetailProvider(doctorId));
+    final detailState = ref.watch(adminDoctorDetailProvider(doctorId));
+    final doctor = detailState.doctor;
+    final errorCause = detailState.errorCause;
+    final shouldShowInitialLoading =
+        !detailState.hasDoctor &&
+        detailState.error == null &&
+        errorCause == null;
+    final hasInitialNetworkFailure =
+        errorCause != null &&
+        _isNetworkError(errorCause) &&
+        !detailState.hasDoctor;
+    final hasInitialNonNetworkFailure =
+        errorCause != null &&
+        !_isNetworkError(errorCause) &&
+        !detailState.hasDoctor;
 
     return Scaffold(
       backgroundColor: AdminPalette.background,
@@ -34,24 +54,56 @@ class AdminDoctorDetailPage extends ConsumerWidget {
         color: AdminPalette.accent,
         backgroundColor: Colors.white,
         onRefresh: () => _refresh(ref),
-        child: detailAsync.when(
-          data: (doctor) => _AdminDoctorDetailContent(doctor: doctor),
-          loading: () => const _AdminDoctorDetailLoadingView(),
-          error: (error, _) => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-            children: [
-              AdminMessageCard(
-                icon: Icons.local_hospital_outlined,
-                title: 'Detail dokter belum tersedia',
-                description: error.toString().replaceFirst('Exception: ', ''),
-                actionLabel: 'Muat Ulang',
-                onActionTap: () =>
-                    ref.invalidate(adminDoctorDetailProvider(doctorId)),
-              ),
-            ],
-          ),
-        ),
+        child: shouldShowInitialLoading || (detailState.isLoading && !detailState.hasDoctor)
+            ? const _AdminDoctorDetailLoadingView()
+            : hasInitialNetworkFailure
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.68,
+                        child: NoConnectionState.page(
+                          title: 'Detail dokter belum bisa dimuat',
+                          message:
+                              'Kami belum bisa mengambil detail dokter karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                          onRetry: () => ref
+                              .read(adminDoctorDetailProvider(doctorId).notifier)
+                              .fetchInitial(),
+                        ),
+                      ),
+                    ],
+                  )
+                : hasInitialNonNetworkFailure
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                        children: [
+                          AdminMessageCard(
+                            icon: Icons.local_hospital_outlined,
+                            title: 'Detail dokter belum tersedia',
+                            description:
+                                detailState.error ?? 'Terjadi kesalahan.',
+                            actionLabel: 'Muat Ulang',
+                            onActionTap: () => ref
+                                .read(adminDoctorDetailProvider(doctorId).notifier)
+                                .fetchInitial(),
+                          ),
+                        ],
+                      )
+                    : doctor == null
+                        ? const _AdminDoctorDetailLoadingView()
+                        : _AdminDoctorDetailContent(
+                            doctor: doctor,
+                            isRefreshing: detailState.isRefreshing,
+                            hasRefreshNetworkFailure:
+                                errorCause != null &&
+                                _isNetworkError(errorCause) &&
+                                detailState.hasDoctor,
+                            onRetryRefresh: () => ref
+                                .read(adminDoctorDetailProvider(doctorId).notifier)
+                                .fetchInitial(),
+                          ),
       ),
     );
   }
@@ -60,9 +112,15 @@ class AdminDoctorDetailPage extends ConsumerWidget {
 class _AdminDoctorDetailContent extends ConsumerWidget {
   const _AdminDoctorDetailContent({
     required this.doctor,
+    required this.isRefreshing,
+    required this.hasRefreshNetworkFailure,
+    required this.onRetryRefresh,
   });
 
   final AdminDoctorDetail doctor;
+  final bool isRefreshing;
+  final bool hasRefreshNetworkFailure;
+  final VoidCallback onRetryRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -72,6 +130,26 @@ class _AdminDoctorDetailContent extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
+        if (isRefreshing) ...[
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(999)),
+            child: LinearProgressIndicator(
+              minHeight: 4,
+              color: AdminPalette.accent,
+              backgroundColor: Color(0x1F0F766E),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (hasRefreshNetworkFailure) ...[
+          NoConnectionState.compact(
+            title: 'Detail dokter gagal diperbarui',
+            message:
+                'Kami belum bisa memuat data dokter terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            onRetry: onRetryRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         _AdminDoctorHeroCard(doctor: doctor),
         const SizedBox(height: 16),
         _AdminDoctorActionSection(doctor: doctor),

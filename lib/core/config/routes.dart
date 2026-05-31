@@ -3,6 +3,7 @@ import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
+import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_resolver_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_doctors_review_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_user_detail_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_users_page.dart';
@@ -294,6 +295,13 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'doctors',
             builder: (context, state) => const AdminDoctorsReviewPage(),
+          ),
+          GoRoute(
+            path: 'doctors/by-user/:userId',
+            builder: (context, state) {
+              final userId = state.pathParameters['userId'] ?? '';
+              return AdminDoctorDetailResolverPage(userId: userId);
+            },
           ),
           GoRoute(
             path: 'doctors/:doctorId',

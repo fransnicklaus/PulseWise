@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
@@ -16,12 +18,30 @@ class AdminUserDetailPage extends ConsumerWidget {
   final String userId;
 
   Future<void> _refresh(WidgetRef ref) async {
-    return ref.refresh(adminUserDetailProvider(userId).future);
+    await ref.read(adminUserDetailProvider(userId).notifier).fetchInitial();
+  }
+
+  bool _isNetworkError(Object error) {
+    return isNetworkRequestError(error);
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailAsync = ref.watch(adminUserDetailProvider(userId));
+    final detailState = ref.watch(adminUserDetailProvider(userId));
+    final user = detailState.user;
+    final errorCause = detailState.errorCause;
+    final shouldShowInitialLoading =
+        !detailState.hasUser &&
+        detailState.error == null &&
+        errorCause == null;
+    final hasInitialNetworkFailure =
+        errorCause != null &&
+        _isNetworkError(errorCause) &&
+        !detailState.hasUser;
+    final hasInitialNonNetworkFailure =
+        errorCause != null &&
+        !_isNetworkError(errorCause) &&
+        !detailState.hasUser;
 
     return Scaffold(
       backgroundColor: AdminPalette.background,
@@ -34,24 +54,56 @@ class AdminUserDetailPage extends ConsumerWidget {
         color: AdminPalette.accent,
         backgroundColor: Colors.white,
         onRefresh: () => _refresh(ref),
-        child: detailAsync.when(
-          data: (user) => _AdminUserDetailContent(user: user),
-          loading: () => const _AdminDetailLoadingView(),
-          error: (error, _) => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
-            children: [
-              AdminMessageCard(
-                icon: Icons.person_search_outlined,
-                title: 'Detail pengguna belum tersedia',
-                description: error.toString().replaceFirst('Exception: ', ''),
-                actionLabel: 'Muat Ulang',
-                onActionTap: () =>
-                    ref.invalidate(adminUserDetailProvider(userId)),
-              ),
-            ],
-          ),
-        ),
+        child: shouldShowInitialLoading || (detailState.isLoading && !detailState.hasUser)
+            ? const _AdminDetailLoadingView()
+            : hasInitialNetworkFailure
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.68,
+                        child: NoConnectionState.page(
+                          title: 'Detail pengguna belum bisa dimuat',
+                          message:
+                              'Kami belum bisa mengambil detail pengguna karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                          onRetry: () => ref
+                              .read(adminUserDetailProvider(userId).notifier)
+                              .fetchInitial(),
+                        ),
+                      ),
+                    ],
+                  )
+                : hasInitialNonNetworkFailure
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                        children: [
+                          AdminMessageCard(
+                            icon: Icons.person_search_outlined,
+                            title: 'Detail pengguna belum tersedia',
+                            description:
+                                detailState.error ?? 'Terjadi kesalahan.',
+                            actionLabel: 'Muat Ulang',
+                            onActionTap: () => ref
+                                .read(adminUserDetailProvider(userId).notifier)
+                                .fetchInitial(),
+                          ),
+                        ],
+                      )
+                    : user == null
+                        ? const _AdminDetailLoadingView()
+                    : _AdminUserDetailContent(
+                        user: user,
+                        isRefreshing: detailState.isRefreshing,
+                        hasRefreshNetworkFailure:
+                            errorCause != null &&
+                            _isNetworkError(errorCause) &&
+                            detailState.hasUser,
+                        onRetryRefresh: () => ref
+                            .read(adminUserDetailProvider(userId).notifier)
+                            .fetchInitial(),
+                      ),
       ),
     );
   }
@@ -60,9 +112,15 @@ class AdminUserDetailPage extends ConsumerWidget {
 class _AdminUserDetailContent extends ConsumerWidget {
   const _AdminUserDetailContent({
     required this.user,
+    required this.isRefreshing,
+    required this.hasRefreshNetworkFailure,
+    required this.onRetryRefresh,
   });
 
   final AdminUserDetail user;
+  final bool isRefreshing;
+  final bool hasRefreshNetworkFailure;
+  final VoidCallback onRetryRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,6 +132,26 @@ class _AdminUserDetailContent extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
+        if (isRefreshing) ...[
+          const ClipRRect(
+            borderRadius: BorderRadius.all(Radius.circular(999)),
+            child: LinearProgressIndicator(
+              minHeight: 4,
+              color: AdminPalette.accent,
+              backgroundColor: Color(0x1F0F766E),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (hasRefreshNetworkFailure) ...[
+          NoConnectionState.compact(
+            title: 'Detail pengguna gagal diperbarui',
+            message:
+                'Kami belum bisa memuat data terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            onRetry: onRetryRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         _AdminUserHeroCard(user: user),
         const SizedBox(height: 16),
         AdminSectionCard(

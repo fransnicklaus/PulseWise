@@ -67,37 +67,14 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 
   Future<void> _openUserDestination(AdminUserListItem item) async {
     if (_navigatingUserId != null) return;
-
-    if (!item.isDoctorUser) {
-      context.push('/admin/home/users/${item.userId}');
-      return;
-    }
-
     setState(() => _navigatingUserId = item.userId);
 
     try {
-      final detail =
-          await ref.read(adminApiProvider).fetchUserDetail(item.userId);
-      final doctorId = detail.doctorProfile?.doctorId.trim() ?? '';
+      final destination = item.isDoctorUser
+          ? '/admin/home/doctors/by-user/${item.userId}'
+          : '/admin/home/users/${item.userId}';
 
-      if (!mounted) return;
-
-      if (doctorId.isNotEmpty) {
-        context.push('/admin/home/doctors/$doctorId');
-        return;
-      }
-
-      AppToast.warning(
-        context,
-        'Profil dokter tidak ditemukan. Membuka detail pengguna biasa.',
-      );
-      context.push('/admin/home/users/${item.userId}');
-    } catch (e) {
-      if (!mounted) return;
-      AppToast.error(
-        context,
-        e.toString().replaceFirst('Exception: ', ''),
-      );
+      await context.push(destination);
     } finally {
       if (mounted) {
         setState(() => _navigatingUserId = null);

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
@@ -16,6 +18,10 @@ class AdminDoctorsReviewPage extends ConsumerStatefulWidget {
 
 class _AdminDoctorsReviewPageState
     extends ConsumerState<AdminDoctorsReviewPage> {
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +36,15 @@ class _AdminDoctorsReviewPageState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(adminDoctorsReviewNotifierProvider);
+    final showOfflinePage =
+        _isNetworkError(state.errorCause) && state.items.isEmpty && !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
+    final showInitialNonNetworkError =
+        state.error != null &&
+        !_isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
 
     return Scaffold(
       backgroundColor: AdminPalette.background,
@@ -88,18 +103,46 @@ class _AdminDoctorsReviewPageState
               ),
             ),
             const SizedBox(height: 18),
-            if (state.isLoading)
+            if (state.isRefreshing) ...[
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: LinearProgressIndicator(
+                  color: AdminPalette.accent,
+                  backgroundColor: Color(0xFFF8FAFC),
+                ),
+              ),
+            ] else if (showOfflineBanner) ...[
+              NoConnectionState.compact(
+                title: 'Koneksi terputus',
+                message:
+                    'Daftar dokter terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                onRetry: () => ref
+                    .read(adminDoctorsReviewNotifierProvider.notifier)
+                    .refreshDoctors(),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (state.isLoading && state.items.isEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 100),
                 child: Center(
                   child: CircularProgressIndicator(color: AdminPalette.accent),
                 ),
               )
-            else if (state.error != null && state.items.isEmpty)
+            else if (showOfflinePage)
+              NoConnectionState.card(
+                title: 'Daftar dokter belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil daftar dokter karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () => ref
+                    .read(adminDoctorsReviewNotifierProvider.notifier)
+                    .loadDoctors(status: state.status),
+              )
+            else if (showInitialNonNetworkError)
               AdminMessageCard(
                 icon: Icons.error_outline_rounded,
                 title: 'Daftar dokter gagal dimuat',
-                description: state.error!,
+                description: state.error ?? 'Terjadi kesalahan.',
                 actionLabel: 'Coba Lagi',
                 onActionTap: () => ref
                     .read(adminDoctorsReviewNotifierProvider.notifier)

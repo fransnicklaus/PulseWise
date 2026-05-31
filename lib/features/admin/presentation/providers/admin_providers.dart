@@ -19,15 +19,16 @@ final adminPendingDoctorsProvider =
   return ref.watch(adminApiProvider).fetchPendingDoctors();
 });
 
-final adminUserDetailProvider = FutureProvider.autoDispose
-    .family<AdminUserDetail, String>((ref, userId) async {
-  return ref.watch(adminApiProvider).fetchUserDetail(userId);
-});
+final adminUserDetailProvider = StateNotifierProvider.autoDispose
+    .family<AdminUserDetailNotifier, AdminUserDetailState, String>(
+  (ref, userId) => AdminUserDetailNotifier(ref.watch(adminApiProvider), userId),
+);
 
-final adminDoctorDetailProvider = FutureProvider.autoDispose
-    .family<AdminDoctorDetail, String>((ref, doctorId) async {
-  return ref.watch(adminApiProvider).fetchDoctorDetail(doctorId);
-});
+final adminDoctorDetailProvider = StateNotifierProvider.autoDispose
+    .family<AdminDoctorDetailNotifier, AdminDoctorDetailState, String>(
+  (ref, doctorId) =>
+      AdminDoctorDetailNotifier(ref.watch(adminApiProvider), doctorId),
+);
 
 final adminUsersNotifierProvider =
     StateNotifierProvider.autoDispose<AdminUsersNotifier, AdminUsersState>(
@@ -143,6 +144,56 @@ class AdminUsersNotifier extends StateNotifier<AdminUsersState> {
   }
 }
 
+class AdminUserDetailNotifier extends StateNotifier<AdminUserDetailState> {
+  AdminUserDetailNotifier(this._api, this._userId)
+      : super(const AdminUserDetailState()) {
+    Future.microtask(fetchInitial);
+  }
+
+  final AdminApi _api;
+  final String _userId;
+  bool _isFetching = false;
+
+  Future<void> fetchInitial() async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    final hasUser = state.user != null;
+    state = state.copyWith(
+      isLoading: !hasUser,
+      isRefreshing: hasUser,
+      error: null,
+      errorCause: null,
+      clearError: true,
+    );
+
+    try {
+      final user = await _api.fetchUserDetail(_userId);
+      if (!mounted) return;
+
+      state = state.copyWith(
+        user: user,
+        isLoading: false,
+        isRefreshing: false,
+        error: null,
+        errorCause: null,
+        clearError: true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      state = state.copyWith(
+        isLoading: false,
+        isRefreshing: false,
+        error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
+      );
+    } finally {
+      _isFetching = false;
+    }
+  }
+}
+
 class AdminUsersState {
   const AdminUsersState({
     this.isLoading = false,
@@ -212,6 +263,41 @@ class AdminUsersState {
   }
 }
 
+class AdminUserDetailState {
+  const AdminUserDetailState({
+    this.user,
+    this.isLoading = true,
+    this.isRefreshing = false,
+    this.error,
+    this.errorCause,
+  });
+
+  final AdminUserDetail? user;
+  final bool isLoading;
+  final bool isRefreshing;
+  final String? error;
+  final Object? errorCause;
+
+  bool get hasUser => user != null;
+
+  AdminUserDetailState copyWith({
+    AdminUserDetail? user,
+    bool? isLoading,
+    bool? isRefreshing,
+    String? error,
+    Object? errorCause,
+    bool clearError = false,
+  }) {
+    return AdminUserDetailState(
+      user: user ?? this.user,
+      isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      error: clearError ? null : error ?? this.error,
+      errorCause: clearError ? null : errorCause ?? this.errorCause,
+    );
+  }
+}
+
 class AdminDoctorsReviewNotifier
     extends StateNotifier<AdminDoctorsReviewState> {
   AdminDoctorsReviewNotifier(this._api)
@@ -229,10 +315,14 @@ class AdminDoctorsReviewNotifier
     if (!mounted) return;
 
     final nextStatus = status ?? state.status;
+    final hasItems = state.items.isNotEmpty;
     state = state.copyWith(
-      isLoading: true,
+      isLoading: !hasItems,
+      isRefreshing: hasItems,
       error: null,
+      errorCause: null,
       status: nextStatus,
+      clearError: true,
     );
 
     try {
@@ -241,13 +331,19 @@ class AdminDoctorsReviewNotifier
 
       state = state.copyWith(
         isLoading: false,
+        isRefreshing: false,
         items: items,
+        error: null,
+        errorCause: null,
+        clearError: true,
       );
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
+        isRefreshing: false,
         error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
       );
     }
   }
@@ -260,27 +356,121 @@ class AdminDoctorsReviewNotifier
 class AdminDoctorsReviewState {
   const AdminDoctorsReviewState({
     this.isLoading = false,
+    this.isRefreshing = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.status = AdminAccountStatuses.pendingAdminVerification,
   });
 
   final bool isLoading;
+  final bool isRefreshing;
   final String? error;
+  final Object? errorCause;
   final List<AdminDoctorReviewItem> items;
   final String status;
 
   AdminDoctorsReviewState copyWith({
     bool? isLoading,
+    bool? isRefreshing,
     String? error,
+    Object? errorCause,
     List<AdminDoctorReviewItem>? items,
     String? status,
+    bool clearError = false,
   }) {
     return AdminDoctorsReviewState(
       isLoading: isLoading ?? this.isLoading,
-      error: error,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      error: clearError ? null : error ?? this.error,
+      errorCause: clearError ? null : errorCause ?? this.errorCause,
       items: items ?? this.items,
       status: status ?? this.status,
+    );
+  }
+}
+
+class AdminDoctorDetailNotifier extends StateNotifier<AdminDoctorDetailState> {
+  AdminDoctorDetailNotifier(this._api, this._doctorId)
+      : super(const AdminDoctorDetailState()) {
+    Future.microtask(fetchInitial);
+  }
+
+  final AdminApi _api;
+  final String _doctorId;
+  bool _isFetching = false;
+
+  Future<void> fetchInitial() async {
+    if (_isFetching) return;
+    _isFetching = true;
+
+    final hasDoctor = state.doctor != null;
+    state = state.copyWith(
+      isLoading: !hasDoctor,
+      isRefreshing: hasDoctor,
+      error: null,
+      errorCause: null,
+      clearError: true,
+    );
+
+    try {
+      final doctor = await _api.fetchDoctorDetail(_doctorId);
+      if (!mounted) return;
+
+      state = state.copyWith(
+        doctor: doctor,
+        isLoading: false,
+        isRefreshing: false,
+        error: null,
+        errorCause: null,
+        clearError: true,
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      state = state.copyWith(
+        isLoading: false,
+        isRefreshing: false,
+        error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
+      );
+    } finally {
+      _isFetching = false;
+    }
+  }
+}
+
+class AdminDoctorDetailState {
+  const AdminDoctorDetailState({
+    this.doctor,
+    this.isLoading = true,
+    this.isRefreshing = false,
+    this.error,
+    this.errorCause,
+  });
+
+  final AdminDoctorDetail? doctor;
+  final bool isLoading;
+  final bool isRefreshing;
+  final String? error;
+  final Object? errorCause;
+
+  bool get hasDoctor => doctor != null;
+
+  AdminDoctorDetailState copyWith({
+    AdminDoctorDetail? doctor,
+    bool? isLoading,
+    bool? isRefreshing,
+    String? error,
+    Object? errorCause,
+    bool clearError = false,
+  }) {
+    return AdminDoctorDetailState(
+      doctor: doctor ?? this.doctor,
+      isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      error: clearError ? null : error ?? this.error,
+      errorCause: clearError ? null : errorCause ?? this.errorCause,
     );
   }
 }
@@ -330,7 +520,7 @@ class AdminUserStatusActionNotifier extends StateNotifier<AdminActionState> {
       );
       _ref.invalidate(adminOverviewProvider);
       _ref.invalidate(adminPendingDoctorsProvider);
-      _ref.invalidate(adminUserDetailProvider(userId));
+      _ref.read(adminUserDetailProvider(userId).notifier).fetchInitial();
       await _ref.read(adminUsersNotifierProvider.notifier).refreshUsers();
 
       state = AdminActionState(
@@ -419,7 +609,7 @@ class AdminDoctorReviewActionNotifier extends StateNotifier<AdminActionState> {
       final result = await action();
       _ref.invalidate(adminOverviewProvider);
       _ref.invalidate(adminPendingDoctorsProvider);
-      _ref.invalidate(adminDoctorDetailProvider(doctorId));
+      _ref.read(adminDoctorDetailProvider(doctorId).notifier).fetchInitial();
       await _ref
           .read(adminDoctorsReviewNotifierProvider.notifier)
           .refreshDoctors();
