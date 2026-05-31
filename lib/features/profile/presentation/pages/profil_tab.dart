@@ -9,8 +9,10 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
@@ -57,6 +59,12 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
     if (!mounted) return;
     _didAutoRetryAuthFetch = false;
+  }
+
+  void _retryProfileData() {
+    _didAutoRetryAuthFetch = false;
+    ref.invalidate(patientProfileProvider);
+    ref.invalidate(authMeProvider);
   }
 
   String _formatDate(DateTime? date) {
@@ -542,9 +550,12 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     final emergencyState = ref.watch(emergencyContactsProvider);
     final authMe = authMeAsync.asData?.value;
     final profile = profileAsync.asData?.value;
+    final profileError = profileAsync.asError?.error;
     final isAdminViewer = isAdminRole(authMe?.role);
     final isSkeleton = profile == null;
     final isRefreshing = profileAsync.isLoading && profileAsync.hasValue;
+    final isProfileNetworkError =
+        profileError != null && isNetworkRequestError(profileError);
 
     if (profileAsync.hasError && !profileAsync.hasValue) {
       final message = profileAsync.error.toString();
@@ -602,52 +613,56 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                   const SizedBox(height: 40),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF1F2),
-                        border: Border.all(color: const Color(0xFFFECACA)),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Gagal memuat profil',
-                            style: TextStyle(
-                              color: Color(0xFF991B1B),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            message,
-                            style: const TextStyle(
-                              color: Color(0xFF7F1D1D),
-                              fontSize: 13,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
+                    child: isProfileNetworkError
+                        ? NoConnectionState.page(
+                            title: 'Profil belum bisa dimuat',
+                            message:
+                                'Kami belum bisa mengambil data profil karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                            onRetry: _retryProfileData,
+                          )
+                        : Container(
                             width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _didAutoRetryAuthFetch = false;
-                                ref.invalidate(patientProfileProvider);
-                                ref.invalidate(authMeProvider);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFDC2626),
-                                foregroundColor: Colors.white,
-                              ),
-                              child: const Text('Coba Lagi'),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF1F2),
+                              border:
+                                  Border.all(color: const Color(0xFFFECACA)),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Gagal memuat profil',
+                                  style: TextStyle(
+                                    color: Color(0xFF991B1B),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  message,
+                                  style: const TextStyle(
+                                    color: Color(0xFF7F1D1D),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: _retryProfileData,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFDC2626),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Coba Lagi'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
                   ),
                   if (isAdminViewer) ...[
                     const SizedBox(height: 12),
@@ -838,6 +853,31 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           const _ActionRow(label: 'Bahasa Aplikasi'),
                           const _ActionRow(label: 'Notifikasi'),
                         ],
+                      ),
+                      const SizedBox(height: 14),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () =>
+                                _showNoConnectionDemoSheet(context),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFB45309),
+                              side: const BorderSide(color: Color(0xFFFCD34D)),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: const Icon(Icons.wifi_off_rounded, size: 22),
+                            label: const Text(
+                              'Demo No Connection Widget',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
                       ),
                       if (isAdminViewer) ...[
                         const SizedBox(height: 14),
@@ -1389,6 +1429,113 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       },
     );
   }
+
+  void _showNoConnectionDemoSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFFF8FAFC),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return FractionallySizedBox(
+          heightFactor: 0.92,
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Demo No Connection',
+                    style: TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Pratinjau ini menampilkan versi kecil, versi card, dan versi halaman kecil supaya nanti bisa kita pakai konsisten di berbagai API state.',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _PreviewLabel(
+                    title: 'Compact',
+                    subtitle: 'Untuk widget kecil atau section yang sempit.',
+                  ),
+                  const SizedBox(height: 10),
+                  NoConnectionState.compact(
+                    onRetry: () {
+                      AppToast.info(
+                        context,
+                        'Demo retry ditekan pada versi compact.',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  const _PreviewLabel(
+                    title: 'Card',
+                    subtitle: 'Untuk section utama atau empty state inline.',
+                  ),
+                  const SizedBox(height: 10),
+                  NoConnectionState.card(
+                    title: 'Data belum bisa dimuat',
+                    message:
+                        'Bagian ini belum bisa mengambil data karena koneksi sedang bermasalah.',
+                    onRetry: () {
+                      AppToast.info(
+                        context,
+                        'Demo retry ditekan pada versi card.',
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  const _PreviewLabel(
+                    title: 'Page',
+                    subtitle:
+                        'Untuk halaman kecil atau error state penuh pada satu screen.',
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: SizedBox(
+                      height: 420,
+                      child: NoConnectionState.page(
+                        title: 'Riwayat kesehatan belum bisa dibuka',
+                        message:
+                            'Screen ini cocok dipakai saat satu halaman penuh gagal memuat karena perangkat sedang offline.',
+                        onRetry: () {
+                          AppToast.info(
+                            context,
+                            'Demo retry ditekan pada versi page.',
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _DebugToastButton extends StatelessWidget {
@@ -1425,6 +1572,43 @@ class _DebugToastButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PreviewLabel extends StatelessWidget {
+  const _PreviewLabel({
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            height: 1.45,
+          ),
+        ),
+      ],
     );
   }
 }

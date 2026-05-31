@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
 
@@ -48,6 +49,19 @@ class MlRecommendationApi {
       if (error.response?.statusCode == 404) {
         return null;
       }
+
+      if (isNetworkRequestError(error)) {
+        rethrow;
+      }
+
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
       throw Exception('Gagal mengambil rekomendasi ML terbaru.');
     }
   }

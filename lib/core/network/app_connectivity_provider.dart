@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_dio_provider.dart';
 import 'api_logger.dart';
 
+const bool kSuspendConnectivityChecks = true;
+
 enum AppConnectivityStatus {
   checking,
   online,
@@ -39,6 +41,14 @@ class AppConnectivityState {
         message = 'Memeriksa koneksi internet...',
         checkedAt = null;
 
+  const AppConnectivityState.suspended()
+      : status = AppConnectivityStatus.online,
+        hasInitialized = true,
+        hasNetworkTransport = true,
+        transports = const [],
+        message = 'Pemeriksaan koneksi disuspensi sementara.',
+        checkedAt = null;
+
   bool get isChecking => status == AppConnectivityStatus.checking;
   bool get isOnline => status == AppConnectivityStatus.online;
   bool get isOffline => status == AppConnectivityStatus.offline;
@@ -67,6 +77,7 @@ final appConnectivityProvider =
   return AppConnectivityNotifier(
     connectivity: Connectivity(),
     baseUrl: ref.watch(apiBaseUrlProvider),
+    suspendChecks: kSuspendConnectivityChecks,
   );
 });
 
@@ -75,33 +86,50 @@ final isAppOnlineProvider = Provider<bool>((ref) {
 });
 
 class AppConnectivityNotifier extends StateNotifier<AppConnectivityState> {
+  static const _probeInterval = Duration(minutes: 3);
+  static const _healthConnectTimeout = Duration(seconds: 12);
+  static const _healthReceiveTimeout = Duration(seconds: 12);
+  static const _healthSendTimeout = Duration(seconds: 12);
+
   AppConnectivityNotifier({
     required Connectivity connectivity,
     required String baseUrl,
+    required bool suspendChecks,
   })  : _connectivity = connectivity,
         _baseUrl = baseUrl,
+        _suspendChecks = suspendChecks,
         _healthDio = Dio(
           BaseOptions(
             headers: const {
               'Accept': 'application/json',
             },
-            connectTimeout: const Duration(seconds: 5),
-            receiveTimeout: const Duration(seconds: 5),
-            sendTimeout: const Duration(seconds: 5),
+            connectTimeout: _healthConnectTimeout,
+            receiveTimeout: _healthReceiveTimeout,
+            sendTimeout: _healthSendTimeout,
             validateStatus: (status) =>
                 status != null && status >= 200 && status < 300,
           ),
         ),
-        super(const AppConnectivityState.initial()) {
+        super(
+          suspendChecks
+              ? const AppConnectivityState.suspended()
+              : const AppConnectivityState.initial(),
+        ) {
+    if (_suspendChecks) {
+      debugPrint(
+        '[Connectivity] Connectivity checks are temporarily suspended.',
+      );
+      return;
+    }
+
     ApiLogger.attach(_healthDio);
     _initialize();
   }
 
-  static const _probeInterval = Duration(minutes: 3);
-
   final Connectivity _connectivity;
   final Dio _healthDio;
   final String _baseUrl;
+  final bool _suspendChecks;
 
   StreamSubscription<List<ConnectivityResult>>? _subscription;
   Timer? _periodicProbeTimer;

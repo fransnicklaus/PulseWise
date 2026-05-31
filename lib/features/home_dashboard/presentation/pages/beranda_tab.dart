@@ -2,9 +2,9 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/network/app_connectivity_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
@@ -59,49 +59,93 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     }
   }
 
-  String _networkFailureMessage({
-    required String fallbackMessage,
-  }) {
-    final connectivity = ref.read(appConnectivityProvider);
-    if (connectivity.isOffline || !connectivity.hasNetworkTransport) {
-      return connectivity.message;
+  bool _isNoConnectionAsyncError<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null &&
+        isNetworkRequestError(error) &&
+        !asyncValue.hasValue;
+  }
+
+  bool _hasNonNetworkErrorWithoutValue<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null &&
+        !isNetworkRequestError(error) &&
+        !asyncValue.hasValue;
+  }
+
+  bool _hasNoConnectionErrorWithValue<T>(AsyncValue<T> asyncValue) {
+    final error = asyncValue.asError?.error;
+    return error != null && isNetworkRequestError(error) && asyncValue.hasValue;
+  }
+
+  bool _isInitialSectionLoading<T>(AsyncValue<T> asyncValue) {
+    return asyncValue.isLoading && !asyncValue.hasValue;
+  }
+
+  String _errorMessage(Object error) {
+    return error.toString().replaceFirst('Exception: ', '');
+  }
+
+  MedicationCalendarRangeQuery _upcomingMedicationQuery() {
+    final now = DateTime.now();
+    final fromDate = DateTime(now.year, now.month, now.day);
+    final toDate = fromDate.add(const Duration(days: 2));
+    return MedicationCalendarRangeQuery(
+      from: fromDate,
+      to: toDate,
+    );
+  }
+
+  void _retryHealthStatusSection() {
+    ref.invalidate(latestMlRecommendationProvider);
+    ref.invalidate(quickDashboardProvider);
+  }
+
+  void _retryUpcomingMedicationSection(
+    MedicationCalendarRangeQuery query,
+  ) {
+    ref.invalidate(medicationCalendarRangeProvider(query));
+  }
+
+  Future<void> _refreshHealthStatusSection() async {
+    await Future.wait([
+      _refreshProviderSilently(
+        () => ref.refresh(authMeProvider.future),
+      ),
+      _refreshProviderSilently(
+        () => ref.refresh(latestMlRecommendationProvider.future),
+      ),
+      _refreshProviderSilently(
+        () => ref.refresh(quickDashboardProvider.future),
+      ),
+    ]);
+  }
+
+  Future<void> _refreshUpcomingMedicationSectionSilently(
+    MedicationCalendarRangeQuery query,
+  ) {
+    return _refreshProviderSilently(
+      () => ref.refresh(medicationCalendarRangeProvider(query).future),
+    );
+  }
+
+  Future<void> _refreshProviderSilently(
+    Future<Object?> Function() refresh,
+  ) async {
+    try {
+      await refresh();
+    } catch (_) {
+      // Let the section-level AsyncValue state render its own fallback.
     }
-    return fallbackMessage;
   }
 
   Future<void> _onRefresh() async {
-    final connectivity = ref.read(appConnectivityProvider);
-    if (connectivity.isOffline) {
-      AppToast.warning(context, connectivity.message);
-      return;
-    }
+    final calendarQuery = _upcomingMedicationQuery();
 
-    try {
-      await Future.wait([
-        ref.refresh(authMeProvider.future),
-        ref.refresh(latestMlRecommendationProvider.future),
-        ref.refresh(quickDashboardProvider.future),
-        ref.refresh(medicationCalendarRangeProvider(
-          MedicationCalendarRangeQuery(
-            from: DateTime.now(),
-            to: DateTime.now().add(const Duration(days: 2)),
-          ),
-        ).future),
-      ]);
-    } catch (e) {
-      if (!mounted) return;
-      if (isNetworkRequestError(e)) {
-        AppToast.warning(
-          context,
-          _networkFailureMessage(
-            fallbackMessage:
-                'Koneksi internet bermasalah. Beranda belum bisa dimuat ulang.',
-          ),
-        );
-        return;
-      }
-      rethrow;
-    }
+    await Future.wait([
+      _refreshHealthStatusSection(),
+      _refreshUpcomingMedicationSectionSilently(calendarQuery),
+    ]);
   }
 
   String _formatCurrentDate() {
@@ -151,145 +195,160 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     return _buildLatestVitalsTab(quickDashboard);
   }
 
+  bool _shouldShowHealthRefreshNoConnectionNotice({
+    required AsyncValue<MlRecommendationResponse?> latestRecommendation,
+    required AsyncValue<QuickDashboardResponse?> quickDashboard,
+  }) {
+    if (_healthStatusIndex == 0) {
+      return _hasNoConnectionErrorWithValue(latestRecommendation) ||
+          _hasNoConnectionErrorWithValue(quickDashboard);
+    }
+
+    return _hasNoConnectionErrorWithValue(quickDashboard);
+  }
+
   Widget _buildLatestRecommendationTab(
     AsyncValue<MlRecommendationResponse?> latestRecommendation,
     AsyncValue<QuickDashboardResponse?> quickDashboard,
   ) {
-    return latestRecommendation.when(
-      data: (rec) {
-        final rawRisk =
-            rec?.data?.upstream?.body?.recommendationResult.currentRisk;
-        final hasRisk = rawRisk != null;
-        final risk =
-            hasRisk ? rawRisk.toDouble().clamp(0, 100).toDouble() : 0.0;
-        final progress = hasRisk ? (risk / 100).clamp(0.0, 1.0) : 0.0;
-        final riskText = hasRisk ? '${risk.toStringAsFixed(1)}%' : '';
-        final riskStyle = hasRisk
-            ? _riskStyleForScore(risk)
-            : const _RiskStyle(
-                accentColor: Color(0xFFE64060),
-                backgroundColor: Color(0xFFFFF7F8),
-                borderColor: Color(0xFFFFD6DD),
-              );
-
-        final topCard = SizedBox(
-          height: 96,
-          child: Container(
-            padding:
-                const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
-            decoration: BoxDecoration(
-              color:
-                  hasRisk ? riskStyle.backgroundColor : const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color:
-                    hasRisk ? riskStyle.borderColor : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: hasRisk
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Risiko Eksisting',
-                              style: TextStyle(
-                                color: Color(0xFF525252),
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            riskText,
-                            style: TextStyle(
-                              color: riskStyle.accentColor,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(
-                          minHeight: 11,
-                          value: progress,
-                          backgroundColor: const Color(0xFFF3F4F6),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            riskStyle.accentColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : const SizedBox.expand(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Belum ada rekomendasi terbaru',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFF334155),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Jalankan prediksi kesehatan untuk melihat ringkasan risiko Anda.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Color(0xFF64748B),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                height: 1.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-          ),
-        );
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            topCard,
-            const SizedBox(height: 12),
-            quickDashboard.when(
-              data: (dashResponse) {
-                final dashboardData = dashResponse?.data;
-                return _buildRecommendationVitalsRow(dashboardData);
-              },
-              loading: () => _buildRecommendationVitalsRow(null),
-              error: (_, __) => _buildRecommendationVitalsRow(null),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(
+    if (_isInitialSectionLoading(latestRecommendation)) {
+      return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 18),
           child: CircularProgressIndicator(color: Color(0xFFE64060)),
         ),
-      ),
-      error: (_, __) => const _HealthStatusEmptyState(
+      );
+    }
+
+    if (_isNoConnectionAsyncError(latestRecommendation)) {
+      return NoConnectionState.card(
+        title: 'Rekomendasi belum bisa dimuat',
+        message:
+            'Kami belum bisa mengambil rekomendasi kesehatan terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+        onRetry: _retryHealthStatusSection,
+      );
+    }
+
+    if (_hasNonNetworkErrorWithoutValue(latestRecommendation)) {
+      return const _HealthStatusEmptyState(
         title: 'Gagal memuat rekomendasi',
         subtitle: 'Tarik ke bawah untuk memuat ulang.',
+      );
+    }
+
+    final recommendation = latestRecommendation.valueOrNull;
+    final rawRisk =
+        recommendation?.data?.upstream?.body?.recommendationResult.currentRisk;
+    final hasRisk = rawRisk != null;
+    final risk = hasRisk ? rawRisk.toDouble().clamp(0, 100).toDouble() : 0.0;
+    final progress = hasRisk ? (risk / 100).clamp(0.0, 1.0) : 0.0;
+    final riskText = hasRisk ? '${risk.toStringAsFixed(1)}%' : '';
+    final riskStyle = hasRisk
+        ? _riskStyleForScore(risk)
+        : const _RiskStyle(
+            accentColor: Color(0xFFE64060),
+            backgroundColor: Color(0xFFFFF7F8),
+            borderColor: Color(0xFFFFD6DD),
+          );
+    final quickDashboardData = quickDashboard.valueOrNull?.data;
+
+    final topCard = SizedBox(
+      height: 96,
+      child: Container(
+        padding:
+            const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
+        decoration: BoxDecoration(
+          color: hasRisk ? riskStyle.backgroundColor : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasRisk ? riskStyle.borderColor : const Color(0xFFE2E8F0),
+          ),
+        ),
+        child: hasRisk
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Risiko Eksisting',
+                          style: TextStyle(
+                            color: Color(0xFF525252),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        riskText,
+                        style: TextStyle(
+                          color: riskStyle.accentColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      minHeight: 11,
+                      value: progress,
+                      backgroundColor: const Color(0xFFF3F4F6),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        riskStyle.accentColor,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : const SizedBox.expand(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Belum ada rekomendasi terbaru',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF334155),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Jalankan prediksi kesehatan untuk melihat ringkasan risiko Anda.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
       ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        topCard,
+        const SizedBox(height: 12),
+        _buildRecommendationVitalsRow(quickDashboardData),
+      ],
     );
   }
 
@@ -441,120 +500,131 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
   }
 
   Widget _buildLatestVitalsTab(AsyncValue<QuickDashboardResponse?> quickDash) {
-    return quickDash.when(
-      data: (dashResponse) {
-        final dashboardData = dashResponse?.data;
-        final oxygenSaturation = _fieldValue(dashboardData, 'oxygenSaturation');
-        final weight = _fieldValue(dashboardData, 'weight');
-        final latestMeasuredAt = _latestDashboardMeasuredAt(dashboardData);
-
-        return Column(
-          children: [
-            // Row 1: O2 + Weight
-            Row(
-              children: [
-                Expanded(
-                  child: _buildSmallVitalCard(
-                    label: 'Oksigen Jenuh',
-                    value: oxygenSaturation != null
-                        ? oxygenSaturation.toStringAsFixed(0)
-                        : '-',
-                    unit: '%',
-                    icon: Icons.air,
-                    bgColor: const Color(0xFFF0F9FF),
-                    borderColor: const Color(0xFFCFF0FF),
-                    iconBg: const Color(0xFF0EA5E9),
-                    latestMeasuredAt:
-                        _fieldMeasuredAt(dashboardData, 'oxygenSaturation'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildSmallVitalCard(
-                    label: 'Berat Badan',
-                    value: weight != null ? weight.toStringAsFixed(1) : '-',
-                    unit: 'kg',
-                    icon: Icons.monitor_weight_outlined,
-                    bgColor: const Color(0xFFFFF8F0),
-                    borderColor: const Color(0xFFFFD99B),
-                    iconBg: const Color(0xFFFFA726),
-                    latestMeasuredAt: _fieldMeasuredAt(dashboardData, 'weight'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Row 2: Measured Time (full width)
-            SizedBox(
-              height: 96,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF6FFF8),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFCDF3D5)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2D9744).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.access_time,
-                        color: Color(0xFF2D9744),
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Waktu Pengukuran',
-                            style: TextStyle(
-                              color: Color(0xFF525252),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            latestMeasuredAt != null
-                                ? _formatMeasuredTime(latestMeasuredAt)
-                                : '-',
-                            style: const TextStyle(
-                              color: Color(0xFF1F2937),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(
+    if (_isInitialSectionLoading(quickDash)) {
+      return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 18),
           child: CircularProgressIndicator(color: Color(0xFFE64060)),
         ),
-      ),
-      error: (_, __) => const _HealthStatusEmptyState(
+      );
+    }
+
+    if (_isNoConnectionAsyncError(quickDash)) {
+      return NoConnectionState.card(
+        title: 'Vitals belum bisa dimuat',
+        message:
+            'Kami belum bisa mengambil data vitals terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+        onRetry: _retryHealthStatusSection,
+      );
+    }
+
+    if (_hasNonNetworkErrorWithoutValue(quickDash)) {
+      return const _HealthStatusEmptyState(
         title: 'Gagal memuat vitals',
         subtitle: 'Tarik ke bawah untuk memuat ulang.',
-      ),
+      );
+    }
+
+    final dashboardData = quickDash.valueOrNull?.data;
+    final oxygenSaturation = _fieldValue(dashboardData, 'oxygenSaturation');
+    final weight = _fieldValue(dashboardData, 'weight');
+    final latestMeasuredAt = _latestDashboardMeasuredAt(dashboardData);
+
+    return Column(
+      children: [
+        // Row 1: O2 + Weight
+        Row(
+          children: [
+            Expanded(
+              child: _buildSmallVitalCard(
+                label: 'Oksigen Jenuh',
+                value: oxygenSaturation != null
+                    ? oxygenSaturation.toStringAsFixed(0)
+                    : '-',
+                unit: '%',
+                icon: Icons.air,
+                bgColor: const Color(0xFFF0F9FF),
+                borderColor: const Color(0xFFCFF0FF),
+                iconBg: const Color(0xFF0EA5E9),
+                latestMeasuredAt:
+                    _fieldMeasuredAt(dashboardData, 'oxygenSaturation'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildSmallVitalCard(
+                label: 'Berat Badan',
+                value: weight != null ? weight.toStringAsFixed(1) : '-',
+                unit: 'kg',
+                icon: Icons.monitor_weight_outlined,
+                bgColor: const Color(0xFFFFF8F0),
+                borderColor: const Color(0xFFFFD99B),
+                iconBg: const Color(0xFFFFA726),
+                latestMeasuredAt: _fieldMeasuredAt(dashboardData, 'weight'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Row 2: Measured Time (full width)
+        SizedBox(
+          height: 96,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6FFF8),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFCDF3D5)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2D9744).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.access_time,
+                    color: Color(0xFF2D9744),
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Waktu Pengukuran',
+                        style: TextStyle(
+                          color: Color(0xFF525252),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        latestMeasuredAt != null
+                            ? _formatMeasuredTime(latestMeasuredAt)
+                            : '-',
+                        style: const TextStyle(
+                          color: Color(0xFF1F2937),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -669,23 +739,19 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     super.build(context);
 
     final authMe = ref.watch(authMeProvider);
-    final firstName = authMe.maybeWhen(
-      data: (user) => user.firstName.trim(),
-      orElse: () => '',
-    );
+    final firstName = authMe.valueOrNull?.firstName.trim() ?? '';
     final greetingName = firstName.isEmpty ? 'Halo' : 'Halo, $firstName';
 
-    final now = DateTime.now();
-    final fromDate = DateTime(now.year, now.month, now.day);
-    final toDate = DateTime(now.year, now.month, now.day + 2);
-    final calendarQuery = MedicationCalendarRangeQuery(
-      from: fromDate,
-      to: toDate,
-    );
+    final calendarQuery = _upcomingMedicationQuery();
     final upcomingMedicationAsync =
         ref.watch(medicationCalendarRangeProvider(calendarQuery));
     final latestRecommendationAsync = ref.watch(latestMlRecommendationProvider);
     final quickDashboardAsync = ref.watch(quickDashboardProvider);
+    final showHealthRefreshNoConnectionNotice =
+        _shouldShowHealthRefreshNoConnectionNotice(
+      latestRecommendation: latestRecommendationAsync,
+      quickDashboard: quickDashboardAsync,
+    );
     double topPadding = MediaQuery.of(context).padding.top;
 
     return RefreshIndicator(
@@ -1031,6 +1097,15 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                           ],
                         ),
                         const SizedBox(height: 16),
+                        if (showHealthRefreshNoConnectionNotice) ...[
+                          NoConnectionState.compact(
+                            title: 'Koneksi terputus',
+                            message:
+                                'Menampilkan data kesehatan terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui data terbaru.',
+                            onRetry: _retryHealthStatusSection,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
                         // Animated Health Metrics
                         AnimatedSwitcher(
@@ -1354,6 +1429,9 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     AsyncValue<MedicationCalendarResponse> asyncValue,
     MedicationCalendarRangeQuery query,
   ) {
+    final response = asyncValue.valueOrNull;
+    final asyncError = asyncValue.asError?.error;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
@@ -1385,16 +1463,35 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
               ),
             ),
             const SizedBox(height: 12),
-            asyncValue.when(
-              loading: () => const Center(
+            if (_hasNoConnectionErrorWithValue(asyncValue) &&
+                response != null) ...[
+              NoConnectionState.compact(
+                title: 'Koneksi terputus',
+                message:
+                    'Menampilkan jadwal obat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                onRetry: () => _retryUpcomingMedicationSection(query),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_isInitialSectionLoading(asyncValue))
+              const Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: 14),
                   child: CircularProgressIndicator(
                     color: Color(0xFFE64060),
                   ),
                 ),
-              ),
-              error: (error, _) => Container(
+              )
+            else if (_isNoConnectionAsyncError(asyncValue))
+              NoConnectionState.card(
+                title: 'Jadwal obat belum bisa dimuat',
+                message:
+                    'Kami belum bisa mengambil jadwal obat 3 hari ke depan karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                onRetry: () => _retryUpcomingMedicationSection(query),
+              )
+            else if (_hasNonNetworkErrorWithoutValue(asyncValue) &&
+                asyncError != null)
+              Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1403,54 +1500,58 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                   border: Border.all(color: const Color(0xFFFED7AA)),
                 ),
                 child: Text(
-                  error.toString().replaceFirst('Exception: ', ''),
+                  _errorMessage(asyncError),
                   style: const TextStyle(
                     color: Color(0xFF9A3412),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              data: (response) {
-                final items = [...response.items]..sort((a, b) {
-                    final dateA = a.scheduledDate ?? DateTime(1970);
-                    final dateB = b.scheduledDate ?? DateTime(1970);
-                    final dateCompare = dateA.compareTo(dateB);
-                    if (dateCompare != 0) return dateCompare;
-                    return a.scheduledTime.compareTo(b.scheduledTime);
-                  });
+              )
+            else if (response != null)
+              Builder(
+                builder: (context) {
+                  final items = [...response.items]..sort((a, b) {
+                      final dateA = a.scheduledDate ?? DateTime(1970);
+                      final dateB = b.scheduledDate ?? DateTime(1970);
+                      final dateCompare = dateA.compareTo(dateB);
+                      if (dateCompare != 0) return dateCompare;
+                      return a.scheduledTime.compareTo(b.scheduledTime);
+                    });
 
-                if (items.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Belum ada jadwal obat untuk 3 hari ke depan.',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: items
-                      .take(6)
-                      .map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _HomeMedicationTile(
-                            item: item,
-                            onTap: () => _showMedicationBottomSheet(
-                                context, item, query),
-                          ),
+                  if (items.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Belum ada jadwal obat untuk 3 hari ke depan.',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: items
+                        .take(6)
+                        .map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: _HomeMedicationTile(
+                              item: item,
+                              onTap: () => _showMedicationBottomSheet(
+                                  context, item, query),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              )
+            else
+              const SizedBox.shrink(),
           ],
         ),
       ),

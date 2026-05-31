@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
 
@@ -69,6 +70,19 @@ class DashboardOverviewApi {
       if (error.response?.statusCode == 404) {
         return null;
       }
+
+      if (isNetworkRequestError(error)) {
+        rethrow;
+      }
+
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
       throw Exception('Gagal mengambil data dashboard.');
     }
   }

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/profile/data/models/profile_models.dart';
 
@@ -193,6 +194,10 @@ class PatientProfileApi {
           isSmoking: false,
           isElectricSmoking: false,
         );
+      }
+
+      if (isNetworkRequestError(e)) {
+        rethrow;
       }
 
       final data = e.response?.data;
