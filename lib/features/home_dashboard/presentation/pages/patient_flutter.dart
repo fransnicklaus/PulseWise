@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
 import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
@@ -52,6 +54,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   PatientDashboardData? _dashboardData;
   bool _isLoadingDashboard = true;
   String? _dashboardError;
+  Object? _dashboardErrorCause;
 
   static const List<TimePeriodOption> _periodOptions = [
     TimePeriodOption(id: 'last_7_days', label: '7 Hari Kebelakang'),
@@ -65,6 +68,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   bool _isLoadingLast = true;
   bool _isCheckingMl = false;
   List<String> _missingFields = [];
+  String? _latestRecommendationError;
+  Object? _latestRecommendationErrorCause;
   MlRecommendationResponse? _mlRecommendation;
   MlRecommendationResponse? _mlPredictionResult;
 
@@ -93,6 +98,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       _selectedPeriod = selectedPeriod;
       _isLoadingDashboard = true;
       _dashboardError = null;
+      _dashboardErrorCause = null;
     });
 
     try {
@@ -182,11 +188,14 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       setState(() {
         _dashboardData = mappedData;
         _isLoadingDashboard = false;
+        _dashboardError = null;
+        _dashboardErrorCause = null;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _dashboardError = e.toString();
+        _dashboardError = e.toString().replaceFirst('Exception: ', '');
+        _dashboardErrorCause = e;
         _isLoadingDashboard = false;
       });
     }
@@ -194,14 +203,14 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
   Future<void> _fetchInitialData() async {
     if (!mounted) return;
-    setState(() => _isLoadingLast = true);
+    setState(() {
+      _isLoadingLast = true;
+      _latestRecommendationError = null;
+      _latestRecommendationErrorCause = null;
+    });
     try {
       final api = ref.read(mlRecommendationApiProvider);
-
-      final rec = await api.fetchLatestMlRecommendation().catchError((e) {
-        debugPrint('Error fetching last ML recommendation: $e');
-        return null;
-      });
+      final rec = await api.fetchLatestMlRecommendation();
 
       if (mounted) {
         setState(() {
@@ -210,16 +219,42 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
             _mlPredictionResult = rec.data?.upstream != null ? rec : null;
           }
           _isLoadingLast = false;
+          _latestRecommendationError = null;
+          _latestRecommendationErrorCause = null;
         });
       }
     } catch (e) {
-      debugPrint('Error fetching initial data: $e');
       if (mounted) {
         setState(() {
           _isLoadingLast = false;
+          _latestRecommendationError =
+              e.toString().replaceFirst('Exception: ', '');
+          _latestRecommendationErrorCause = e;
         });
       }
     }
+  }
+
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
+  bool get _showPredictionOfflinePage {
+    return _isNetworkError(_latestRecommendationErrorCause) &&
+        _mlRecommendation == null &&
+        _missingFields.isEmpty &&
+        !_isLoadingLast &&
+        !_isCheckingMl;
+  }
+
+  bool get _showMetricsOfflinePage {
+    return _isNetworkError(_dashboardErrorCause) &&
+        _dashboardData == null &&
+        !_isLoadingDashboard;
+  }
+
+  bool get _showMetricsOfflineBanner {
+    return _isNetworkError(_dashboardErrorCause) && _dashboardData != null;
   }
 
   Future<void> _checkMlReadinessAndPredict() async {
@@ -525,166 +560,23 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                 ),
                                               ),
                                             )
-                                          : _mlRecommendation != null
-                                              ? Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    SizedBox(
-                                                      width: double.infinity,
-                                                      child:
-                                                          ElevatedButton.icon(
-                                                        style: ElevatedButton
-                                                            .styleFrom(
-                                                          backgroundColor:
-                                                              const Color(
-                                                                  0xFFE13D5A),
-                                                          foregroundColor:
-                                                              Colors.white,
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  vertical: 12),
-                                                          shape:
-                                                              RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        12),
-                                                          ),
-                                                        ),
-                                                        onPressed:
-                                                            _checkMlReadinessAndPredict,
-                                                        icon: const Icon(
-                                                            Icons.refresh,
-                                                            size: 28),
-                                                        label: const Text(
-                                                            'Jalankan Prediksi Lagi',
-                                                            style: TextStyle(
-                                                                fontSize: 18)),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    Row(
-                                                      children: [
-                                                        Expanded(
-                                                          child: OutlinedButton
-                                                              .icon(
-                                                            style:
-                                                                OutlinedButton
-                                                                    .styleFrom(
-                                                              foregroundColor:
-                                                                  const Color(
-                                                                      0xFFE13D5A),
-                                                              side: const BorderSide(
-                                                                  color: Color(
-                                                                      0xFFE13D5A)),
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          12),
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                              ),
-                                                            ),
-                                                            onPressed: () =>
-                                                                context.push(
-                                                                    '/home/patient-dashboard/ml-assessment'),
-                                                            icon: const Icon(
-                                                                Icons
-                                                                    .edit_document,
-                                                                size: 28),
-                                                            label: const Text(
-                                                                'Isi Form',
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        18)),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            width: 12),
-                                                        Expanded(
-                                                          child: OutlinedButton
-                                                              .icon(
-                                                            style:
-                                                                OutlinedButton
-                                                                    .styleFrom(
-                                                              foregroundColor:
-                                                                  const Color(
-                                                                      0xFFE13D5A),
-                                                              side: const BorderSide(
-                                                                  color: Color(
-                                                                      0xFFE13D5A)),
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          12),
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                              ),
-                                                            ),
-                                                            onPressed: () =>
-                                                                context.push(
-                                                                    '/home/patient-dashboard/ml-recommendation-history'),
-                                                            icon: const Icon(
-                                                                Icons.history,
-                                                                size: 28),
-                                                            label: const Text(
-                                                                'Cek History',
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        18)),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 24),
-                                                    if (_mlPredictionResult !=
-                                                        null) ...[
-                                                      SizedBox(
-                                                        width: fullWidth,
-                                                        child:
-                                                            PredictionMetricCard(
-                                                          title: 'Prediksi',
-                                                          icon: Icons
-                                                              .insights_rounded,
-                                                          iconColor:
-                                                              const Color(
-                                                                  0xFFE13D5A),
-                                                          description:
-                                                              'Dihasilkan pada: ${_getGeneratedDateStr()}',
-                                                          score:
-                                                              _getProbability(),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                          height: 24),
-                                                    ],
-                                                    _buildRekomendasiSection(
-                                                        _mlRecommendation),
-                                                  ],
+                                          : _showPredictionOfflinePage
+                                              ? NoConnectionState.card(
+                                                  title:
+                                                      'Prediksi belum bisa dimuat',
+                                                  message:
+                                                      'Kami belum bisa mengambil hasil prediksi ML terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                                                  onRetry: _fetchInitialData,
                                                 )
-                                              : _missingFields.isNotEmpty
-                                                  ? _buildNotReadySection(
-                                                      fullWidth)
-                                                  : Column(
+                                              : _mlRecommendation != null
+                                                  ? Column(
                                                       crossAxisAlignment:
                                                           CrossAxisAlignment
                                                               .start,
                                                       children: [
-                                                        const SizedBox(
-                                                            height: 24),
-                                                        Center(
+                                                        SizedBox(
+                                                          width:
+                                                              double.infinity,
                                                           child: ElevatedButton
                                                               .icon(
                                                             style:
@@ -698,79 +590,243 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                               padding:
                                                                   const EdgeInsets
                                                                       .symmetric(
-                                                                horizontal: 24,
-                                                                vertical: 16,
-                                                              ),
+                                                                      vertical:
+                                                                          12),
                                                               shape:
                                                                   RoundedRectangleBorder(
                                                                 borderRadius:
                                                                     BorderRadius
                                                                         .circular(
-                                                                            16),
+                                                                            12),
                                                               ),
                                                             ),
                                                             onPressed:
                                                                 _checkMlReadinessAndPredict,
                                                             icon: const Icon(
-                                                                Icons
-                                                                    .analytics),
+                                                                Icons.refresh,
+                                                                size: 28),
                                                             label: const Text(
-                                                              'Cek Prediksi ML Hari Ini',
-                                                              style: TextStyle(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            ),
+                                                                'Jalankan Prediksi Lagi',
+                                                                style: TextStyle(
+                                                                    fontSize:
+                                                                        18)),
                                                           ),
                                                         ),
                                                         const SizedBox(
-                                                            height: 16),
-                                                        SizedBox(
-                                                          width:
-                                                              double.infinity,
-                                                          child:
-                                                              FilledButton.icon(
-                                                            onPressed: () =>
-                                                                context.push(
-                                                                    '/home/patient-dashboard/ml-assessment'),
-                                                            style: FilledButton
-                                                                .styleFrom(
-                                                              backgroundColor:
-                                                                  const Color(
-                                                                      0xFFE64060),
-                                                              foregroundColor:
-                                                                  Colors.white,
-                                                              padding:
-                                                                  const EdgeInsets
+                                                            height: 12),
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child:
+                                                                  OutlinedButton
+                                                                      .icon(
+                                                                style: OutlinedButton
+                                                                    .styleFrom(
+                                                                  foregroundColor:
+                                                                      const Color(
+                                                                          0xFFE13D5A),
+                                                                  side: const BorderSide(
+                                                                      color: Color(
+                                                                          0xFFE13D5A)),
+                                                                  padding: const EdgeInsets
                                                                       .symmetric(
                                                                       vertical:
-                                                                          14),
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            14),
+                                                                          12),
+                                                                  shape:
+                                                                      RoundedRectangleBorder(
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            12),
+                                                                  ),
+                                                                ),
+                                                                onPressed: () =>
+                                                                    context.push(
+                                                                        '/home/patient-dashboard/ml-assessment'),
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .edit_document,
+                                                                    size: 28),
+                                                                label: const Text(
+                                                                    'Isi Form',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            18)),
                                                               ),
                                                             ),
-                                                            icon: const Icon(
-                                                                Icons
-                                                                    .assignment_turned_in_rounded,
-                                                                size: 18),
-                                                            label: const Text(
-                                                              'Isi Form Asesmen',
-                                                              style: TextStyle(
-                                                                  fontSize: 15,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w700),
+                                                            const SizedBox(
+                                                                width: 12),
+                                                            Expanded(
+                                                              child:
+                                                                  OutlinedButton
+                                                                      .icon(
+                                                                style: OutlinedButton
+                                                                    .styleFrom(
+                                                                  foregroundColor:
+                                                                      const Color(
+                                                                          0xFFE13D5A),
+                                                                  side: const BorderSide(
+                                                                      color: Color(
+                                                                          0xFFE13D5A)),
+                                                                  padding: const EdgeInsets
+                                                                      .symmetric(
+                                                                      vertical:
+                                                                          12),
+                                                                  shape:
+                                                                      RoundedRectangleBorder(
+                                                                    borderRadius:
+                                                                        BorderRadius.circular(
+                                                                            12),
+                                                                  ),
+                                                                ),
+                                                                onPressed: () =>
+                                                                    context.push(
+                                                                        '/home/patient-dashboard/ml-recommendation-history'),
+                                                                icon: const Icon(
+                                                                    Icons
+                                                                        .history,
+                                                                    size: 28),
+                                                                label: const Text(
+                                                                    'Cek History',
+                                                                    style: TextStyle(
+                                                                        fontSize:
+                                                                            18)),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                            height: 24),
+                                                        if (_mlPredictionResult !=
+                                                            null) ...[
+                                                          SizedBox(
+                                                            width: fullWidth,
+                                                            child:
+                                                                PredictionMetricCard(
+                                                              title: 'Prediksi',
+                                                              icon: Icons
+                                                                  .insights_rounded,
+                                                              iconColor:
+                                                                  const Color(
+                                                                      0xFFE13D5A),
+                                                              description:
+                                                                  'Dihasilkan pada: ${_getGeneratedDateStr()}',
+                                                              score:
+                                                                  _getProbability(),
                                                             ),
                                                           ),
-                                                        ),
+                                                          const SizedBox(
+                                                              height: 24),
+                                                        ],
+                                                        _buildRekomendasiSection(
+                                                            _mlRecommendation),
                                                       ],
-                                                    ),
+                                                    )
+                                                  : _missingFields.isNotEmpty
+                                                      ? _buildNotReadySection(
+                                                          fullWidth)
+                                                      : _latestRecommendationError !=
+                                                              null
+                                                          ? _buildPredictionErrorState(
+                                                              fullWidth,
+                                                            )
+                                                          : Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                const SizedBox(
+                                                                    height: 24),
+                                                                Center(
+                                                                  child:
+                                                                      ElevatedButton
+                                                                          .icon(
+                                                                    style: ElevatedButton
+                                                                        .styleFrom(
+                                                                      backgroundColor:
+                                                                          const Color(
+                                                                              0xFFE13D5A),
+                                                                      foregroundColor:
+                                                                          Colors
+                                                                              .white,
+                                                                      padding:
+                                                                          const EdgeInsets
+                                                                              .symmetric(
+                                                                        horizontal:
+                                                                            24,
+                                                                        vertical:
+                                                                            16,
+                                                                      ),
+                                                                      shape:
+                                                                          RoundedRectangleBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(16),
+                                                                      ),
+                                                                    ),
+                                                                    onPressed:
+                                                                        _checkMlReadinessAndPredict,
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .analytics),
+                                                                    label:
+                                                                        const Text(
+                                                                      'Cek Prediksi ML Hari Ini',
+                                                                      style:
+                                                                          TextStyle(
+                                                                        fontSize:
+                                                                            16,
+                                                                        fontWeight:
+                                                                            FontWeight.bold,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                    height: 16),
+                                                                SizedBox(
+                                                                  width: double
+                                                                      .infinity,
+                                                                  child:
+                                                                      FilledButton
+                                                                          .icon(
+                                                                    onPressed: () =>
+                                                                        context.push(
+                                                                            '/home/patient-dashboard/ml-assessment'),
+                                                                    style: FilledButton
+                                                                        .styleFrom(
+                                                                      backgroundColor:
+                                                                          const Color(
+                                                                              0xFFE64060),
+                                                                      foregroundColor:
+                                                                          Colors
+                                                                              .white,
+                                                                      padding: const EdgeInsets
+                                                                          .symmetric(
+                                                                          vertical:
+                                                                              14),
+                                                                      shape:
+                                                                          RoundedRectangleBorder(
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(14),
+                                                                      ),
+                                                                    ),
+                                                                    icon: const Icon(
+                                                                        Icons
+                                                                            .assignment_turned_in_rounded,
+                                                                        size:
+                                                                            18),
+                                                                    label:
+                                                                        const Text(
+                                                                      'Isi Form Asesmen',
+                                                                      style: TextStyle(
+                                                                          fontSize:
+                                                                              15,
+                                                                          fontWeight:
+                                                                              FontWeight.w700),
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
                                 ),
                                 // Tab 2: Dashboard charts and cards
                                 SingleChildScrollView(
@@ -842,7 +898,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                           ),
                                         ),
                                       ),
-                                      if (_isLoadingDashboard)
+                                      if (_isLoadingDashboard &&
+                                          _dashboardData != null)
                                         const Padding(
                                           padding: EdgeInsets.fromLTRB(
                                               24, 12, 24, 0),
@@ -850,7 +907,43 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                             color: Color(0xFFE13D5A),
                                           ),
                                         ),
-                                      if (_dashboardError != null)
+                                      if (_isLoadingDashboard &&
+                                          _dashboardData == null)
+                                        const Padding(
+                                          padding:
+                                              EdgeInsets.fromLTRB(0, 32, 0, 0),
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              color: Color(0xFFE13D5A),
+                                            ),
+                                          ),
+                                        ),
+                                      if (_showMetricsOfflineBanner)
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              24, 12, 24, 0),
+                                          child: NoConnectionState.compact(
+                                            title: 'Koneksi terputus',
+                                            message:
+                                                'Data dashboard terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                                            onRetry: _loadDashboardData,
+                                          ),
+                                        ),
+                                      if (_showMetricsOfflinePage)
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(
+                                              0, 12, 0, 0),
+                                          child: NoConnectionState.card(
+                                            title:
+                                                'Dashboard metrik belum bisa dimuat',
+                                            message:
+                                                'Kami belum bisa mengambil data dashboard metrik untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+                                            onRetry: _loadDashboardData,
+                                          ),
+                                        ),
+                                      if (_dashboardError != null &&
+                                          !_showMetricsOfflineBanner &&
+                                          !_showMetricsOfflinePage)
                                         Padding(
                                           padding: const EdgeInsets.fromLTRB(
                                               24, 12, 24, 0),
@@ -1033,6 +1126,80 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       weightThreshold: const WeightThreshold(
         dailyIncreaseCriticalKg: 2,
       ),
+    );
+  }
+
+  Widget _buildPredictionErrorState(double fullWidth) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: fullWidth,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Gagal memuat prediksi terbaru',
+                  style: TextStyle(
+                    color: Color(0xFFB91C1C),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _latestRecommendationError ??
+                      'Terjadi kendala saat memuat prediksi terbaru.',
+                  style: const TextStyle(
+                    color: Color(0xFF991B1B),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _fetchInitialData,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFB91C1C),
+                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Coba Lagi'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () =>
+                context.push('/home/patient-dashboard/ml-assessment'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE64060),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
+            label: const Text(
+              'Isi Form Asesmen',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

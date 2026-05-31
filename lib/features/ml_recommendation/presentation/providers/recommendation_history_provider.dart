@@ -32,6 +32,7 @@ class RecommendationHistoryNotifier
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
       startDate: startDate,
@@ -56,6 +57,7 @@ class RecommendationHistoryNotifier
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        errorCause: null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -63,6 +65,7 @@ class RecommendationHistoryNotifier
         isLoading: false,
         isLoadingMore: false,
         error: e.toString().replaceFirst('Exception: ', ''),
+        errorCause: e,
       );
     }
   }
@@ -89,12 +92,15 @@ class RecommendationHistoryNotifier
     state = state.copyWith(
       detailsByDiaryId: const {},
       detailErrorsByDiaryId: const {},
+      detailErrorCausesByDiaryId: const {},
       loadingDetailDiaryIds: const {},
     );
 
     await loadRecommendationHistory(
       page: 1,
       limit: state.limit,
+      startDate: startDate ?? state.startDate,
+      endDate: endDate ?? state.endDate,
     );
   }
 
@@ -106,10 +112,13 @@ class RecommendationHistoryNotifier
 
     final loadingIds = {...state.loadingDetailDiaryIds, resultId};
     final detailErrors = {...state.detailErrorsByDiaryId}..remove(resultId);
+    final detailErrorCauses = {...state.detailErrorCausesByDiaryId}
+      ..remove(resultId);
 
     state = state.copyWith(
       loadingDetailDiaryIds: loadingIds,
       detailErrorsByDiaryId: detailErrors,
+      detailErrorCausesByDiaryId: detailErrorCauses,
     );
 
     try {
@@ -124,10 +133,13 @@ class RecommendationHistoryNotifier
         resultId: detail
       };
       final nextLoadingIds = {...state.loadingDetailDiaryIds}..remove(resultId);
+      final nextErrorCauses = {...state.detailErrorCausesByDiaryId}
+        ..remove(resultId);
 
       state = state.copyWith(
         detailsByDiaryId: nextDetails,
         loadingDetailDiaryIds: nextLoadingIds,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     } catch (e) {
       if (!mounted) return;
@@ -137,10 +149,15 @@ class RecommendationHistoryNotifier
         ...state.detailErrorsByDiaryId,
         resultId: e.toString().replaceFirst('Exception: ', ''),
       };
+      final nextErrorCauses = {
+        ...state.detailErrorCausesByDiaryId,
+        resultId: e,
+      };
 
       state = state.copyWith(
         loadingDetailDiaryIds: nextLoadingIds,
         detailErrorsByDiaryId: nextErrors,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     }
   }
@@ -155,6 +172,7 @@ class RecommendationHistoryState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<MlRecommendationHistoryItem> items;
   final int page;
   final int limit;
@@ -165,11 +183,13 @@ class RecommendationHistoryState {
   final Map<String, MlRecommendationResponse> detailsByDiaryId;
   final Set<String> loadingDetailDiaryIds;
   final Map<String, String> detailErrorsByDiaryId;
+  final Map<String, Object> detailErrorCausesByDiaryId;
 
   const RecommendationHistoryState({
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 10,
@@ -180,12 +200,14 @@ class RecommendationHistoryState {
     this.detailsByDiaryId = const {},
     this.loadingDetailDiaryIds = const {},
     this.detailErrorsByDiaryId = const {},
+    this.detailErrorCausesByDiaryId = const {},
   });
 
   RecommendationHistoryState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
+    Object? errorCause,
     List<MlRecommendationHistoryItem>? items,
     int? page,
     int? limit,
@@ -196,11 +218,13 @@ class RecommendationHistoryState {
     Map<String, MlRecommendationResponse>? detailsByDiaryId,
     Set<String>? loadingDetailDiaryIds,
     Map<String, String>? detailErrorsByDiaryId,
+    Map<String, Object>? detailErrorCausesByDiaryId,
   }) {
     return RecommendationHistoryState(
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
+      errorCause: errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,
@@ -213,6 +237,8 @@ class RecommendationHistoryState {
           loadingDetailDiaryIds ?? this.loadingDetailDiaryIds,
       detailErrorsByDiaryId:
           detailErrorsByDiaryId ?? this.detailErrorsByDiaryId,
+      detailErrorCausesByDiaryId:
+          detailErrorCausesByDiaryId ?? this.detailErrorCausesByDiaryId,
     );
   }
 }

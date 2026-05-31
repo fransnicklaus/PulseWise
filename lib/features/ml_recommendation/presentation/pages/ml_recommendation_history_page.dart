@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
 import 'package:pulsewise/features/ml_recommendation/presentation/providers/recommendation_history_provider.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -156,6 +158,10 @@ class _MlRecommendationHistoryPageState
     return DateTime(value.year, value.month, value.day);
   }
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
   Future<void> _pickStartDate() async {
     final now = DateTime.now();
     final state = ref.read(recommendationHistoryNotifierProvider);
@@ -235,6 +241,12 @@ class _MlRecommendationHistoryPageState
         state.startDate != null ? _formatDate(state.startDate) : 'Start date';
     final endLabel =
         state.endDate != null ? _formatDate(state.endDate) : 'End date';
+    final showInitialLoading = state.isLoading && state.items.isEmpty;
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -317,12 +329,44 @@ class _MlRecommendationHistoryPageState
                         ],
                       ),
                     ),
-                    if (state.isLoading)
+                    if (showOfflineBanner)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: NoConnectionState.compact(
+                          title: 'Riwayat prediksi belum tersinkron',
+                          message:
+                              'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                          onRetry: () => ref
+                              .read(recommendationHistoryNotifierProvider
+                                  .notifier)
+                              .refreshHistory(
+                                startDate: state.startDate,
+                                endDate: state.endDate,
+                              ),
+                        ),
+                      ),
+                    if (showInitialLoading)
                       const SizedBox(
                         height: 240,
                         child: Center(
                           child: CircularProgressIndicator(
                               color: Color(0xFFE64060)),
+                        ),
+                      )
+                    else if (showOfflinePage)
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: NoConnectionState.card(
+                          title: 'Riwayat prediksi belum bisa dimuat',
+                          message:
+                              'Kami belum bisa mengambil riwayat prediksi ML untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+                          onRetry: () => ref
+                              .read(recommendationHistoryNotifierProvider
+                                  .notifier)
+                              .refreshHistory(
+                                startDate: state.startDate,
+                                endDate: state.endDate,
+                              ),
                         ),
                       )
                     else if (state.items.isEmpty)
@@ -347,6 +391,8 @@ class _MlRecommendationHistoryPageState
                         final isDetailLoading =
                             state.loadingDetailDiaryIds.contains(id);
                         final detailError = state.detailErrorsByDiaryId[id];
+                        final detailErrorCause =
+                            state.detailErrorCausesByDiaryId[id];
                         // return _itemKeys[id] ??= GlobalKey();
                         // final id = item.resultId as String;
                         final date = formatToCustomDate(item.generatedAt);
@@ -448,6 +494,14 @@ class _MlRecommendationHistoryPageState
                                                   detail: detail,
                                                   isLoading: isDetailLoading,
                                                   error: detailError,
+                                                  errorCause: detailErrorCause,
+                                                  onRetry: () => ref
+                                                      .read(
+                                                          recommendationHistoryNotifierProvider
+                                                              .notifier)
+                                                      .loadRecommendationDetail(
+                                                        id,
+                                                      ),
                                                 ),
                                               )
                                             : const SizedBox(
@@ -620,9 +674,15 @@ class _ExpandedArea extends StatelessWidget {
   final MlRecommendationResponse? detail;
   final bool isLoading;
   final String? error;
+  final Object? errorCause;
+  final VoidCallback onRetry;
 
   const _ExpandedArea(
-      {required this.detail, required this.isLoading, this.error});
+      {required this.detail,
+      required this.isLoading,
+      this.error,
+      this.errorCause,
+      required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -644,6 +704,15 @@ class _ExpandedArea extends StatelessWidget {
     }
 
     if (error != null) {
+      if (errorCause != null && isNetworkRequestError(errorCause!)) {
+        return NoConnectionState.card(
+          title: 'Detail prediksi belum bisa dimuat',
+          message:
+              'Koneksi internet sedang bermasalah. Sambungkan lagi lalu coba muat detail ini.',
+          onRetry: onRetry,
+        );
+      }
+
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(40),

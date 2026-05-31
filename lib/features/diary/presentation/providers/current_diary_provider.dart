@@ -30,7 +30,13 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
 
     try {
       var diary = await _diaryApi.fetchDiaryDetailByDate(DateTime.now());
-      final sleepData = await _diaryApi.fetchSleepDiaryByDate(DateTime.now());
+      Map<String, dynamic>? sleepData;
+      Object? sleepError;
+      try {
+        sleepData = await _diaryApi.fetchSleepDiaryByDate(DateTime.now());
+      } catch (error) {
+        sleepError = error;
+      }
 
       if (diary == null) {
         if (sleepData != null) {
@@ -69,7 +75,16 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         hasCurrentDiary: true,
         diaryId: diary.diaryId,
         diary: diary,
+        error: sleepError?.toString(),
+        errorCause: null,
       );
+
+      if (sleepError != null) {
+        state = state.copyWith(
+          error: sleepError.toString(),
+          errorCause: sleepError,
+        );
+      }
     } catch (e) {
       final message = e.toString().toLowerCase();
       if (message.contains('not found') ||
@@ -81,6 +96,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
           hasLoadedOnce: true,
           hasCurrentDiary: false,
           diary: shouldPreserve ? state.diary : null,
+          errorCause: null,
         );
         return;
       }
@@ -90,6 +106,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         isRefreshing: false,
         hasLoadedOnce: true,
         error: e.toString(),
+        errorCause: e,
         hasCurrentDiary: shouldPreserve ? state.hasCurrentDiary : false,
       );
     }
@@ -321,6 +338,7 @@ class CurrentDiaryState {
   final String? diaryId;
   final DiaryDetail? diary;
   final String? error;
+  final Object? errorCause;
 
   const CurrentDiaryState({
     this.isLoading = false,
@@ -330,6 +348,7 @@ class CurrentDiaryState {
     this.diaryId,
     this.diary,
     this.error,
+    this.errorCause,
   });
 
   CurrentDiaryState copyWith({
@@ -340,6 +359,7 @@ class CurrentDiaryState {
     String? diaryId,
     DiaryDetail? diary,
     String? error,
+    Object? errorCause,
   }) {
     return CurrentDiaryState(
       isLoading: isLoading ?? this.isLoading,
@@ -349,6 +369,7 @@ class CurrentDiaryState {
       diaryId: diaryId ?? this.diaryId,
       diary: diary ?? this.diary,
       error: error,
+      errorCause: errorCause,
     );
   }
 }

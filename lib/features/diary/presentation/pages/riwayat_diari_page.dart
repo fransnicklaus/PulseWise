@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/diary/data/models/diary_models.dart';
 import 'package:pulsewise/features/diary/presentation/providers/diary_history_provider.dart';
 
@@ -205,6 +207,10 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
     return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(diaryHistoryProvider);
@@ -212,6 +218,12 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
         state.startDate != null ? _formatDate(state.startDate) : 'Start date';
     final endLabel =
         state.endDate != null ? _formatDate(state.endDate) : 'End date';
+    final showInitialLoading = state.isLoading && state.items.isEmpty;
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -327,16 +339,36 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                           // ],
                         ],
                       ),
+                      if (showOfflineBanner) ...[
+                        const SizedBox(height: 12),
+                        NoConnectionState.compact(
+                          title: 'Riwayat diari belum tersinkron',
+                          message:
+                              'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                          onRetry: _refreshHistory,
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 14),
-                if (state.isLoading)
+                if (showInitialLoading)
                   const Padding(
                     padding: EdgeInsets.only(top: 40),
                     child: Center(
                       child:
                           CircularProgressIndicator(color: Color(0xFFE64060)),
+                    ),
+                  )
+                else if (showOfflinePage)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 24),
+                    child: NoConnectionState.card(
+                      title: 'Riwayat diari belum bisa dimuat',
+                      message:
+                          'Kami belum bisa mengambil riwayat diari untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+                      onRetry: _refreshHistory,
                     ),
                   )
                 else if (state.items.isEmpty)
@@ -361,6 +393,8 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                     final detail = state.detailsByDiaryId[item.diaryDate];
                     final detailError =
                         state.detailErrorsByDiaryId[item.diaryDate];
+                    final detailErrorCause =
+                        state.detailErrorCausesByDiaryId[item.diaryDate];
 
                     _itemKeys[item.diaryId] ??= GlobalKey();
 
@@ -451,6 +485,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                                             child: _ExpandedArea(
                                               isLoading: isDetailLoading,
                                               error: detailError,
+                                              errorCause: detailErrorCause,
                                               detail: detail,
                                               onRetry: () => ref
                                                   .read(diaryHistoryProvider
@@ -472,7 +507,9 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                       ),
                     );
                   }),
-                if (state.error != null && state.items.isEmpty)
+                if (state.error != null &&
+                    state.items.isEmpty &&
+                    !showOfflinePage)
                   Padding(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
@@ -511,6 +548,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
 class _ExpandedArea extends StatelessWidget {
   final bool isLoading;
   final String? error;
+  final Object? errorCause;
   final DiaryDetail? detail;
   final VoidCallback onRetry;
   final String Function(DateTime?) formatTime;
@@ -518,6 +556,7 @@ class _ExpandedArea extends StatelessWidget {
   const _ExpandedArea({
     required this.isLoading,
     required this.error,
+    required this.errorCause,
     required this.detail,
     required this.onRetry,
     required this.formatTime,
@@ -548,6 +587,15 @@ class _ExpandedArea extends StatelessWidget {
     }
 
     if (error != null) {
+      if (errorCause != null && isNetworkRequestError(errorCause!)) {
+        return NoConnectionState.card(
+          title: 'Detail diari belum bisa dimuat',
+          message:
+              'Koneksi internet sedang bermasalah. Sambungkan lagi lalu coba muat detail ini.',
+          onRetry: onRetry,
+        );
+      }
+
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(12),
@@ -799,7 +847,8 @@ class _ExpandedDiaryContent extends StatelessWidget {
             children: sleeps
                 .map(
                   (sleep) => _SimpleRow(
-                    leading: sleep.sleepTime.isEmpty ? '--:--' : sleep.sleepTime,
+                    leading:
+                        sleep.sleepTime.isEmpty ? '--:--' : sleep.sleepTime,
                     title: 'Tidur ${sleep.sleepTime} - ${sleep.wakeTime}',
                     subtitle:
                         'Durasi ${sleep.sleepDurationHours?.toStringAsFixed(1) ?? '-'} jam${(sleep.source ?? '').isEmpty ? '' : ' • ${sleep.source}'}',

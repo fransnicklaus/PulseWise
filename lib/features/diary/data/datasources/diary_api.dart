@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -27,6 +28,22 @@ class DiaryApi {
     return AppSessionStore.requireUserId();
   }
 
+  Exception _requestError(DioException error, String fallbackMessage) {
+    if (isNetworkRequestError(error)) {
+      throw error;
+    }
+
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return Exception(message);
+      }
+    }
+
+    return Exception(fallbackMessage);
+  }
+
   Future<DiaryDetail> fetchDiaryDetail(DateTime diaryDate) async {
     final patientId = await _readPatientId();
     return fetchDiaryDetailForUser(patientId, diaryDate);
@@ -38,35 +55,47 @@ class DiaryApi {
     final dateParam =
         '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/diaries/by-date',
-      queryParameters: {
-        'date': dateParam,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/diaries/by-date',
+        queryParameters: {
+          'date': dateParam,
         },
-      ),
-    );
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons detail diary berdasarkan tanggal tidak valid');
-    }
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons detail diary berdasarkan tanggal tidak valid');
+      }
 
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil detail diary berdasarkan tanggal')
-            .toString(),
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ??
+                  'Gagal mengambil detail diary berdasarkan tanggal')
+              .toString(),
+        );
+      }
+
+      if (body['data'] == null) {
+        return null;
+      }
+
+      return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        return null;
+      }
+
+      throw _requestError(
+        error,
+        'Gagal mengambil detail diary berdasarkan tanggal.',
       );
     }
-
-    if (body['data'] == null) {
-      return null;
-    }
-
-    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<DiaryDetail> fetchDiaryDetailForUser(
@@ -76,24 +105,28 @@ class DiaryApi {
     final token = await _readBearerToken();
     final cleanDiaryDate = diaryDate.toIso8601String().split('T')[0];
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/diaries/by-date',
-      queryParameters: {
-        'date': cleanDiaryDate,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/diaries/by-date',
+        queryParameters: {
+          'date': cleanDiaryDate,
         },
-      ),
-    );
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['data'] == null) {
-      throw Exception('Respons detail diary tidak valid dari server');
+      final body = response.data;
+      if (body == null || body['data'] == null) {
+        throw Exception('Respons detail diary tidak valid dari server');
+      }
+
+      return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil detail diary.');
     }
-
-    return DiaryDetail.fromJson(body['data'] as Map<String, dynamic>);
   }
 
   Future<DiaryHistoryResponse> fetchDiaryHistory({
@@ -125,34 +158,38 @@ class DiaryApi {
       return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/diaries',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-        if (startDate != null) 'startDate': formatDate(startDate),
-        if (endDate != null) 'endDate': formatDate(endDate),
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/diaries',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (startDate != null) 'startDate': formatDate(startDate),
+          if (endDate != null) 'endDate': formatDate(endDate),
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons riwayat diary tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil riwayat diary').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return DiaryHistoryResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons riwayat diary tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil riwayat diary').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return DiaryHistoryResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil riwayat diary.');
+    }
   }
 
   Future<Map<String, dynamic>?> fetchSleepDiaryByDate(DateTime date) async {
@@ -186,6 +223,12 @@ class DiaryApi {
         return body['data'] as Map<String, dynamic>;
       }
       return null;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) {
+        return null;
+      }
+
+      throw _requestError(error, 'Gagal mengambil data tidur.');
     } catch (_) {
       return null;
     }
@@ -262,7 +305,8 @@ class DiaryApi {
 
     final body = response.data;
     if (body == null || body['success'] != true) {
-      throw Exception((body?['message'] ?? 'Gagal menyimpan gejala').toString());
+      throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan gejala').toString());
     }
   }
 

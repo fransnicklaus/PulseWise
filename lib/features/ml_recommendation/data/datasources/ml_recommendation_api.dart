@@ -107,34 +107,50 @@ class MlRecommendationApi {
       return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     }
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$userId/ml-recommendations/history',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-        'startDate': startDate != null ? formatDate(startDate) : null,
-        'endDate': endDate != null ? formatDate(endDate) : null,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$userId/ml-recommendations/history',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          'startDate': startDate != null ? formatDate(startDate) : null,
+          'endDate': endDate != null ? formatDate(endDate) : null,
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons history rekomendasi tidak valid dari server');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil history rekomendasi').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MlRecommendationHistoryResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons history rekomendasi tidak valid dari server');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil history rekomendasi').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MlRecommendationHistoryResponse.fromJson(data);
+    } on DioException catch (error) {
+      if (isNetworkRequestError(error)) {
+        rethrow;
+      }
+
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil history rekomendasi.');
+    }
   }
 
   Future<MlRecommendationResponse> fetchMlRecommendationHistoryDetail(
@@ -143,25 +159,41 @@ class MlRecommendationApi {
     final token = await _readBearerToken();
     final patientId = await _readPatientId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/users/$patientId/ml-recommendations/history/$resultId',
-      data: {},
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null || body['success'] != true) {
-      throw Exception(
-        (body?['message'] ??
-                'Gagal mengambil ML recommendations History Detail')
-            .toString(),
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/users/$patientId/ml-recommendations/history/$resultId',
+        data: {},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    return MlRecommendationResponse.fromJson(body);
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ??
+                  'Gagal mengambil ML recommendations History Detail')
+              .toString(),
+        );
+      }
+
+      return MlRecommendationResponse.fromJson(body);
+    } on DioException catch (error) {
+      if (isNetworkRequestError(error)) {
+        rethrow;
+      }
+
+      final data = error.response?.data;
+      if (data is Map<String, dynamic>) {
+        final message = data['message'];
+        if (message is String && message.isNotEmpty) {
+          throw Exception(message);
+        }
+      }
+
+      throw Exception('Gagal mengambil detail riwayat rekomendasi.');
+    }
   }
 }

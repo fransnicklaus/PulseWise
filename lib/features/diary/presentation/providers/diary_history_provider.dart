@@ -28,6 +28,7 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
       startDate: startDate,
@@ -52,6 +53,7 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        errorCause: null,
       );
     } catch (e) {
       if (!mounted) return;
@@ -59,6 +61,7 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
         isLoading: false,
         isLoadingMore: false,
         error: e.toString().replaceFirst('Exception: ', ''),
+        errorCause: e,
       );
     }
   }
@@ -85,6 +88,7 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     state = state.copyWith(
       detailsByDiaryId: const {},
       detailErrorsByDiaryId: const {},
+      detailErrorCausesByDiaryId: const {},
       loadingDetailDiaryIds: const {},
     );
 
@@ -104,15 +108,23 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
 
     final loadingIds = {...state.loadingDetailDiaryIds, diaryDate};
     final detailErrors = {...state.detailErrorsByDiaryId}..remove(diaryDate);
+    final detailErrorCauses = {...state.detailErrorCausesByDiaryId}
+      ..remove(diaryDate);
 
     state = state.copyWith(
       loadingDetailDiaryIds: loadingIds,
       detailErrorsByDiaryId: detailErrors,
+      detailErrorCausesByDiaryId: detailErrorCauses,
     );
 
     try {
       var detail = await _diaryApi.fetchDiaryDetail(diaryDate);
-      final sleepData = await _diaryApi.fetchSleepDiaryByDate(diaryDate);
+      Map<String, dynamic>? sleepData;
+      try {
+        sleepData = await _diaryApi.fetchSleepDiaryByDate(diaryDate);
+      } catch (_) {
+        sleepData = null;
+      }
       if (sleepData != null) {
         detail = detail.copyWith(
           sleeps: [DiarySleep.fromJson(sleepData)],
@@ -124,10 +136,13 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
       final nextDetails = {...state.detailsByDiaryId, diaryDate: detail};
       final nextLoadingIds = {...state.loadingDetailDiaryIds}
         ..remove(diaryDate);
+      final nextErrorCauses = {...state.detailErrorCausesByDiaryId}
+        ..remove(diaryDate);
 
       state = state.copyWith(
         detailsByDiaryId: nextDetails,
         loadingDetailDiaryIds: nextLoadingIds,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     } catch (e) {
       if (!mounted) return;
@@ -138,10 +153,15 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
         ...state.detailErrorsByDiaryId,
         diaryDate: e.toString().replaceFirst('Exception: ', ''),
       };
+      final nextErrorCauses = {
+        ...state.detailErrorCausesByDiaryId,
+        diaryDate: e,
+      };
 
       state = state.copyWith(
         loadingDetailDiaryIds: nextLoadingIds,
         detailErrorsByDiaryId: nextErrors,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     }
   }
@@ -156,6 +176,7 @@ class DiaryHistoryState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<DiaryHistoryItem> items;
   final int page;
   final int limit;
@@ -166,11 +187,13 @@ class DiaryHistoryState {
   final Map<DateTime, DiaryDetail> detailsByDiaryId;
   final Set<DateTime> loadingDetailDiaryIds;
   final Map<DateTime, String> detailErrorsByDiaryId;
+  final Map<DateTime, Object> detailErrorCausesByDiaryId;
 
   const DiaryHistoryState({
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 10,
@@ -181,12 +204,14 @@ class DiaryHistoryState {
     this.detailsByDiaryId = const {},
     this.loadingDetailDiaryIds = const {},
     this.detailErrorsByDiaryId = const {},
+    this.detailErrorCausesByDiaryId = const {},
   });
 
   DiaryHistoryState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
+    Object? errorCause,
     List<DiaryHistoryItem>? items,
     int? page,
     int? limit,
@@ -197,11 +222,13 @@ class DiaryHistoryState {
     Map<DateTime, DiaryDetail>? detailsByDiaryId,
     Set<DateTime>? loadingDetailDiaryIds,
     Map<DateTime, String>? detailErrorsByDiaryId,
+    Map<DateTime, Object>? detailErrorCausesByDiaryId,
   }) {
     return DiaryHistoryState(
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
+      errorCause: errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,
@@ -214,6 +241,8 @@ class DiaryHistoryState {
           loadingDetailDiaryIds ?? this.loadingDetailDiaryIds,
       detailErrorsByDiaryId:
           detailErrorsByDiaryId ?? this.detailErrorsByDiaryId,
+      detailErrorCausesByDiaryId:
+          detailErrorCausesByDiaryId ?? this.detailErrorCausesByDiaryId,
     );
   }
 }
