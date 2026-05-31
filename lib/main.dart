@@ -8,7 +8,6 @@ import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
-import 'package:pulsewise/core/widgets/connectivity_status_banner.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
 
@@ -142,19 +141,6 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'PulseWise',
-      builder: (context, child) {
-        return Stack(
-          children: [
-            child ?? const SizedBox.shrink(),
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: ConnectivityStatusBanner(),
-            ),
-          ],
-        );
-      },
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
