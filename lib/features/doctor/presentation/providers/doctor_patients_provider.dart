@@ -3,6 +3,8 @@ import 'package:pulsewise/features/doctor/data/datasources/doctor_dashboard_api.
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
 
+const _doctorPatientsValueNotSet = Object();
+
 final doctorPatientsNotifierProvider = StateNotifierProvider.autoDispose<
     DoctorPatientsNotifier, DoctorPatientsState>(
   (ref) => DoctorPatientsNotifier(ref.watch(doctorDashboardApiProvider)),
@@ -21,12 +23,16 @@ class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
     if (append && (state.isLoading || state.isLoadingMore)) return;
     if (!mounted) return;
 
+    final hasItems = state.items.isNotEmpty;
     state = state.copyWith(
-      isLoading: !append,
+      isLoading: !append && !hasItems,
+      isRefreshing: !append && hasItems,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
+      clearError: true,
     );
 
     try {
@@ -35,19 +41,25 @@ class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
 
       state = state.copyWith(
         isLoading: false,
+        isRefreshing: false,
         isLoadingMore: false,
         items: append ? [...state.items, ...response.items] : response.items,
         page: response.pagination.page,
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        error: null,
+        errorCause: null,
+        clearError: true,
       );
     } catch (error) {
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
+        isRefreshing: false,
         isLoadingMore: false,
         error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
       );
     }
   }
@@ -71,8 +83,10 @@ class DoctorPatientsNotifier extends StateNotifier<DoctorPatientsState> {
 class DoctorPatientsState {
   const DoctorPatientsState({
     this.isLoading = false,
+    this.isRefreshing = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 20,
@@ -81,8 +95,10 @@ class DoctorPatientsState {
   });
 
   final bool isLoading;
+  final bool isRefreshing;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<DoctorDashboardPatientListItem> items;
   final int page;
   final int limit;
@@ -91,18 +107,31 @@ class DoctorPatientsState {
 
   DoctorPatientsState copyWith({
     bool? isLoading,
+    bool? isRefreshing,
     bool? isLoadingMore,
-    String? error,
+    Object? error = _doctorPatientsValueNotSet,
+    Object? errorCause = _doctorPatientsValueNotSet,
     List<DoctorDashboardPatientListItem>? items,
     int? page,
     int? limit,
     int? totalItems,
     int? totalPages,
+    bool clearError = false,
   }) {
     return DoctorPatientsState(
       isLoading: isLoading ?? this.isLoading,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-      error: error,
+      error: clearError
+          ? null
+          : identical(error, _doctorPatientsValueNotSet)
+              ? this.error
+              : error as String?,
+      errorCause: clearError
+          ? null
+          : identical(errorCause, _doctorPatientsValueNotSet)
+              ? this.errorCause
+              : errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,

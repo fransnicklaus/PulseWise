@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart'
     as shell;
 
@@ -111,23 +110,12 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
   Future<void> _openPatientDashboard(String patientId) async {
     setState(() => _isResolvingPatient = true);
     try {
-      final summaryResponse = await ref
-          .read(doctorDashboardApiProvider)
-          .fetchPatientSummary(patientId);
-      final summary = summaryResponse.data;
-      if (summary == null) {
-        throw Exception('Data pasien dashboard dokter tidak tersedia.');
-      }
-
       await _controller.stop();
       _isCameraRunning = false;
 
       if (!mounted) return;
 
-      await context.push(
-        '/doctor/home/patients/$patientId',
-        extra: summary,
-      );
+      await context.push('/doctor/home/patients/$patientId');
     } catch (error) {
       if (!mounted) return;
       AppToast.error(

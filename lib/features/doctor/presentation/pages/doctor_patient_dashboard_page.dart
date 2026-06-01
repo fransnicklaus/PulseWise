@@ -4,7 +4,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
+import 'package:pulsewise/features/doctor/data/datasources/doctor_dashboard_api.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
@@ -74,7 +77,9 @@ class _DoctorPatientDashboardPageState
   bool _isRefreshing = false;
   bool _isLoadingRecommendation = true;
   String? _error;
+  Object? _errorCause;
   String? _recommendationError;
+  Object? _recommendationErrorCause;
 
   @override
   void initState() {
@@ -89,8 +94,30 @@ class _DoctorPatientDashboardPageState
     });
   }
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
+  Future<_DoctorRecommendationFetchResult> _loadRecommendationSafely(
+    DoctorDashboardApi api,
+  ) async {
+    try {
+      final recommendation =
+          await api.fetchLatestPatientMlRecommendation(widget.patientId);
+      return _DoctorRecommendationFetchResult(
+        recommendation: recommendation,
+      );
+    } catch (error) {
+      return _DoctorRecommendationFetchResult(
+        error: error,
+        errorMessage: error.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
   Future<void> _loadDashboard({
     bool refreshSummary = true,
+    bool refreshVitals = true,
     _DoctorDashboardTimePeriodOption? period,
     bool refreshRecommendation = true,
   }) async {
@@ -102,30 +129,34 @@ class _DoctorPatientDashboardPageState
       _isLoading = !hasExistingData;
       _isRefreshing = hasExistingData;
       _error = null;
+      _errorCause = null;
       if (refreshRecommendation) {
         _isLoadingRecommendation = true;
         _recommendationError = null;
+        _recommendationErrorCause = null;
       }
     });
 
     try {
       final api = ref.read(doctorDashboardApiProvider);
       final recommendationFuture = refreshRecommendation
-          ? api.fetchLatestPatientMlRecommendation(widget.patientId)
+          ? _loadRecommendationSafely(api)
           : null;
 
       final futures = await Future.wait([
         if (refreshSummary) api.fetchPatientSummary(widget.patientId),
-        api.fetchPatientVitals(
-          widget.patientId,
-          timePeriod: targetPeriod.id,
-        ),
+        if (refreshVitals)
+          api.fetchPatientVitals(
+            widget.patientId,
+            timePeriod: targetPeriod.id,
+          ),
       ]);
 
       DoctorDashboardPatientSummaryData? summary = _summary;
-      DoctorDashboardPatientVitalsData? vitals;
+      DoctorDashboardPatientVitalsData? vitals = _vitals;
       MlRecommendationResponse? recommendation = _latestRecommendation;
       String? recommendationError = _recommendationError;
+      Object? recommendationErrorCause = _recommendationErrorCause;
 
       var futureIndex = 0;
       if (refreshSummary) {
@@ -134,8 +165,10 @@ class _DoctorPatientDashboardPageState
                 .data;
         futureIndex++;
       }
-      vitals =
-          (futures[futureIndex] as DoctorDashboardPatientVitalsResponse).data;
+      if (refreshVitals) {
+        vitals =
+            (futures[futureIndex] as DoctorDashboardPatientVitalsResponse).data;
+      }
 
       if (summary == null) {
         throw Exception('Ringkasan pasien tidak tersedia.');
@@ -145,12 +178,11 @@ class _DoctorPatientDashboardPageState
       }
 
       if (refreshRecommendation && recommendationFuture != null) {
-        try {
-          recommendation = await recommendationFuture;
-          recommendationError = null;
-        } catch (error) {
-          recommendationError =
-              error.toString().replaceFirst('Exception: ', '');
+        final recommendationResult = await recommendationFuture;
+        recommendationError = recommendationResult.errorMessage;
+        recommendationErrorCause = recommendationResult.error;
+        if (recommendationResult.hasResolvedData) {
+          recommendation = recommendationResult.recommendation;
         }
       }
 
@@ -162,12 +194,16 @@ class _DoctorPatientDashboardPageState
         _isLoading = false;
         _isRefreshing = false;
         _isLoadingRecommendation = false;
+        _error = null;
+        _errorCause = null;
         _recommendationError = recommendationError;
+        _recommendationErrorCause = recommendationErrorCause;
       });
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = error.toString().replaceFirst('Exception: ', '');
+        _errorCause = error;
         _isLoading = false;
         _isRefreshing = false;
         if (refreshRecommendation) {
@@ -226,6 +262,10 @@ class _DoctorPatientDashboardPageState
     final summary = _summary;
     final vitals = _vitals;
     final hasData = summary != null && vitals != null;
+    final hasInitialNetworkFailure =
+        _isNetworkError(_errorCause) && !hasData && !_isLoading;
+    final hasInitialNonNetworkFailure =
+        _error != null && !_isNetworkError(_errorCause) && !hasData && !_isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -239,7 +279,23 @@ class _DoctorPatientDashboardPageState
             ? const Center(
                 child: CircularProgressIndicator(color: Color(0xFFE64060)),
               )
-            : !hasData && _error != null
+            : hasInitialNetworkFailure
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.68,
+                        child: NoConnectionState.page(
+                          title: 'Dashboard pasien belum bisa dimuat',
+                          message:
+                              'Kami belum bisa mengambil dashboard pasien karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                          onRetry: () => _loadDashboard(refreshSummary: true),
+                        ),
+                      ),
+                    ],
+                  )
+                : hasInitialNonNetworkFailure
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(20, 80, 20, 24),
@@ -303,15 +359,22 @@ class _DoctorPatientDashboardPageState
                           periodOptions: _periodOptions,
                           isRefreshing: _isRefreshing,
                           errorMessage: _error,
+                          errorCause: _errorCause,
                           latestRecommendation: _latestRecommendation,
                           isLoadingRecommendation: _isLoadingRecommendation,
                           recommendationError: _recommendationError,
+                          recommendationErrorCause: _recommendationErrorCause,
                           onPeriodChanged: (period) => _loadDashboard(
                             refreshSummary: false,
+                            refreshVitals: true,
                             period: period,
                             refreshRecommendation: false,
                           ),
-                          onRetry: () => _loadDashboard(refreshSummary: false),
+                          onRetry: () => _loadDashboard(
+                            refreshSummary: false,
+                            refreshVitals: true,
+                            refreshRecommendation: false,
+                          ),
                           onOpenDiaryHistory: () => context.push(
                             '/doctor/home/patients/${widget.patientId}/diary-history',
                           ),
@@ -320,6 +383,7 @@ class _DoctorPatientDashboardPageState
                           ),
                           onReloadRecommendation: () => _loadDashboard(
                             refreshSummary: false,
+                            refreshVitals: false,
                             refreshRecommendation: true,
                           ),
                           formatDate: _formatDate,
@@ -340,9 +404,11 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
     required this.periodOptions,
     required this.isRefreshing,
     required this.errorMessage,
+    required this.errorCause,
     required this.latestRecommendation,
     required this.isLoadingRecommendation,
     required this.recommendationError,
+    required this.recommendationErrorCause,
     required this.onPeriodChanged,
     required this.onRetry,
     required this.onOpenDiaryHistory,
@@ -359,9 +425,11 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
   final List<_DoctorDashboardTimePeriodOption> periodOptions;
   final bool isRefreshing;
   final String? errorMessage;
+  final Object? errorCause;
   final MlRecommendationResponse? latestRecommendation;
   final bool isLoadingRecommendation;
   final String? recommendationError;
+  final Object? recommendationErrorCause;
   final ValueChanged<_DoctorDashboardTimePeriodOption> onPeriodChanged;
   final VoidCallback onRetry;
   final VoidCallback onOpenDiaryHistory;
@@ -372,6 +440,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentErrorCause = errorCause;
     final patient = summary.patient;
     final hrPoints =
         _buildChartPoints(vitals.series.timestamps, vitals.series.heartRate);
@@ -443,6 +512,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
                 latestRecommendation: latestRecommendation,
                 isLoadingRecommendation: isLoadingRecommendation,
                 recommendationError: recommendationError,
+                recommendationErrorCause: recommendationErrorCause,
                 onRetry: onReloadRecommendation,
                 onOpenHistory: onOpenHistory,
               ),
@@ -520,7 +590,19 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
                             color: Color(0xFFE13D5A),
                           ),
                         ),
-                      if (errorMessage != null)
+                      if (errorMessage != null &&
+                          currentErrorCause != null &&
+                          isNetworkRequestError(currentErrorCause))
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
+                          child: NoConnectionState.compact(
+                            title: 'Koneksi terputus',
+                            message:
+                                'Dashboard terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                            onRetry: onRetry,
+                          ),
+                        )
+                      else if (errorMessage != null)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(0, 12, 0, 0),
                           child: _InlineErrorBanner(
@@ -1094,6 +1176,7 @@ class _DoctorPredictionSection extends StatelessWidget {
     required this.latestRecommendation,
     required this.isLoadingRecommendation,
     required this.recommendationError,
+    required this.recommendationErrorCause,
     required this.onRetry,
     required this.onOpenHistory,
   });
@@ -1103,12 +1186,19 @@ class _DoctorPredictionSection extends StatelessWidget {
   final MlRecommendationResponse? latestRecommendation;
   final bool isLoadingRecommendation;
   final String? recommendationError;
+  final Object? recommendationErrorCause;
   final VoidCallback onRetry;
   final VoidCallback onOpenHistory;
 
   @override
   Widget build(BuildContext context) {
-    if (isLoadingRecommendation) {
+    final currentRecommendationErrorCause = recommendationErrorCause;
+    final hasRecommendationData = latestRecommendation != null;
+    final hasNetworkError =
+        currentRecommendationErrorCause != null &&
+        isNetworkRequestError(currentRecommendationErrorCause);
+
+    if (isLoadingRecommendation && !hasRecommendationData) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 48),
         child: Center(
@@ -1131,7 +1221,16 @@ class _DoctorPredictionSection extends StatelessWidget {
       );
     }
 
-    if (recommendationError != null) {
+    if (recommendationError != null && !hasRecommendationData) {
+      if (hasNetworkError) {
+        return NoConnectionState.card(
+          title: 'Prediksi terbaru belum bisa dimuat',
+          message:
+              'Kami belum bisa mengambil prediksi terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+          onRetry: onRetry,
+        );
+      }
+
       return Column(
         children: [
           _InlineErrorBanner(
@@ -1170,6 +1269,32 @@ class _DoctorPredictionSection extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isLoadingRecommendation) ...[
+            const ClipRRect(
+              borderRadius: BorderRadius.all(Radius.circular(999)),
+              child: LinearProgressIndicator(
+                minHeight: 4,
+                color: Color(0xFFE13D5A),
+                backgroundColor: Color(0xFFFCE7EF),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (recommendationError != null && hasNetworkError) ...[
+            NoConnectionState.compact(
+              title: 'Prediksi gagal diperbarui',
+              message:
+                  'Prediksi terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+              onRetry: onRetry,
+            ),
+            const SizedBox(height: 16),
+          ] else if (recommendationError != null) ...[
+            _InlineErrorBanner(
+              message: recommendationError!,
+              onRetry: onRetry,
+            ),
+            const SizedBox(height: 16),
+          ],
           Row(
             children: [
               Expanded(
@@ -1384,6 +1509,20 @@ class _InlineErrorBanner extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DoctorRecommendationFetchResult {
+  const _DoctorRecommendationFetchResult({
+    this.recommendation,
+    this.error,
+    this.errorMessage,
+  });
+
+  final MlRecommendationResponse? recommendation;
+  final Object? error;
+  final String? errorMessage;
+
+  bool get hasResolvedData => error == null;
 }
 
 class _DoctorRecommendationSection extends StatelessWidget {

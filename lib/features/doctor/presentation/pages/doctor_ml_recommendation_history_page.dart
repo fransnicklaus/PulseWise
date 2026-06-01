@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_recommendation_history_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
     show RecommendationItem;
@@ -61,6 +63,23 @@ class _DoctorMlRecommendationHistoryPageState
     }
   }
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
+  Future<void> _refreshHistory() async {
+    setState(() {
+      _expandedId = null;
+    });
+
+    await ref
+        .read(
+          doctorRecommendationHistoryNotifierProvider(widget.patientId)
+              .notifier,
+        )
+        .refreshHistory();
+  }
+
   Future<void> _toggleEntry(String resultId) async {
     final isExpanded = _expandedId == resultId;
     setState(() {
@@ -95,6 +114,13 @@ class _DoctorMlRecommendationHistoryPageState
   Widget build(BuildContext context) {
     final state = ref
         .watch(doctorRecommendationHistoryNotifierProvider(widget.patientId));
+    final showInitialLoading = state.isLoading && state.items.isEmpty;
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
+    final showRefreshingBar = state.isLoading && state.items.isNotEmpty;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -106,12 +132,7 @@ class _DoctorMlRecommendationHistoryPageState
         onBackPressed: () => context.pop(),
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref
-            .read(
-              doctorRecommendationHistoryNotifierProvider(widget.patientId)
-                  .notifier,
-            )
-            .refreshHistory(),
+        onRefresh: _refreshHistory,
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
         child: SingleChildScrollView(
@@ -135,13 +156,42 @@ class _DoctorMlRecommendationHistoryPageState
                     ),
                   ),
                 ),
-                if (state.isLoading)
+                if (showRefreshingBar)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: LinearProgressIndicator(
+                      minHeight: 3,
+                      color: Color(0xFFE64060),
+                      backgroundColor: Color(0xFFFBCFD7),
+                    ),
+                  ),
+                if (showOfflineBanner)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: NoConnectionState.compact(
+                      title: 'Riwayat prediksi belum tersinkron',
+                      message:
+                          'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                      onRetry: _refreshHistory,
+                    ),
+                  ),
+                if (showInitialLoading)
                   const SizedBox(
                     height: 240,
                     child: Center(
                       child: CircularProgressIndicator(
                         color: Color(0xFFE64060),
                       ),
+                    ),
+                  )
+                else if (showOfflinePage)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: NoConnectionState.card(
+                      title: 'Riwayat prediksi belum bisa dimuat',
+                      message:
+                          'Kami belum bisa mengambil riwayat prediksi ML pasien ini. Cek koneksi internet Anda lalu coba lagi.',
+                      onRetry: _refreshHistory,
                     ),
                   )
                 else if (state.error != null && state.items.isEmpty)
@@ -184,6 +234,8 @@ class _DoctorMlRecommendationHistoryPageState
                     final isDetailLoading =
                         state.loadingDetailResultIds.contains(resultId);
                     final detailError = state.detailErrorsByResultId[resultId];
+                    final detailErrorCause =
+                        state.detailErrorCausesByResultId[resultId];
                     final date = _formatSimpleDate(item.generatedAt);
                     final dateTime = _formatDateWithTime(item.generatedAt);
                     final isExpanded = _expandedId == resultId;
@@ -276,6 +328,16 @@ class _DoctorMlRecommendationHistoryPageState
                                               detail: detail,
                                               isLoading: isDetailLoading,
                                               error: detailError,
+                                              errorCause: detailErrorCause,
+                                              onRetry: () => ref
+                                                  .read(
+                                                    doctorRecommendationHistoryNotifierProvider(
+                                                      widget.patientId,
+                                                    ).notifier,
+                                                  )
+                                                  .loadRecommendationDetail(
+                                                    resultId,
+                                                  ),
                                             ),
                                           )
                                         : const SizedBox(
@@ -317,12 +379,16 @@ class _DoctorExpandedHistoryArea extends StatelessWidget {
   const _DoctorExpandedHistoryArea({
     required this.detail,
     required this.isLoading,
+    required this.onRetry,
     this.error,
+    this.errorCause,
   });
 
   final MlRecommendationResponse? detail;
   final bool isLoading;
   final String? error;
+  final Object? errorCause;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -338,16 +404,45 @@ class _DoctorExpandedHistoryArea extends StatelessWidget {
     }
 
     if (error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Text(
-            error!,
-            style: const TextStyle(
-              color: Color(0xFFB91C1C),
-              fontSize: 14,
+      if (errorCause != null && isNetworkRequestError(errorCause!)) {
+        return NoConnectionState.card(
+          title: 'Detail prediksi belum bisa dimuat',
+          message:
+              'Koneksi internet sedang bermasalah. Sambungkan lagi lalu coba muat detail ini.',
+          onRetry: onRetry,
+        );
+      }
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              error!,
+              style: const TextStyle(
+                color: Color(0xFFB91C1C),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                foregroundColor: const Color(0xFFB91C1C),
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
         ),
       );
     }

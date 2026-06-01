@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
 
@@ -22,6 +23,22 @@ class DoctorProfileApi {
     return AppSessionStore.requireUserId(
       missingMessage: 'doctorId tidak ditemukan. Silakan login ulang.',
     );
+  }
+
+  Exception _requestError(DioException error, String fallbackMessage) {
+    if (isNetworkRequestError(error)) {
+      throw error;
+    }
+
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is String && message.isNotEmpty) {
+        return Exception(message);
+      }
+    }
+
+    return Exception(fallbackMessage);
   }
 
   Future<void> uploadAvatar({
@@ -82,15 +99,7 @@ class DoctorProfileApi {
         );
       }
 
-      final data = error.response?.data;
-      if (data is Map<String, dynamic>) {
-        final message = data['message'];
-        if (message is String && message.isNotEmpty) {
-          throw Exception(message);
-        }
-      }
-
-      throw Exception('Gagal mengambil profil dokter.');
+      throw _requestError(error, 'Gagal mengambil profil dokter.');
     }
   }
 

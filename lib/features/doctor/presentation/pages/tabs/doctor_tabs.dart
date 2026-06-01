@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_patients_provider.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
@@ -36,6 +38,10 @@ class DoctorPatientsTab extends ConsumerStatefulWidget {
 class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
   final ScrollController _scrollController = ScrollController();
 
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +69,15 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(doctorPatientsNotifierProvider);
+    final showOfflinePage =
+        _isNetworkError(state.errorCause) && state.items.isEmpty && !state.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(state.errorCause) && state.items.isNotEmpty;
+    final showInitialNonNetworkError =
+        state.error != null &&
+        !_isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF1F5F9),
@@ -87,7 +102,35 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
                     parent: BouncingScrollPhysics(),
                   ),
                   slivers: [
-                    if (state.isLoading)
+                    if (state.isRefreshing)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.all(Radius.circular(999)),
+                            child: LinearProgressIndicator(
+                              minHeight: 4,
+                              color: Color(0xFF3B82F6),
+                              backgroundColor: Color(0xFFE2E8F0),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (showOfflineBanner)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                          child: NoConnectionState.compact(
+                            title: 'Koneksi terputus',
+                            message:
+                                'Daftar pasien terakhir tetap ditampilkan. Sambungkan internet lalu coba lagi.',
+                            onRetry: () => ref
+                                .read(doctorPatientsNotifierProvider.notifier)
+                                .refreshPatients(),
+                          ),
+                        ),
+                      ),
+                    if (state.isLoading && state.items.isEmpty)
                       const SliverFillRemaining(
                         hasScrollBody: false,
                         child: Center(
@@ -96,7 +139,24 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
                           ),
                         ),
                       )
-                    else if (state.error != null && state.items.isEmpty)
+                    else if (showOfflinePage)
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        sliver: SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: NoConnectionState.card(
+                              title: 'Daftar pasien belum bisa dimuat',
+                              message:
+                                  'Kami belum bisa mengambil daftar pasien karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                              onRetry: () => ref
+                                  .read(doctorPatientsNotifierProvider.notifier)
+                                  .loadPatients(),
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (showInitialNonNetworkError)
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                         sliver: SliverFillRemaining(
@@ -106,7 +166,7 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
                               icon: Icons.error_outline_rounded,
                               iconColor: const Color(0xFFEF4444),
                               title: 'Gagal memuat daftar pasien',
-                              description: state.error!,
+                              description: state.error ?? 'Terjadi kesalahan.',
                               actionLabel: 'Coba Lagi',
                               onActionTap: () => ref
                                   .read(doctorPatientsNotifierProvider.notifier)

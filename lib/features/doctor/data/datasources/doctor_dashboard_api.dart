@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
@@ -21,30 +22,50 @@ class DoctorDashboardApi {
     );
   }
 
+  Exception _requestError(DioException error, String fallbackMessage) {
+    if (isNetworkRequestError(error)) {
+      throw error;
+    }
+
+    final data = error.response?.data;
+    if (data is Map<String, dynamic>) {
+      final message = data['message'];
+      if (message is String && message.trim().isNotEmpty) {
+        return Exception(message);
+      }
+    }
+
+    return Exception(fallbackMessage);
+  }
+
   Future<DoctorDashboardPatientSummaryResponse> fetchPatientSummary(
     String patientId,
   ) async {
     final token = await _readBearerToken();
     final doctorId = await _readDoctorId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/doctors/$doctorId/dashboard/patients/$patientId',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null || body['success'] != true) {
-      throw Exception(
-        (body?['message'] ?? 'Gagal mengambil ringkasan pasien dokter')
-            .toString(),
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/doctors/$doctorId/dashboard/patients/$patientId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    return DoctorDashboardPatientSummaryResponse.fromJson(body);
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal mengambil ringkasan pasien dokter')
+              .toString(),
+        );
+      }
+
+      return DoctorDashboardPatientSummaryResponse.fromJson(body);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil ringkasan pasien dokter.');
+    }
   }
 
   Future<DoctorDashboardPatientsListResponse> fetchPatients({
@@ -54,28 +75,33 @@ class DoctorDashboardApi {
     final token = await _readBearerToken();
     final doctorId = await _readDoctorId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/doctors/$doctorId/dashboard/patients',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/doctors/$doctorId/dashboard/patients',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null || body['success'] != true) {
-      throw Exception(
-        (body?['message'] ?? 'Gagal mengambil daftar pasien dokter').toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return DoctorDashboardPatientsListResponse.fromJson(data);
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal mengambil daftar pasien dokter')
+              .toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return DoctorDashboardPatientsListResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil daftar pasien dokter.');
+    }
   }
 
   Future<DoctorDashboardPatientVitalsResponse> fetchPatientVitals(
@@ -85,25 +111,33 @@ class DoctorDashboardApi {
     final token = await _readBearerToken();
     final doctorId = await _readDoctorId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/doctors/$doctorId/dashboard/patients/$patientId/vitals',
-      queryParameters: {'timePeriod': timePeriod},
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/doctors/$doctorId/dashboard/patients/$patientId/vitals',
+        queryParameters: {'timePeriod': timePeriod},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['success'] != true) {
-      throw Exception(
-        (body?['message'] ?? 'Gagal mengambil time-series vital pasien dokter')
-            .toString(),
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ??
+                  'Gagal mengambil time-series vital pasien dokter')
+              .toString(),
+        );
+      }
+
+      return DoctorDashboardPatientVitalsResponse.fromJson(body);
+    } on DioException catch (error) {
+      throw _requestError(
+        error,
+        'Gagal mengambil time-series vital pasien dokter.',
       );
     }
-
-    return DoctorDashboardPatientVitalsResponse.fromJson(body);
   }
 
   Future<MlRecommendationResponse?> fetchLatestPatientMlRecommendation(
@@ -136,7 +170,10 @@ class DoctorDashboardApi {
       if (error.response?.statusCode == 404) {
         return null;
       }
-      throw Exception('Gagal mengambil rekomendasi ML terbaru pasien dokter.');
+      throw _requestError(
+        error,
+        'Gagal mengambil rekomendasi ML terbaru pasien dokter.',
+      );
     }
   }
 
@@ -148,33 +185,37 @@ class DoctorDashboardApi {
     final token = await _readBearerToken();
     final doctorId = await _readDoctorId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/doctors/$doctorId/dashboard/patients/$patientId/ml-recommendations/history',
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-      },
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/doctors/$doctorId/dashboard/patients/$patientId/ml-recommendations/history',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
         },
-      ),
-    );
-
-    final body = response.data;
-    if (body == null) {
-      throw Exception('Respons history rekomendasi dokter tidak valid');
-    }
-
-    if (body['success'] != true) {
-      throw Exception(
-        (body['message'] ?? 'Gagal mengambil riwayat rekomendasi dokter')
-            .toString(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
       );
-    }
 
-    final data = (body['data'] as Map<String, dynamic>?) ?? const {};
-    return MlRecommendationHistoryResponse.fromJson(data);
+      final body = response.data;
+      if (body == null) {
+        throw Exception('Respons history rekomendasi dokter tidak valid');
+      }
+
+      if (body['success'] != true) {
+        throw Exception(
+          (body['message'] ?? 'Gagal mengambil riwayat rekomendasi dokter')
+              .toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      return MlRecommendationHistoryResponse.fromJson(data);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal mengambil riwayat rekomendasi dokter.');
+    }
   }
 
   Future<MlRecommendationResponse> fetchPatientMlRecommendationHistoryDetail(
@@ -184,24 +225,31 @@ class DoctorDashboardApi {
     final token = await _readBearerToken();
     final doctorId = await _readDoctorId();
 
-    final response = await _dio.get<Map<String, dynamic>>(
-      '/doctors/$doctorId/dashboard/patients/$patientId/ml-recommendations/history/$resultId',
-      options: Options(
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/doctors/$doctorId/dashboard/patients/$patientId/ml-recommendations/history/$resultId',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
 
-    final body = response.data;
-    if (body == null || body['success'] != true) {
-      throw Exception(
-        (body?['message'] ??
-                'Gagal mengambil detail riwayat rekomendasi dokter')
-            .toString(),
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ??
+                  'Gagal mengambil detail riwayat rekomendasi dokter')
+              .toString(),
+        );
+      }
+
+      return MlRecommendationResponse.fromJson(body);
+    } on DioException catch (error) {
+      throw _requestError(
+        error,
+        'Gagal mengambil detail riwayat rekomendasi dokter.',
       );
     }
-
-    return MlRecommendationResponse.fromJson(body);
   }
 }

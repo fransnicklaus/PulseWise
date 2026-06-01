@@ -38,6 +38,7 @@ class DoctorRecommendationHistoryNotifier
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
     );
@@ -60,6 +61,7 @@ class DoctorRecommendationHistoryNotifier
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        errorCause: null,
       );
     } catch (error) {
       if (!mounted) return;
@@ -67,6 +69,7 @@ class DoctorRecommendationHistoryNotifier
         isLoading: false,
         isLoadingMore: false,
         error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
       );
     }
   }
@@ -88,6 +91,7 @@ class DoctorRecommendationHistoryNotifier
     state = state.copyWith(
       detailsByResultId: const {},
       detailErrorsByResultId: const {},
+      detailErrorCausesByResultId: const {},
       loadingDetailResultIds: const {},
     );
 
@@ -101,10 +105,13 @@ class DoctorRecommendationHistoryNotifier
 
     final nextLoadingIds = {...state.loadingDetailResultIds, resultId};
     final nextErrors = {...state.detailErrorsByResultId}..remove(resultId);
+    final nextErrorCauses = {...state.detailErrorCausesByResultId}
+      ..remove(resultId);
 
     state = state.copyWith(
       loadingDetailResultIds: nextLoadingIds,
       detailErrorsByResultId: nextErrors,
+      detailErrorCausesByResultId: nextErrorCauses,
     );
 
     try {
@@ -121,10 +128,13 @@ class DoctorRecommendationHistoryNotifier
       };
       final updatedLoading = {...state.loadingDetailResultIds}
         ..remove(resultId);
+      final updatedErrorCauses = {...state.detailErrorCausesByResultId}
+        ..remove(resultId);
 
       state = state.copyWith(
         detailsByResultId: updatedDetails,
         loadingDetailResultIds: updatedLoading,
+        detailErrorCausesByResultId: updatedErrorCauses,
       );
     } catch (error) {
       if (!mounted) return;
@@ -135,10 +145,15 @@ class DoctorRecommendationHistoryNotifier
         ...state.detailErrorsByResultId,
         resultId: error.toString().replaceFirst('Exception: ', ''),
       };
+      final updatedErrorCauses = {
+        ...state.detailErrorCausesByResultId,
+        resultId: error,
+      };
 
       state = state.copyWith(
         loadingDetailResultIds: updatedLoading,
         detailErrorsByResultId: updatedErrors,
+        detailErrorCausesByResultId: updatedErrorCauses,
       );
     }
   }
@@ -148,6 +163,7 @@ class DoctorRecommendationHistoryState {
   final bool isLoading;
   final bool isLoadingMore;
   final String? error;
+  final Object? errorCause;
   final List<MlRecommendationHistoryItem> items;
   final int page;
   final int limit;
@@ -156,11 +172,13 @@ class DoctorRecommendationHistoryState {
   final Map<String, MlRecommendationResponse> detailsByResultId;
   final Set<String> loadingDetailResultIds;
   final Map<String, String> detailErrorsByResultId;
+  final Map<String, Object> detailErrorCausesByResultId;
 
   const DoctorRecommendationHistoryState({
     this.isLoading = false,
     this.isLoadingMore = false,
     this.error,
+    this.errorCause,
     this.items = const [],
     this.page = 1,
     this.limit = 10,
@@ -169,12 +187,14 @@ class DoctorRecommendationHistoryState {
     this.detailsByResultId = const {},
     this.loadingDetailResultIds = const {},
     this.detailErrorsByResultId = const {},
+    this.detailErrorCausesByResultId = const {},
   });
 
   DoctorRecommendationHistoryState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
+    Object? errorCause,
     List<MlRecommendationHistoryItem>? items,
     int? page,
     int? limit,
@@ -183,11 +203,13 @@ class DoctorRecommendationHistoryState {
     Map<String, MlRecommendationResponse>? detailsByResultId,
     Set<String>? loadingDetailResultIds,
     Map<String, String>? detailErrorsByResultId,
+    Map<String, Object>? detailErrorCausesByResultId,
   }) {
     return DoctorRecommendationHistoryState(
       isLoading: isLoading ?? this.isLoading,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       error: error,
+      errorCause: errorCause,
       items: items ?? this.items,
       page: page ?? this.page,
       limit: limit ?? this.limit,
@@ -198,6 +220,8 @@ class DoctorRecommendationHistoryState {
           loadingDetailResultIds ?? this.loadingDetailResultIds,
       detailErrorsByResultId:
           detailErrorsByResultId ?? this.detailErrorsByResultId,
+      detailErrorCausesByResultId:
+          detailErrorCausesByResultId ?? this.detailErrorCausesByResultId,
     );
   }
 }

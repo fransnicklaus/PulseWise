@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_profile_provider.dart';
@@ -13,19 +15,30 @@ class DoctorPendingVerificationPage extends ConsumerWidget {
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     await ref.read(authProvider.notifier).logout();
     ref.invalidate(doctorProfileProvider);
+    ref.invalidate(doctorProfileNotifierProvider);
     if (!context.mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun dokter');
     context.go('/login');
   }
 
   Future<void> _refreshProfile(WidgetRef ref) async {
-    ref.invalidate(doctorProfileProvider);
-    await ref.read(doctorProfileProvider.future);
+    await ref.read(doctorProfileNotifierProvider.notifier).refreshProfile();
+  }
+
+  Future<void> _retryProfile(WidgetRef ref) async {
+    await ref.read(doctorProfileNotifierProvider.notifier).reloadProfile();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profileAsync = ref.watch(doctorProfileProvider);
+    final profileState = ref.watch(doctorProfileNotifierProvider);
+    final profile = profileState.profile;
+    final showOfflineCard = profile == null &&
+        profileState.errorCause != null &&
+        isNetworkRequestError(profileState.errorCause!);
+    final showOfflineBanner = profile != null &&
+        profileState.errorCause != null &&
+        isNetworkRequestError(profileState.errorCause!);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -101,20 +114,47 @@ class DoctorPendingVerificationPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              profileAsync.when(
-                data: (profile) => _DoctorProfilePreviewCard(profile: profile),
-                loading: () => const _DoctorProfileLoadingCard(),
-                error: (error, _) => _DoctorProfileErrorCard(
-                  message: error.toString().replaceFirst('Exception: ', ''),
-                  onRetry: () => _refreshProfile(ref),
+              if (profileState.isRefreshing && profile != null)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: LinearProgressIndicator(
+                    minHeight: 3,
+                    color: Color(0xFFE64060),
+                    backgroundColor: Color(0xFFFBCFD7),
+                  ),
                 ),
-              ),
+              if (showOfflineBanner)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: NoConnectionState.compact(
+                    title: 'Profil dokter belum tersinkron',
+                    message:
+                        'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                    onRetry: () => _refreshProfile(ref),
+                  ),
+                ),
+              if (profileState.isLoading && profile == null)
+                const _DoctorProfileLoadingCard()
+              else if (showOfflineCard)
+                NoConnectionState.card(
+                  title: 'Profil dokter belum bisa dimuat',
+                  message:
+                      'Kami belum bisa mengambil data profil dokter Anda saat ini. Cek koneksi internet lalu coba lagi.',
+                  onRetry: () => _retryProfile(ref),
+                )
+              else if (profile == null && profileState.error != null)
+                _DoctorProfileErrorCard(
+                  message: profileState.error!,
+                  onRetry: () => _retryProfile(ref),
+                )
+              else if (profile != null)
+                _DoctorProfilePreviewCard(profile: profile),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () =>
-                      context.push('$doctorPendingVerificationRoute/update-profile'),
+                  onPressed: () => context
+                      .push('$doctorPendingVerificationRoute/update-profile'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE64060),
                     foregroundColor: Colors.white,

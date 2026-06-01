@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_profile_provider.dart';
@@ -24,8 +26,15 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
   bool _isUploadingAvatar = false;
 
   Future<void> _refreshProfile() async {
-    ref.invalidate(doctorProfileProvider);
-    await ref.read(doctorProfileProvider.future);
+    await ref.read(doctorProfileNotifierProvider.notifier).refreshProfile();
+  }
+
+  Future<void> _retryProfile() async {
+    await ref.read(doctorProfileNotifierProvider.notifier).reloadProfile();
+  }
+
+  bool _isNetworkError(Object? error) {
+    return error != null && isNetworkRequestError(error);
   }
 
   String _formatDate(DateTime? date) {
@@ -51,6 +60,7 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
   Future<void> _onLogout() async {
     await ref.read(authProvider.notifier).logout();
     ref.invalidate(doctorProfileProvider);
+    ref.invalidate(doctorProfileNotifierProvider);
     ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun dokter');
@@ -462,7 +472,7 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
     try {
       await ref.read(doctorProfileApiProvider).uploadAvatar(file: file);
       ref.invalidate(doctorProfileProvider);
-      await ref.read(doctorProfileProvider.future);
+      await ref.read(doctorProfileNotifierProvider.notifier).reloadProfile();
 
       if (!mounted) return;
       AppToast.success(context, 'Avatar dokter berhasil diperbarui.');
@@ -634,7 +644,14 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    final profileAsync = ref.watch(doctorProfileProvider);
+    final profileState = ref.watch(doctorProfileNotifierProvider);
+    final profile = profileState.profile;
+    final showInitialLoading = profileState.isLoading && profile == null;
+    final showOfflinePage = _isNetworkError(profileState.errorCause) &&
+        profile == null &&
+        !profileState.isLoading;
+    final showOfflineBanner =
+        _isNetworkError(profileState.errorCause) && profile != null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -642,166 +659,197 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
         child: RefreshIndicator(
           onRefresh: _refreshProfile,
           color: const Color(0xFFE64060),
-          child: profileAsync.when(
-            data: (profile) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
-                children: [
-                  _buildAvatarSection(profile),
-                  _SectionCard(
-                    title: 'Informasi Dokter',
-                    children: [
-                      _InfoRow(
-                        label: 'Spesialisasi',
-                        value: profile.specialization.isEmpty
-                            ? '-'
-                            : profile.specialization,
-                      ),
-                      _InfoRow(
-                        label: 'Nomor Izin',
-                        value:
-                            profile.licenseNo.isEmpty ? '-' : profile.licenseNo,
-                      ),
-                      _InfoRow(
-                        label: 'Rumah Sakit',
-                        value: profile.hospitalName.isEmpty
-                            ? '-'
-                            : profile.hospitalName,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  _SectionCard(
-                    title: 'Informasi Akun',
-                    children: [
-                      _InfoRow(
-                        label: 'Email',
-                        value: profile.email.isEmpty ? '-' : profile.email,
-                      ),
-                      _InfoRow(
-                        label: 'ID Dokter',
-                        value:
-                            profile.doctorId.isEmpty ? '-' : profile.doctorId,
-                      ),
-                      _InfoRow(
-                        label: 'Bergabung',
-                        value: _formatDate(profile.createdAt),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  _SectionCard(
-                    title: 'Pengaturan Akun',
-                    children: [
-                      _ActionRow(
-                        label: 'Ubah Kata Sandi',
-                        onTap: _showChangePasswordSheet,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () =>
-                            context.push('/doctor/home/update-profile'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE64060),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.edit_outlined, size: 22),
-                        label: const Text(
-                          'Edit Profil',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+            children: [
+              if (showInitialLoading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 140),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFE64060),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _confirmLogout,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFE64060),
-                          side: const BorderSide(color: Color(0xFFE64060)),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.logout, size: 22),
-                        label: const Text(
-                          'Keluar',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                )
+              else if (showOfflinePage)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 96, 16, 24),
+                  child: NoConnectionState.page(
+                    title: 'Profil dokter belum bisa dimuat',
+                    message:
+                        'Kami belum bisa mengambil profil dokter Anda. Cek koneksi internet lalu coba lagi.',
+                    onRetry: _retryProfile,
+                  ),
+                )
+              else if (profile == null && profileState.error != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 80, 20, 24),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Color(0xFFE64060),
+                        size: 56,
                       ),
-                    ),
-                  ),
-                ],
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stackTrace) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 80, 20, 24),
-                children: [
-                  const Icon(
-                    Icons.error_outline_rounded,
-                    color: Color(0xFFE64060),
-                    size: 56,
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    error.toString().replaceFirst('Exception: ', ''),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _refreshProfile,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFE64060),
-                        side: const BorderSide(color: Color(0xFFE64060)),
-                        minimumSize: const Size.fromHeight(52),
-                      ),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text(
-                        'Muat Ulang Profil',
-                        style: TextStyle(
+                      const SizedBox(height: 14),
+                      Text(
+                        profileState.error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFB91C1C),
                           fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _retryProfile,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFE64060),
+                            side: const BorderSide(color: Color(0xFFE64060)),
+                            minimumSize: const Size.fromHeight(52),
+                          ),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text(
+                            'Muat Ulang Profil',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else if (profile != null) ...[
+                if (profileState.isRefreshing)
+                  const LinearProgressIndicator(
+                    minHeight: 3,
+                    color: Color(0xFFE64060),
+                    backgroundColor: Color(0xFFFBCFD7),
+                  ),
+                if (showOfflineBanner)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: NoConnectionState.compact(
+                      title: 'Profil dokter belum tersinkron',
+                      message:
+                          'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                      onRetry: _refreshProfile,
+                    ),
+                  ),
+                _buildAvatarSection(profile),
+                _SectionCard(
+                  title: 'Informasi Dokter',
+                  children: [
+                    _InfoRow(
+                      label: 'Spesialisasi',
+                      value: profile.specialization.isEmpty
+                          ? '-'
+                          : profile.specialization,
+                    ),
+                    _InfoRow(
+                      label: 'Nomor Izin',
+                      value:
+                          profile.licenseNo.isEmpty ? '-' : profile.licenseNo,
+                    ),
+                    _InfoRow(
+                      label: 'Rumah Sakit',
+                      value: profile.hospitalName.isEmpty
+                          ? '-'
+                          : profile.hospitalName,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _SectionCard(
+                  title: 'Informasi Akun',
+                  children: [
+                    _InfoRow(
+                      label: 'Email',
+                      value: profile.email.isEmpty ? '-' : profile.email,
+                    ),
+                    _InfoRow(
+                      label: 'ID Dokter',
+                      value: profile.doctorId.isEmpty ? '-' : profile.doctorId,
+                    ),
+                    _InfoRow(
+                      label: 'Bergabung',
+                      value: _formatDate(profile.createdAt),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                _SectionCard(
+                  title: 'Pengaturan Akun',
+                  children: [
+                    _ActionRow(
+                      label: 'Ubah Kata Sandi',
+                      onTap: _showChangePasswordSheet,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () =>
+                          context.push('/doctor/home/update-profile'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE64060),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.edit_outlined, size: 22),
+                      label: const Text(
+                        'Edit Profil',
+                        style: TextStyle(
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                   ),
-                ],
-              );
-            },
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _confirmLogout,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFE64060),
+                        side: const BorderSide(color: Color(0xFFE64060)),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.logout, size: 22),
+                      label: const Text(
+                        'Keluar',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ),

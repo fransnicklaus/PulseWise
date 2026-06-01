@@ -26,6 +26,7 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
       isLoading: !append,
       isLoadingMore: append,
       error: null,
+      errorCause: null,
       page: page,
       limit: limit,
       startDate: startDate,
@@ -51,6 +52,7 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
         limit: response.pagination.limit,
         totalItems: response.pagination.totalItems,
         totalPages: response.pagination.totalPages,
+        errorCause: null,
       );
     } catch (error) {
       if (!mounted) return;
@@ -58,6 +60,7 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
         isLoading: false,
         isLoadingMore: false,
         error: error.toString().replaceFirst('Exception: ', ''),
+        errorCause: error,
       );
     }
   }
@@ -74,6 +77,9 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
     state = state.copyWith(
       loadingDetailDiaryIds: loadingIds,
       detailErrorsByDiaryId: detailErrors,
+      detailErrorCausesByDiaryId: {
+        ...state.detailErrorCausesByDiaryId,
+      }..remove(diaryDate),
     );
 
     try {
@@ -81,10 +87,15 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
         _patientId,
         diaryDate,
       );
-      final sleepData = await _diaryApi.fetchSleepDiaryByDateForUser(
-        _patientId,
-        diaryDate,
-      );
+      Map<String, dynamic>? sleepData;
+      try {
+        sleepData = await _diaryApi.fetchSleepDiaryByDateForUser(
+          _patientId,
+          diaryDate,
+        );
+      } catch (_) {
+        sleepData = null;
+      }
       if (sleepData != null) {
         detail = detail.copyWith(
           sleeps: [DiarySleep.fromJson(sleepData)],
@@ -96,10 +107,13 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
       final nextDetails = {...state.detailsByDiaryId, diaryDate: detail};
       final nextLoadingIds = {...state.loadingDetailDiaryIds}
         ..remove(diaryDate);
+      final nextErrorCauses = {...state.detailErrorCausesByDiaryId}
+        ..remove(diaryDate);
 
       state = state.copyWith(
         detailsByDiaryId: nextDetails,
         loadingDetailDiaryIds: nextLoadingIds,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     } catch (error) {
       if (!mounted) return;
@@ -110,10 +124,15 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
         ...state.detailErrorsByDiaryId,
         diaryDate: error.toString().replaceFirst('Exception: ', ''),
       };
+      final nextErrorCauses = {
+        ...state.detailErrorCausesByDiaryId,
+        diaryDate: error,
+      };
 
       state = state.copyWith(
         loadingDetailDiaryIds: nextLoadingIds,
         detailErrorsByDiaryId: nextErrors,
+        detailErrorCausesByDiaryId: nextErrorCauses,
       );
     }
   }

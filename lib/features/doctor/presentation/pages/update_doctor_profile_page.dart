@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_profile_provider.dart';
 
@@ -71,7 +73,7 @@ class _UpdateDoctorProfilePageState
           );
 
       ref.invalidate(doctorProfileProvider);
-      await ref.read(doctorProfileProvider.future);
+      await ref.read(doctorProfileNotifierProvider.notifier).reloadProfile();
 
       if (!mounted) return;
       context.pop();
@@ -91,7 +93,11 @@ class _UpdateDoctorProfilePageState
 
   @override
   Widget build(BuildContext context) {
-    final profileAsync = ref.watch(doctorProfileProvider);
+    final profileState = ref.watch(doctorProfileNotifierProvider);
+    final profile = profileState.profile;
+    final showOfflinePage = profile == null &&
+        profileState.errorCause != null &&
+        isNetworkRequestError(profileState.errorCause!);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -100,8 +106,40 @@ class _UpdateDoctorProfilePageState
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
-      body: profileAsync.when(
-        data: (profile) {
+      body: Builder(
+        builder: (context) {
+          if (profileState.isLoading && profile == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (showOfflinePage) {
+            return NoConnectionState.page(
+              title: 'Profil dokter belum bisa dimuat',
+              message:
+                  'Kami belum bisa mengambil data profil dokter untuk diedit. Cek koneksi internet lalu coba lagi.',
+              onRetry: () => ref
+                  .read(doctorProfileNotifierProvider.notifier)
+                  .reloadProfile(),
+            );
+          }
+
+          if (profile == null && profileState.error != null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Gagal memuat profil dokter:\n${profileState.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                ),
+              ),
+            );
+          }
+
+          if (profile == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           if (!isInitialized) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
@@ -184,14 +222,6 @@ class _UpdateDoctorProfilePageState
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
-          child: Text(
-            'Gagal memuat profil dokter:\n$error',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red, fontSize: 16),
-          ),
-        ),
       ),
     );
   }
