@@ -10,6 +10,7 @@ import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RegisterPage extends StatefulWidget {
   final String? googleRegistrationToken;
@@ -36,6 +37,9 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  static const String _privacyPolicyUrl =
+      'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8';
+
   final _usernameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -56,6 +60,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Timer? _otpCooldownTimer;
   bool _googleRegistrationCompleted = false;
   String _selectedRole = AppRoles.patient;
+  bool _hasAgreedPrivacyPolicy = false;
 
   String? _registeredUserId;
   String _registrationEmail = '';
@@ -460,6 +465,20 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Future<void> _openPrivacyPolicy() async {
+    final uri = Uri.parse(_privacyPolicyUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    AppToast.warning(
+      context,
+      'Tautan kebijakan privasi tidak dapat dibuka saat ini.',
+    );
+  }
+
   Future<void> _nextStep() async {
     final canProceed = switch (_currentStep) {
       0 => _step1Key.currentState?.validate() ?? false,
@@ -468,6 +487,14 @@ class _RegisterPageState extends State<RegisterPage> {
     };
 
     if (!canProceed || _isSubmitting) return;
+
+    if (_currentStep == 0 && !_hasAgreedPrivacyPolicy) {
+      AppToast.warning(
+        context,
+        'Anda perlu menyetujui kebijakan privasi terlebih dahulu.',
+      );
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
@@ -859,6 +886,72 @@ class _RegisterPageState extends State<RegisterPage> {
                   },
                 ),
               ],
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FBFD),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Transform.translate(
+                      offset: const Offset(-8, -6),
+                      child: Checkbox(
+                        value: _hasAgreedPrivacyPolicy,
+                        activeColor: const Color(0xFFE64060),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _hasAgreedPrivacyPolicy = value ?? false;
+                          });
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Saya telah membaca dan menyetujui Kebijakan Privasi PulseWise.',
+                            style: TextStyle(
+                              color: Color(0xFF475569),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              height: 1.45,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextButton(
+                            onPressed: _openPrivacyPolicy,
+                            style: TextButton.styleFrom(
+                              foregroundColor: const Color(0xFFE64060),
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              alignment: Alignment.centerLeft,
+                            ),
+                            child: const Text(
+                              'Baca Kebijakan Privasi',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                decoration: TextDecoration.underline,
+                                decorationColor: Color(0xFFE64060),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

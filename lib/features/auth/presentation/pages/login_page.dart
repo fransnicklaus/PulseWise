@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/auth/presentation/widgets/google_sign_in_entry_button.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
@@ -20,7 +25,24 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  late final GoogleSignIn _googleSignIn;
+  StreamSubscription<GoogleSignInAccount?>? _googleUserSubscription;
+  bool _isHandlingWebGoogleUser = false;
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _googleSignIn = buildGoogleSignInClient();
+    if (kIsWeb) {
+      _googleUserSubscription = _googleSignIn.onCurrentUserChanged.listen((
+        account,
+      ) {
+        if (account == null || _isHandlingWebGoogleUser) return;
+        unawaited(_handleWebGoogleAccount(account));
+      });
+    }
+  }
 
   void _logGoogleUi(String message) {
     debugPrint('[LoginPage][Google] $message');
@@ -56,6 +78,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
+    _googleUserSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -109,14 +132,52 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       'Provider result isAuthenticated=${authState.isAuthenticated} error=${authState.error}',
     );
 
+    _handleGoogleResult(result);
+  }
+
+  Future<void> _handleWebGoogleAccount(GoogleSignInAccount account) async {
+    _isHandlingWebGoogleUser = true;
+    try {
+      final authentication = await account.authentication;
+      final idToken = authentication.idToken;
+      if (!mounted) return;
+
+      if (idToken == null || idToken.isEmpty) {
+        AppToast.error(
+          context,
+          'idToken Google tidak tersedia di browser. Pastikan Web Client ID sudah benar.',
+        );
+        return;
+      }
+
+      final result =
+          await ref.read(authProvider.notifier).loginWithGoogleIdToken(idToken);
+      if (!mounted) return;
+      _handleGoogleResult(result);
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        error.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      _isHandlingWebGoogleUser = false;
+    }
+  }
+
+  void _handleGoogleResult(GoogleAuthFlowResult result) {
+    if (!mounted) return;
     if (!result.success) {
       _logGoogleUi('Showing error toast');
-      // AppToast.error(context, message);
+      AppToast.error(
+        context,
+        result.message ?? 'Login Google gagal. Silakan coba lagi.',
+      );
       return;
     }
 
     if (result.nextStep == GoogleAuthNextStep.home &&
-        authState.isAuthenticated) {
+        ref.read(authProvider).isAuthenticated) {
       _logGoogleUi(
         'Navigation to ${homeRouteForRole(result.role)} for role=${result.role}',
       );
@@ -457,33 +518,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                               const SizedBox(height: 24),
 
-                              // Google Login
-                              OutlinedButton.icon(
-                                onPressed:
-                                    authState.isLoading ? null : _onGoogleLogin,
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFAFAFA),
-                                  side: const BorderSide(
-                                      color: Color(0xFF536278)),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(37),
-                                  ),
-                                  minimumSize: const Size(240, 55),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                ),
-                                icon: SvgPicture.asset(
-                                  'assets/svgs/google.svg',
-                                  width: 32,
-                                  height: 32,
-                                ),
-                                label: const Text(
-                                  'Masuk Dengan Google',
-                                  style: TextStyle(
-                                    color: Color(0xFF536278),
-                                    fontSize: 16,
-                                  ),
-                                ),
+                              GoogleSignInEntryButton(
+                                googleSignIn: _googleSignIn,
+                                isLoading: authState.isLoading,
+                                onPressed: _onGoogleLogin,
                               ),
 
                               const Spacer(),
@@ -494,7 +532,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 children: [
                                   const Text(
                                     'Belum punya akun? ',
-                                    style: TextStyle(color: Color(0xFF536278)),
+                                    style: TextStyle(
+                                        color: Color(0xFF536278), fontSize: 14),
                                   ),
                                   GestureDetector(
                                     onTap: () {
@@ -507,6 +546,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         fontWeight: FontWeight.bold,
                                         decoration: TextDecoration.underline,
                                         decorationColor: Color(0xFFE64060),
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ),

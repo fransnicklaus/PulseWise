@@ -13,6 +13,52 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier();
 });
 
+const _fallbackGoogleClientId =
+    '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com';
+const _googleSignInScopes = <String>['email', 'profile'];
+
+String _firstNonEmptyValue(
+  List<String?> values, {
+  required String fallback,
+}) {
+  for (final value in values) {
+    final trimmed = (value ?? '').trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+  }
+  return fallback;
+}
+
+String resolveGoogleWebClientId() {
+  return _firstNonEmptyValue(
+    [
+      dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+      dotenv.env['GOOGLE_CLIENT_ID'],
+    ],
+    fallback: _fallbackGoogleClientId,
+  );
+}
+
+String resolveGoogleServerClientId() {
+  return _firstNonEmptyValue(
+    [
+      dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
+      dotenv.env['GOOGLE_CLIENT_ID'],
+      dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+    ],
+    fallback: _fallbackGoogleClientId,
+  );
+}
+
+GoogleSignIn buildGoogleSignInClient() {
+  return GoogleSignIn(
+    clientId: kIsWeb ? resolveGoogleWebClientId() : null,
+    serverClientId: kIsWeb ? null : resolveGoogleServerClientId(),
+    scopes: _googleSignInScopes,
+  );
+}
+
 enum GoogleAuthNextStep {
   home,
   completeRegistration,
@@ -114,8 +160,6 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(AuthState());
 
-  static const _fallbackGoogleClientId =
-      '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com';
   static const _androidApplicationId = 'com.rdib.pulsewise';
   static const _debugSha1 =
       '4B:C9:64:28:E0:0A:1F:90:6E:94:20:D9:F5:5B:2C:F2:18:09:FE:35';
@@ -206,25 +250,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
     _logGoogle('Login flow started');
     try {
-      final envWebClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
-      final envServerClientId = dotenv.env['GOOGLE_SERVER_CLIENT_ID'];
-      final envClientId = dotenv.env['GOOGLE_CLIENT_ID'];
-      final serverClientId = envWebClientId ??
-          envServerClientId ??
-          envClientId ??
-          _fallbackGoogleClientId;
-      final fromEnv = (envWebClientId ?? '').isNotEmpty ||
-          (envServerClientId ?? '').isNotEmpty ||
-          (envClientId ?? '').isNotEmpty;
-      _logGoogle(
-        'Using serverClientId source=${fromEnv ? 'env' : 'fallback'} value=${_maskToken(serverClientId)}',
-      );
-      _logGoogle('Resolved Google client id (full)=$serverClientId');
-
-      final googleSignIn = GoogleSignIn(
-        serverClientId: serverClientId,
-        scopes: const ['email', 'profile'],
-      );
+      final googleSignIn = buildGoogleSignInClient();
+      if (kIsWeb) {
+        _logGoogle(
+          'Resolved web clientId=${_maskToken(resolveGoogleWebClientId())}',
+        );
+      } else {
+        _logGoogle(
+          'Resolved serverClientId=${_maskToken(resolveGoogleServerClientId())}',
+        );
+      }
 
       // Force account chooser so user can switch account every login attempt.
       try {
@@ -255,21 +290,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
 
-      final flowResult = await _resolveGoogleNextStep(
-        idToken: idToken,
-      );
-
-      state = state.copyWith(
-        isLoading: false,
-        error: flowResult.success ? null : flowResult.message,
-        token: flowResult.token,
-        userId: flowResult.userId,
-        role: flowResult.role,
-        nextStep: _googleNextStepToRaw(flowResult.nextStep),
-        accountStatus: flowResult.accountStatus,
-        restrictedAccess: flowResult.restrictedAccess,
-        isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
-      );
+      final flowResult = await _completeGoogleAuthWithIdToken(idToken);
 
       return flowResult;
     } on PlatformException catch (e, st) {
@@ -288,6 +309,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: false,
       );
       return GoogleAuthFlowResult.error(errorMessage);
+    } on DioException catch (e, st) {
+      _logGoogle(
+        'DioException status=${e.response?.statusCode} message=${e.message} data=${e.response?.data}',
+      );
+      _logGoogle('StackTrace: $st');
+      final message = _extractErrorMessage(e);
+      state = state.copyWith(
+        isLoading: false,
+        error: message,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
+      return GoogleAuthFlowResult.error(message);
+    } catch (e, st) {
+      _logGoogle('Exception: $e');
+      _logGoogle('StackTrace: $st');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+        isLoading: false,
+        error: message,
+        accountStatus: null,
+        restrictedAccess: false,
+        isAuthenticated: false,
+      );
+      return GoogleAuthFlowResult.error(message);
+    }
+  }
+
+  Future<GoogleAuthFlowResult> loginWithGoogleIdToken(String idToken) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      return await _completeGoogleAuthWithIdToken(idToken);
     } on DioException catch (e, st) {
       _logGoogle(
         'DioException status=${e.response?.statusCode} message=${e.message} data=${e.response?.data}',
@@ -745,6 +799,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
 
     throw Exception('nextStep Google tidak dikenali: ${data['nextStep']}');
+  }
+
+  Future<GoogleAuthFlowResult> _completeGoogleAuthWithIdToken(
+    String idToken,
+  ) async {
+    final flowResult = await _resolveGoogleNextStep(idToken: idToken);
+    _applyGoogleFlowState(flowResult);
+    return flowResult;
+  }
+
+  void _applyGoogleFlowState(GoogleAuthFlowResult flowResult) {
+    state = state.copyWith(
+      isLoading: false,
+      error: flowResult.success ? null : flowResult.message,
+      token: flowResult.token,
+      userId: flowResult.userId,
+      role: flowResult.role,
+      nextStep: _googleNextStepToRaw(flowResult.nextStep),
+      accountStatus: flowResult.accountStatus,
+      restrictedAccess: flowResult.restrictedAccess,
+      isAuthenticated: flowResult.nextStep == GoogleAuthNextStep.home,
+    );
   }
 
   GoogleAuthNextStep _parseGoogleNextStep(String raw) {
