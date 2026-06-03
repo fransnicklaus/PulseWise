@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter Web Chrome 7357",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "toolArgs": [
+        "--web-hostname",
+        "localhost",
+        "--web-port",
+        "7357"
+      ]
+    },
+    {
+      "name": "Flutter Web Edge 7357",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "edge",
+      "toolArgs": [
+        "--web-hostname",
+        "localhost",
+        "--web-port",
+        "7357"
+      ]
+    }
+  ]
+}
