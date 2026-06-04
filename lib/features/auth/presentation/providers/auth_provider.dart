@@ -40,7 +40,26 @@ String resolveGoogleWebClientId() {
   );
 }
 
+bool _shouldUsePlayStoreGoogleClientId() {
+  return !kIsWeb &&
+      kReleaseMode &&
+      defaultTargetPlatform == TargetPlatform.android;
+}
+
 String resolveGoogleServerClientId() {
+  if (_shouldUsePlayStoreGoogleClientId()) {
+    return _firstNonEmptyValue(
+      [
+        dotenv.env['GOOGLE_WEB_CLIENT_ID_PLAY_STORE'],
+        dotenv.env['GOOGLE_SERVER_CLIENT_ID_PLAY_STORE'],
+        dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
+        dotenv.env['GOOGLE_CLIENT_ID'],
+        dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+      ],
+      fallback: _fallbackGoogleClientId,
+    );
+  }
+
   return _firstNonEmptyValue(
     [
       dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
@@ -257,7 +276,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       } else {
         _logGoogle(
-          'Resolved serverClientId=${_maskToken(resolveGoogleServerClientId())}',
+          'Resolved serverClientId=${_maskToken(resolveGoogleServerClientId())}'
+          ' source=${_shouldUsePlayStoreGoogleClientId() ? 'play_store_release' : 'default'}',
         );
       }
 
