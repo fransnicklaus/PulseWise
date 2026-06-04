@@ -13,7 +13,11 @@ import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
+import 'package:pulsewise/features/doctor/data/models/doctor_heart_risk_models.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_pending_verification_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_form_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_history_page.dart';
+import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_diary_history_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
@@ -357,6 +361,43 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                     patientId: patientId,
                   );
                 },
+              ),
+              GoRoute(
+                path: 'heart-risk-model',
+                builder: (context, state) {
+                  final patientId = state.pathParameters['patientId'] ?? '';
+                  final extra = state.extra;
+                  return DoctorPatientHeartRiskPage(
+                    patientId: patientId,
+                    entryData: extra is DoctorHeartRiskEntryData ? extra : null,
+                  );
+                },
+                routes: [
+                  GoRoute(
+                    path: 'form',
+                    builder: (context, state) {
+                      final patientId = state.pathParameters['patientId'] ?? '';
+                      final extra = state.extra;
+                      return DoctorPatientHeartRiskFormPage(
+                        patientId: patientId,
+                        entryData:
+                            extra is DoctorHeartRiskEntryData ? extra : null,
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: 'history',
+                    builder: (context, state) {
+                      final patientId = state.pathParameters['patientId'] ?? '';
+                      final extra = state.extra;
+                      return DoctorPatientHeartRiskHistoryPage(
+                        patientId: patientId,
+                        entryData:
+                            extra is DoctorHeartRiskEntryData ? extra : null,
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

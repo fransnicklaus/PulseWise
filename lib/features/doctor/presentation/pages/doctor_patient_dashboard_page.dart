@@ -9,6 +9,7 @@ import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/doctor/data/datasources/doctor_dashboard_api.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
+import 'package:pulsewise/features/doctor/data/models/doctor_heart_risk_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
@@ -139,9 +140,8 @@ class _DoctorPatientDashboardPageState
 
     try {
       final api = ref.read(doctorDashboardApiProvider);
-      final recommendationFuture = refreshRecommendation
-          ? _loadRecommendationSafely(api)
-          : null;
+      final recommendationFuture =
+          refreshRecommendation ? _loadRecommendationSafely(api) : null;
 
       final futures = await Future.wait([
         if (refreshSummary) api.fetchPatientSummary(widget.patientId),
@@ -264,8 +264,10 @@ class _DoctorPatientDashboardPageState
     final hasData = summary != null && vitals != null;
     final hasInitialNetworkFailure =
         _isNetworkError(_errorCause) && !hasData && !_isLoading;
-    final hasInitialNonNetworkFailure =
-        _error != null && !_isNetworkError(_errorCause) && !hasData && !_isLoading;
+    final hasInitialNonNetworkFailure = _error != null &&
+        !_isNetworkError(_errorCause) &&
+        !hasData &&
+        !_isLoading;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -296,100 +298,111 @@ class _DoctorPatientDashboardPageState
                     ],
                   )
                 : hasInitialNonNetworkFailure
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 80, 20, 24),
-                    children: [
-                      const Icon(
-                        Icons.error_outline_rounded,
-                        color: Color(0xFFE64060),
-                        size: 56,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFB91C1C),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _loadDashboard(refreshSummary: true),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFE64060),
-                            side: const BorderSide(color: Color(0xFFE64060)),
-                            minimumSize: const Size.fromHeight(52),
-                          ),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text(
-                            'Muat Ulang Dashboard',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : !hasData
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 200),
-                          Center(
-                            child: Text('Data dashboard pasien kosong.'),
+                        padding: const EdgeInsets.fromLTRB(20, 80, 20, 24),
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: Color(0xFFE64060),
+                            size: 56,
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFFB91C1C),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  _loadDashboard(refreshSummary: true),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFE64060),
+                                side:
+                                    const BorderSide(color: Color(0xFFE64060)),
+                                minimumSize: const Size.fromHeight(52),
+                              ),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text(
+                                'Muat Ulang Dashboard',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
                           ),
                         ],
                       )
-                    : RefreshIndicator(
-                        onRefresh: () => _loadDashboard(refreshSummary: true),
-                        color: const Color(0xFFE64060),
-                        child: _DoctorPatientDashboardBody(
-                          summary: summary,
-                          vitals: vitals,
-                          latestVitals: _latestVitals,
-                          selectedPeriod: _selectedPeriod,
-                          periodOptions: _periodOptions,
-                          isRefreshing: _isRefreshing,
-                          errorMessage: _error,
-                          errorCause: _errorCause,
-                          latestRecommendation: _latestRecommendation,
-                          isLoadingRecommendation: _isLoadingRecommendation,
-                          recommendationError: _recommendationError,
-                          recommendationErrorCause: _recommendationErrorCause,
-                          onPeriodChanged: (period) => _loadDashboard(
-                            refreshSummary: false,
-                            refreshVitals: true,
-                            period: period,
-                            refreshRecommendation: false,
+                    : !hasData
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [
+                              SizedBox(height: 200),
+                              Center(
+                                child: Text('Data dashboard pasien kosong.'),
+                              ),
+                            ],
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () =>
+                                _loadDashboard(refreshSummary: true),
+                            color: const Color(0xFFE64060),
+                            child: _DoctorPatientDashboardBody(
+                              summary: summary,
+                              vitals: vitals,
+                              latestVitals: _latestVitals,
+                              selectedPeriod: _selectedPeriod,
+                              periodOptions: _periodOptions,
+                              isRefreshing: _isRefreshing,
+                              errorMessage: _error,
+                              errorCause: _errorCause,
+                              latestRecommendation: _latestRecommendation,
+                              isLoadingRecommendation: _isLoadingRecommendation,
+                              recommendationError: _recommendationError,
+                              recommendationErrorCause:
+                                  _recommendationErrorCause,
+                              onPeriodChanged: (period) => _loadDashboard(
+                                refreshSummary: false,
+                                refreshVitals: true,
+                                period: period,
+                                refreshRecommendation: false,
+                              ),
+                              onRetry: () => _loadDashboard(
+                                refreshSummary: false,
+                                refreshVitals: true,
+                                refreshRecommendation: false,
+                              ),
+                              onOpenDiaryHistory: () => context.push(
+                                '/doctor/home/patients/${widget.patientId}/diary-history',
+                              ),
+                              onOpenHeartRiskPrediction: () => context.push(
+                                '/doctor/home/patients/${widget.patientId}/heart-risk-model',
+                                extra: DoctorHeartRiskEntryData(
+                                  patient: summary.patient,
+                                  latestVitals: _latestVitals,
+                                ),
+                              ),
+                              onOpenHistory: () => context.push(
+                                '/doctor/home/patients/${widget.patientId}/ml-recommendation-history',
+                              ),
+                              onReloadRecommendation: () => _loadDashboard(
+                                refreshSummary: false,
+                                refreshVitals: false,
+                                refreshRecommendation: true,
+                              ),
+                              formatDate: _formatDate,
+                              formatDateTime: _formatDateTime,
+                            ),
                           ),
-                          onRetry: () => _loadDashboard(
-                            refreshSummary: false,
-                            refreshVitals: true,
-                            refreshRecommendation: false,
-                          ),
-                          onOpenDiaryHistory: () => context.push(
-                            '/doctor/home/patients/${widget.patientId}/diary-history',
-                          ),
-                          onOpenHistory: () => context.push(
-                            '/doctor/home/patients/${widget.patientId}/ml-recommendation-history',
-                          ),
-                          onReloadRecommendation: () => _loadDashboard(
-                            refreshSummary: false,
-                            refreshVitals: false,
-                            refreshRecommendation: true,
-                          ),
-                          formatDate: _formatDate,
-                          formatDateTime: _formatDateTime,
-                        ),
-                      ),
       ),
     );
   }
@@ -412,6 +425,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
     required this.onPeriodChanged,
     required this.onRetry,
     required this.onOpenDiaryHistory,
+    required this.onOpenHeartRiskPrediction,
     required this.onOpenHistory,
     required this.onReloadRecommendation,
     required this.formatDate,
@@ -433,6 +447,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
   final ValueChanged<_DoctorDashboardTimePeriodOption> onPeriodChanged;
   final VoidCallback onRetry;
   final VoidCallback onOpenDiaryHistory;
+  final VoidCallback onOpenHeartRiskPrediction;
   final VoidCallback onOpenHistory;
   final VoidCallback onReloadRecommendation;
   final String Function(DateTime? date) formatDate;
@@ -474,6 +489,7 @@ class _DoctorPatientDashboardBody extends StatelessWidget {
                   latestUpdatedLabel:
                       'Terakhir diperbarui ${formatDateTime(latestVitals?.measuredAt)}',
                   onOpenDiaryHistory: onOpenDiaryHistory,
+                  onOpenHeartRiskPrediction: onOpenHeartRiskPrediction,
                 ),
               ),
             ),
@@ -882,11 +898,13 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
     required this.patient,
     required this.latestUpdatedLabel,
     required this.onOpenDiaryHistory,
+    required this.onOpenHeartRiskPrediction,
   });
 
   final DashboardPatient patient;
   final String latestUpdatedLabel;
   final VoidCallback onOpenDiaryHistory;
+  final VoidCallback onOpenHeartRiskPrediction;
 
   @override
   Widget build(BuildContext context) {
@@ -995,6 +1013,30 @@ class _DoctorPatientHeaderCard extends StatelessWidget {
               icon: const Icon(Icons.menu_book_rounded, size: 22),
               label: const Text(
                 'Lihat Riwayat Diari',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onOpenHeartRiskPrediction,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE13D5A),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.monitor_heart_rounded, size: 22),
+              label: const Text(
+                'Lihat Prediksi Heart Risk',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -1194,8 +1236,7 @@ class _DoctorPredictionSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentRecommendationErrorCause = recommendationErrorCause;
     final hasRecommendationData = latestRecommendation != null;
-    final hasNetworkError =
-        currentRecommendationErrorCause != null &&
+    final hasNetworkError = currentRecommendationErrorCause != null &&
         isNetworkRequestError(currentRecommendationErrorCause);
 
     if (isLoadingRecommendation && !hasRecommendationData) {
