@@ -31,6 +31,17 @@ String _firstNonEmptyValue(
 }
 
 String resolveGoogleWebClientId() {
+  if (kIsWeb && kReleaseMode) {
+    return _firstNonEmptyValue(
+      [
+        dotenv.env['GOOGLE_WEB_CLIENT_ID_PLAY_STORE'],
+        dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+        dotenv.env['GOOGLE_CLIENT_ID'],
+      ],
+      fallback: _fallbackGoogleClientId,
+    );
+  }
+
   return _firstNonEmptyValue(
     [
       dotenv.env['GOOGLE_WEB_CLIENT_ID'],
@@ -40,26 +51,7 @@ String resolveGoogleWebClientId() {
   );
 }
 
-bool _shouldUsePlayStoreGoogleClientId() {
-  return !kIsWeb &&
-      kReleaseMode &&
-      defaultTargetPlatform == TargetPlatform.android;
-}
-
 String resolveGoogleServerClientId() {
-  if (_shouldUsePlayStoreGoogleClientId()) {
-    return _firstNonEmptyValue(
-      [
-        dotenv.env['GOOGLE_WEB_CLIENT_ID_PLAY_STORE'],
-        dotenv.env['GOOGLE_SERVER_CLIENT_ID_PLAY_STORE'],
-        dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
-        dotenv.env['GOOGLE_CLIENT_ID'],
-        dotenv.env['GOOGLE_WEB_CLIENT_ID'],
-      ],
-      fallback: _fallbackGoogleClientId,
-    );
-  }
-
   return _firstNonEmptyValue(
     [
       dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
@@ -272,12 +264,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final googleSignIn = buildGoogleSignInClient();
       if (kIsWeb) {
         _logGoogle(
-          'Resolved web clientId=${_maskToken(resolveGoogleWebClientId())}',
+          'Resolved web clientId=${_maskToken(resolveGoogleWebClientId())}'
+          ' source=${kReleaseMode ? 'web_release' : 'web_debug'}',
         );
       } else {
         _logGoogle(
           'Resolved serverClientId=${_maskToken(resolveGoogleServerClientId())}'
-          ' source=${_shouldUsePlayStoreGoogleClientId() ? 'play_store_release' : 'default'}',
+          ' source=shared_android',
         );
       }
 
