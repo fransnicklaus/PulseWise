@@ -23,6 +23,7 @@ import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommend
 import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/update_doctor_profile_page.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/pages/doctor_home_page.dart';
+import 'package:pulsewise/features/education/presentation/pages/education_article_detail_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/add_diary_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/detail_diari_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/diary_qr_page.dart';
@@ -221,6 +222,13 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'delete-account',
             builder: (context, state) => const DeleteAccountPage(),
+          ),
+          GoRoute(
+            path: 'education/articles/:slug',
+            builder: (context, state) {
+              final slug = state.pathParameters['slug'] ?? '';
+              return EducationArticleDetailPage(slug: slug);
+            },
           ),
           GoRoute(
             path: 'diary',
