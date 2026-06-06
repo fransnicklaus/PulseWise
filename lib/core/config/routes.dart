@@ -39,8 +39,9 @@ import 'package:pulsewise/features/medication/presentation/pages/add_pengingat_p
 import 'package:pulsewise/features/medication/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
-import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_page.dart';
+import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_route_resolver_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/date_time_picker_demo_page.dart';
+import 'package:pulsewise/features/profile/presentation/pages/delete_account_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
@@ -91,29 +92,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
                   }
 
                   return ProfileSetupPage(
-                    token: token,
-                    patientId: patientId,
-                  );
-                },
-              ),
-              GoRoute(
-                path: 'ml-questionnaire',
-                builder: (context, state) {
-                  final extra = state.extra;
-                  if (extra is! Map<String, dynamic>) {
-                    return const LoginPage();
-                  }
-
-                  final token =
-                      (extra[AppSessionStore.tokenPrefsKey] ?? '').toString();
-                  final patientId =
-                      (extra[AppSessionStore.userIdPrefsKey] ?? '').toString();
-
-                  if (token.isEmpty || patientId.isEmpty) {
-                    return const LoginPage();
-                  }
-
-                  return MlQuestionnairePage(
                     token: token,
                     patientId: patientId,
                   );
@@ -223,6 +201,26 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'picker-demo',
             builder: (context, state) => const DateTimePickerDemoPage(),
+          ),
+          GoRoute(
+            path: 'ml-questionnaire',
+            builder: (context, state) {
+              final extra = state.extra;
+              if (extra is Map<String, dynamic>) {
+                return MlQuestionnaireRouteResolverPage(
+                  tokenOverride:
+                      (extra[AppSessionStore.tokenPrefsKey] ?? '').toString(),
+                  patientIdOverride:
+                      (extra[AppSessionStore.userIdPrefsKey] ?? '').toString(),
+                );
+              }
+
+              return const MlQuestionnaireRouteResolverPage();
+            },
+          ),
+          GoRoute(
+            path: 'delete-account',
+            builder: (context, state) => const DeleteAccountPage(),
           ),
           GoRoute(
             path: 'diary',

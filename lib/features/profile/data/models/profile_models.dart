@@ -1,3 +1,29 @@
+const patientProfileMissingMessage = 'Profil pasien tidak ditemukan';
+
+class PatientProfileNotSetupException implements Exception {
+  const PatientProfileNotSetupException([
+    this.message = patientProfileMissingMessage,
+  ]);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
+bool isPatientProfileNotSetupError(Object? error) {
+  if (error == null) {
+    return false;
+  }
+
+  if (error is PatientProfileNotSetupException) {
+    return true;
+  }
+
+  final message = error.toString().toLowerCase();
+  return message.contains(patientProfileMissingMessage.toLowerCase());
+}
+
 class AuthMeUser {
   final String userId;
   final String username;
@@ -88,8 +114,7 @@ class PatientProfile {
       lastName: (json['last_name'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       address: (json['address'] ?? '').toString(),
-      dateOfBirth:
-          DateTime.tryParse((json['date_of_birth'] ?? '').toString()),
+      dateOfBirth: DateTime.tryParse((json['date_of_birth'] ?? '').toString()),
       sex: (json['sex'] ?? '').toString(),
       bodyHeightCm: (json['body_height_cm'] ?? '').toString(),
       bloodType: (json['blood_type'] ?? '').toString(),

@@ -178,24 +178,6 @@ class PatientProfileApi {
 
       return PatientProfile.fromJson(body['data'] as Map<String, dynamic>);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return PatientProfile(
-          patientId: patientId,
-          firstName: '',
-          lastName: '',
-          email: '',
-          address: '',
-          dateOfBirth: null,
-          sex: '',
-          bodyHeightCm: '',
-          bloodType: '',
-          healthConnectPreference: null,
-          healthConnectStatus: null,
-          isSmoking: false,
-          isElectricSmoking: false,
-        );
-      }
-
       if (isNetworkRequestError(e)) {
         rethrow;
       }
@@ -203,9 +185,20 @@ class PatientProfileApi {
       final data = e.response?.data;
       if (data is Map<String, dynamic>) {
         final message = data['message'];
+        if (e.response?.statusCode == 404 &&
+            message is String &&
+            message.trim().toLowerCase() ==
+                patientProfileMissingMessage.toLowerCase()) {
+          throw const PatientProfileNotSetupException();
+        }
+
         if (message is String && message.isNotEmpty) {
           throw Exception(message);
         }
+      }
+
+      if (e.response?.statusCode == 404) {
+        throw const PatientProfileNotSetupException();
       }
 
       throw Exception('Gagal mengambil profil pengguna.');

@@ -18,8 +18,10 @@ import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashbo
 import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
+import 'package:pulsewise/features/profile/data/models/profile_models.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfilTab extends ConsumerStatefulWidget {
   const ProfilTab({super.key});
@@ -29,6 +31,10 @@ class ProfilTab extends ConsumerStatefulWidget {
 }
 
 class _ProfilTabState extends ConsumerState<ProfilTab> {
+  static final Uri _privacyPolicyUri = Uri.parse(
+    'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8?source=copy_link',
+  );
+
   bool _isUploadingAvatar = false;
   bool _didAutoRetryAuthFetch = false;
 
@@ -466,11 +472,24 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     }
 
     context.push(
-      '/login/register/ml-questionnaire',
+      '/home/ml-questionnaire',
       extra: {
         AppSessionStore.tokenPrefsKey: token,
         AppSessionStore.userIdPrefsKey: userId,
       },
+    );
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    if (await canLaunchUrl(_privacyPolicyUri)) {
+      await launchUrl(_privacyPolicyUri, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (!mounted) return;
+    AppToast.warning(
+      context,
+      'Tautan kebijakan privasi belum bisa dibuka saat ini.',
     );
   }
 
@@ -565,6 +584,114 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     }
   }
 
+  Widget _buildProfileSetupRequiredCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        border: Border.all(color: const Color(0xFFFDA4AF)),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Profil Anda belum disiapkan',
+            style: TextStyle(
+              color: Color(0xFF881337),
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Lengkapi data profil terlebih dahulu agar akun dapat digunakan dengan normal.',
+            style: TextStyle(
+              color: Color(0xFF9F1239),
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push('/home/update-profile'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE64060),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              label: const Text(
+                'Edit Profil',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileErrorFooterActions({required bool includeDelete}) {
+    return Column(
+      children: [
+        if (includeDelete) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push('/home/delete-account'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFBE123C),
+                  side: const BorderSide(color: Color(0xFFFDA4AF)),
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.delete_forever_outlined, size: 22),
+                label: const Text(
+                  'Hapus Akun Permanen',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _confirmLogout,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFFE64060),
+                side: const BorderSide(color: Color(0xFFE64060)),
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.logout, size: 22),
+              label: const Text(
+                'Keluar',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(patientProfileProvider);
@@ -583,6 +710,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       final message = profileAsync.error.toString();
       final isMissingToken =
           message.toLowerCase().contains('bearer token tidak ditemukan');
+      final isMissingProfile =
+          isPatientProfileNotSetupError(profileAsync.error);
 
       if (isMissingToken && !_didAutoRetryAuthFetch) {
         _didAutoRetryAuthFetch = true;
@@ -635,56 +764,59 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                   const SizedBox(height: 40),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: isProfileNetworkError
-                        ? NoConnectionState.page(
-                            title: 'Profil belum bisa dimuat',
-                            message:
-                                'Kami belum bisa mengambil data profil karena koneksi internet tidak tersedia atau sedang tidak stabil.',
-                            onRetry: _retryProfileData,
-                          )
-                        : Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF1F2),
-                              border:
-                                  Border.all(color: const Color(0xFFFECACA)),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Gagal memuat profil',
-                                  style: TextStyle(
-                                    color: Color(0xFF991B1B),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                    child: isMissingProfile
+                        ? _buildProfileSetupRequiredCard()
+                        : isProfileNetworkError
+                            ? NoConnectionState.page(
+                                title: 'Profil belum bisa dimuat',
+                                message:
+                                    'Kami belum bisa mengambil data profil karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                                onRetry: _retryProfileData,
+                              )
+                            : Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF1F2),
+                                  border: Border.all(
+                                      color: const Color(0xFFFECACA)),
+                                  borderRadius: BorderRadius.circular(14),
                                 ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  message,
-                                  style: const TextStyle(
-                                    color: Color(0xFF7F1D1D),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: _retryProfileData,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFDC2626),
-                                      foregroundColor: Colors.white,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Gagal memuat profil',
+                                      style: TextStyle(
+                                        color: Color(0xFF991B1B),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                    child: const Text('Coba Lagi'),
-                                  ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      message,
+                                      style: const TextStyle(
+                                        color: Color(0xFF7F1D1D),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton(
+                                        onPressed: _retryProfileData,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFFDC2626),
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('Coba Lagi'),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
                   ),
                   if (isAdminViewer) ...[
                     const SizedBox(height: 12),
@@ -715,28 +847,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _confirmLogout,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFE64060),
-                          side: const BorderSide(color: Color(0xFFE64060)),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(Icons.logout, size: 22),
-                        label: const Text(
-                          'Keluar',
-                          style: TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
+                  _buildProfileErrorFooterActions(
+                    includeDelete: isMissingProfile,
                   ),
                 ],
               ),
@@ -871,37 +983,57 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             label: 'Ubah Kata Sandi',
                             onTap: _showChangePasswordSheet,
                           ),
-                          const _ActionRow(label: 'Privasi & Izin Data'),
-                          const _ActionRow(label: 'Bahasa Aplikasi'),
-                          const _ActionRow(label: 'Notifikasi'),
+                          _ActionRow(
+                            label: 'Kebijakan Privasi',
+                            onTap: _openPrivacyPolicy,
+                          ),
+                          _ActionRow(
+                            label: 'Edit Profil',
+                            onTap: () => context.push('/home/update-profile'),
+                          ),
+                          _ActionRow(
+                            label: 'Isi Kuisioner ML',
+                            onTap: _goToMlQuestionnaire,
+                          ),
+                          _ActionRow(
+                            label: 'Hapus Akun Permanen',
+                            onTap: () => context.push('/home/delete-account'),
+                          ),
+                          _ActionRow(
+                            label: 'Keluar',
+                            onTap: _confirmLogout,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () =>
-                                _showNoConnectionDemoSheet(context),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFB45309),
-                              side: const BorderSide(color: Color(0xFFFCD34D)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      if (isAdminViewer) ...[
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  _showNoConnectionDemoSheet(context),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFB45309),
+                                side:
+                                    const BorderSide(color: Color(0xFFFCD34D)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                            ),
-                            icon: const Icon(Icons.wifi_off_rounded, size: 22),
-                            label: const Text(
-                              'Demo No Connection Widget',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
+                              icon:
+                                  const Icon(Icons.wifi_off_rounded, size: 22),
+                              label: const Text(
+                                'Demo No Connection Widget',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (isAdminViewer) ...[
                         const SizedBox(height: 14),
                         _buildAdminPanelButton(),
                         const SizedBox(height: 12),
@@ -1014,107 +1146,36 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: () =>
-                                context.push('/home/health-connect'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF16A34A),
-                              side: const BorderSide(color: Color(0xFF86EFAC)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                      if (isAdminViewer) ...[
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  context.push('/home/health-connect'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF16A34A),
+                                side:
+                                    const BorderSide(color: Color(0xFF86EFAC)),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                            ),
-                            icon: const Icon(Icons.monitor_heart_outlined,
-                                size: 22),
-                            label: const Text(
-                              'Panduan Health Connect',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
+                              icon: const Icon(Icons.monitor_heart_outlined,
+                                  size: 22),
+                              label: const Text(
+                                'Panduan Health Connect',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _goToMlQuestionnaire,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF7C3AED),
-                              side: const BorderSide(color: Color(0xFFC4B5FD)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.psychology_alt_outlined,
-                                size: 22),
-                            label: const Text(
-                              'Isi Kuisioner ML',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: () =>
-                                context.push('/home/update-profile'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE64060),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.edit_outlined, size: 22),
-                            label: const Text(
-                              'Edit Profil',
-                              style: TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: _confirmLogout,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFFE64060),
-                              side: const BorderSide(color: Color(0xFFE64060)),
-                              padding: const EdgeInsets.symmetric(vertical: 18),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            icon: const Icon(Icons.logout, size: 22),
-                            label: const Text(
-                              'Keluar',
-                              style: TextStyle(
-                                  fontSize: 17, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ],

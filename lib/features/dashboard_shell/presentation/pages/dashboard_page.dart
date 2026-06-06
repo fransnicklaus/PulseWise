@@ -32,6 +32,8 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver {
   bool _isHandlingHealthConnectPrompt = false;
+  bool _isHandlingMissingProfilePrompt = false;
+  bool _didPromptMissingProfileSetup = false;
 
   @override
   void initState() {
@@ -157,25 +159,107 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     }
   }
 
+  Future<void> _maybeHandleMissingProfileSetupPrompt() async {
+    if (_isHandlingMissingProfilePrompt || _didPromptMissingProfileSetup) {
+      return;
+    }
+
+    _isHandlingMissingProfilePrompt = true;
+    _didPromptMissingProfileSetup = true;
+
+    try {
+      final shouldOpenEdit = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: const Text(
+              'Profil Belum Lengkap',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            content: const Text(
+              'Profil pasien Anda belum disiapkan. Lengkapi profil terlebih dahulu agar akun dapat digunakan dengan normal.',
+              style: TextStyle(
+                fontSize: 16,
+                height: 1.5,
+                color: Color(0xFF475569),
+              ),
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE64060),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    'Isi Profil Sekarang',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || shouldOpenEdit != true) {
+        return;
+      }
+
+      await context.push('/home/update-profile');
+      if (!mounted) return;
+
+      _didPromptMissingProfileSetup = false;
+      ref.invalidate(patientProfileProvider);
+      ref.invalidate(authMeProvider);
+    } finally {
+      _isHandlingMissingProfilePrompt = false;
+    }
+  }
+
   Future<void> _applyHealthConnectPromptChoice(
     _HealthConnectPromptChoice choice,
   ) async {
     try {
       switch (choice) {
         case _HealthConnectPromptChoice.connectNow:
-          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
+          await ref
+              .read(healthConnectSetupApiProvider)
+              .updateHealthConnectSetup(
                 healthConnectPreference: 'connect_now',
                 healthConnectStatus: 'not_started',
               );
           break;
         case _HealthConnectPromptChoice.remindLater:
-          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
+          await ref
+              .read(healthConnectSetupApiProvider)
+              .updateHealthConnectSetup(
                 healthConnectPreference: 'remind_later',
                 healthConnectStatus: 'not_started',
               );
           break;
         case _HealthConnectPromptChoice.noDevice:
-          await ref.read(healthConnectSetupApiProvider).updateHealthConnectSetup(
+          await ref
+              .read(healthConnectSetupApiProvider)
+              .updateHealthConnectSetup(
                 healthConnectPreference: 'no_device',
                 healthConnectStatus: null,
               );
@@ -370,6 +454,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final navIndex = ref.watch(dashboardNavIndexProvider);
     final promptArmed = ref.watch(healthConnectLoginPromptArmedProvider);
     final profileAsync = ref.watch(patientProfileProvider);
+
+    if (profileAsync.hasError &&
+        isPatientProfileNotSetupError(profileAsync.error)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _maybeHandleMissingProfileSetupPrompt();
+      });
+    } else if (!profileAsync.hasError) {
+      _didPromptMissingProfileSetup = false;
+    }
 
     if (promptArmed && profileAsync.hasValue) {
       final profile = profileAsync.value;

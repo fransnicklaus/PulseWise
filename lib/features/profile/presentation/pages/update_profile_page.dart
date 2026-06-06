@@ -26,6 +26,24 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
   bool isSaving = false;
   bool _isInit = false;
 
+  PatientProfile _buildEmptyProfile() {
+    return const PatientProfile(
+      patientId: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      address: '',
+      dateOfBirth: null,
+      sex: '',
+      bodyHeightCm: '',
+      bloodType: '',
+      healthConnectPreference: null,
+      healthConnectStatus: null,
+      isSmoking: false,
+      isElectricSmoking: false,
+    );
+  }
+
   @override
   void dispose() {
     addressController.dispose();
@@ -165,6 +183,144 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
     }
   }
 
+  Widget _buildProfileForm(PatientProfile profile,
+      {bool isInitialSetup = false}) {
+    if (!_isInit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _initData(profile);
+          });
+        }
+      });
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      children: [
+        if (isInitialSetup) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFDA4AF)),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Profil Anda belum disiapkan',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF881337),
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Lengkapi data profil berikut agar akun Anda dapat digunakan dengan normal.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: Color(0xFF9F1239),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+        _buildSectionTitle('Informasi Pribadi'),
+        const SizedBox(height: 16),
+        _buildTextField(
+          controller: addressController,
+          label: 'Alamat Tempat Tinggal',
+          icon: Icons.home_outlined,
+          maxLines: 2,
+        ),
+        const SizedBox(height: 20),
+        _buildTextField(
+          controller: heightController,
+          label: 'Tinggi Badan (cm)',
+          icon: Icons.height,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        ),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(
+          label: 'Jenis Kelamin',
+          icon: Icons.person_outline,
+          value: selectedSex,
+          items: const [
+            DropdownMenuItem(
+              value: 'male',
+              child: Text('Laki-laki', style: TextStyle(fontSize: 18)),
+            ),
+            DropdownMenuItem(
+              value: 'female',
+              child: Text('Perempuan', style: TextStyle(fontSize: 18)),
+            ),
+          ],
+          onChanged: (val) => setState(() => selectedSex = val),
+        ),
+        const SizedBox(height: 20),
+        _buildDropdown<String>(
+          label: 'Golongan Darah',
+          icon: Icons.bloodtype_outlined,
+          value: selectedBloodType,
+          items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+              .map(
+                (type) => DropdownMenuItem(
+                  value: type,
+                  child: Text(type, style: const TextStyle(fontSize: 18)),
+                ),
+              )
+              .toList(),
+          onChanged: (val) => setState(() => selectedBloodType = val),
+        ),
+        const SizedBox(height: 20),
+        _buildDateSelector(),
+        const SizedBox(height: 48),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: isSaving ? null : saveChanges,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE64060),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: isSaving
+                ? const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    isInitialSetup
+                        ? 'SIMPAN & LENGKAPI PROFIL'
+                        : 'SIMPAN PERUBAHAN',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 40),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(patientProfileProvider);
@@ -178,128 +334,38 @@ class _UpdateProfilePageState extends ConsumerState<UpdateProfilePage> {
         onBackPressed: () => context.pop(),
       ),
       body: profileAsync.when(
-        data: (profile) {
-          if (!_isInit) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                setState(() {
-                  _initData(profile);
-                });
-              }
-            });
-            return const Center(child: CircularProgressIndicator());
+        data: (profile) => _buildProfileForm(profile),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) {
+          if (isPatientProfileNotSetupError(err)) {
+            return _buildProfileForm(
+              _buildEmptyProfile(),
+              isInitialSetup: true,
+            );
           }
 
-          return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            children: [
-              _buildSectionTitle('Informasi Pribadi'),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: addressController,
-                label: 'Alamat Tempat Tinggal',
-                icon: Icons.home_outlined,
-                maxLines: 2,
+          if (isNetworkRequestError(err)) {
+            return NoConnectionState.page(
+              title: 'Profil edit belum bisa dimuat',
+              message:
+                  'Kami belum bisa mengambil data profil untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+              onRetry: () {
+                ref.invalidate(patientProfileProvider);
+              },
+            );
+          }
+
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Gagal memuat profil:\n$err',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontSize: 16),
               ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                controller: heightController,
-                label: 'Tinggi Badan (cm)',
-                icon: Icons.height,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-              ),
-              const SizedBox(height: 20),
-              _buildDropdown<String>(
-                label: 'Jenis Kelamin',
-                icon: Icons.person_outline,
-                value: selectedSex,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'male',
-                    child: Text('Laki-laki', style: TextStyle(fontSize: 18)),
-                  ),
-                  DropdownMenuItem(
-                    value: 'female',
-                    child: Text('Perempuan', style: TextStyle(fontSize: 18)),
-                  ),
-                ],
-                onChanged: (val) => setState(() => selectedSex = val),
-              ),
-              const SizedBox(height: 20),
-              _buildDropdown<String>(
-                label: 'Golongan Darah',
-                icon: Icons.bloodtype_outlined,
-                value: selectedBloodType,
-                items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-                    .map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type, style: const TextStyle(fontSize: 18)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) => setState(() => selectedBloodType = val),
-              ),
-              const SizedBox(height: 20),
-              _buildDateSelector(),
-              const SizedBox(height: 48),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: isSaving ? null : saveChanges,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE64060),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 28,
-                          height: 28,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'SIMPAN PERUBAHAN',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 40),
-            ],
+            ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => isNetworkRequestError(err)
-            ? NoConnectionState.page(
-                title: 'Profil edit belum bisa dimuat',
-                message:
-                    'Kami belum bisa mengambil data profil untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
-                onRetry: () {
-                  ref.invalidate(patientProfileProvider);
-                },
-              )
-            : Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    'Gagal memuat profil:\n$err',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.red, fontSize: 16),
-                  ),
-                ),
-              ),
       ),
     );
   }

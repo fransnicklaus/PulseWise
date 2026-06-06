@@ -379,7 +379,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
 
       if (wantsMlQuestionnaire == true) {
         _goSafely(
-          '/login/register/ml-questionnaire',
+          '/home/ml-questionnaire',
           extra: {
             AppSessionStore.tokenPrefsKey: widget.token,
             AppSessionStore.userIdPrefsKey: widget.patientId,
@@ -405,377 +405,384 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFFFFADB5),
-                  Color(0xFFE64060),
-                ],
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFFFADB5),
+                    Color(0xFFE64060),
+                  ],
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: SizedBox(height: size.height * 0.08),
-                ),
-                SliverToBoxAdapter(
-                  child: RichText(
-                    textAlign: TextAlign.center,
-                    text: const TextSpan(
-                      style: TextStyle(
-                        fontFamily: 'Outfit',
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        shadows: [
-                          Shadow(
-                            color: Color.fromRGBO(195, 78, 80, 0.16),
-                            offset: Offset(0, 3.98),
-                            blurRadius: 17.6,
+            SafeArea(
+              bottom: false,
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: size.height * 0.08),
+                  ),
+                  SliverToBoxAdapter(
+                    child: RichText(
+                      textAlign: TextAlign.center,
+                      text: const TextSpan(
+                        style: TextStyle(
+                          fontFamily: 'Outfit',
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              color: Color.fromRGBO(195, 78, 80, 0.16),
+                              offset: Offset(0, 3.98),
+                              blurRadius: 17.6,
+                            ),
+                          ],
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'Pulse ',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          TextSpan(
+                            text: 'Wise',
+                            style: TextStyle(color: Color(0xFFE64060)),
                           ),
                         ],
                       ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: size.height * 0.05),
+                  ),
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        TextSpan(
-                          text: 'Pulse ',
-                          style: TextStyle(color: Colors.white),
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(top: 56),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(47),
+                              topRight: Radius.circular(47),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(24, 72, 24, 36),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Center(
+                                  child: Text(
+                                    'Lengkapi Profil',
+                                    style: TextStyle(
+                                      color: Color(0xFF536278),
+                                      fontSize: 36,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Product Sans',
+                                    ),
+                                  ),
+                                ),
+                                // const SizedBox(height: 12),
+                                // const Center(
+                                //   child: Text(
+                                //     'Langkah akhir setelah verifikasi OTP',
+                                //     style: TextStyle(
+                                //       color: Color(0xFF64748B),
+                                //       fontSize: 16,
+                                //     ),
+                                //     textAlign: TextAlign.center,
+                                //   ),
+                                // ),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                  child: SingleChildScrollView(
+                                    child: Form(
+                                      key: _formKey,
+                                      child: Column(
+                                        children: [
+                                          DropdownButtonFormField<String>(
+                                            dropdownColor: Colors.white,
+                                            value: _selectedGender,
+                                            isExpanded: true,
+                                            itemHeight: _fieldMinHeight,
+                                            alignment: Alignment.centerLeft,
+                                            hint: Text(
+                                              'Jenis Kelamin',
+                                              style: _fieldHintTextStyle,
+                                            ),
+                                            icon: const Icon(
+                                              FluentIcons
+                                                  .chevron_down_24_regular,
+                                              size: 24,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                            style: _dropdownTextStyle,
+                                            items: [
+                                              _dropdownItem('Male'),
+                                              _dropdownItem('Female')
+                                            ],
+                                            decoration: _selectionDecoration(
+                                              icon: FluentIcons
+                                                  .person_feedback_24_regular,
+                                            ),
+                                            onChanged: (value) => setState(
+                                                () => _selectedGender = value),
+                                            validator: (value) => (value ==
+                                                        null ||
+                                                    value.isEmpty)
+                                                ? 'Jenis kelamin wajib dipilih'
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          _buildBirthDateField(),
+                                          if (_selectedBirthDate == null &&
+                                              _showBirthDateValidation)
+                                            const Padding(
+                                              padding: EdgeInsets.only(
+                                                  top: 6, left: 4),
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  'Tanggal lahir wajib dipilih',
+                                                  style: TextStyle(
+                                                    color: Color(0xFFB91C1C),
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          const SizedBox(height: 12),
+                                          TextFormField(
+                                            controller: _addressController,
+                                            maxLines: 1,
+                                            textAlignVertical:
+                                                TextAlignVertical.center,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              color: Color(0xFF1F2937),
+                                            ),
+                                            decoration: _inputDecoration(
+                                              hint: 'Alamat',
+                                              icon: FluentIcons
+                                                  .location_24_regular,
+                                            ),
+                                            validator: (value) =>
+                                                (value ?? '').trim().isEmpty
+                                                    ? 'Alamat wajib diisi'
+                                                    : null,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          DropdownButtonFormField<String>(
+                                            dropdownColor: Colors.white,
+                                            value: _selectedBloodType,
+                                            isExpanded: true,
+                                            itemHeight: _fieldMinHeight,
+                                            alignment: Alignment.centerLeft,
+                                            hint: Text(
+                                              'Golongan Darah',
+                                              style: _fieldHintTextStyle,
+                                            ),
+                                            icon: const Icon(
+                                              FluentIcons
+                                                  .chevron_down_24_regular,
+                                              size: 24,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                            style: _dropdownTextStyle,
+                                            items: [
+                                              _dropdownItem('A+'),
+                                              _dropdownItem('A-'),
+                                              _dropdownItem('B+'),
+                                              _dropdownItem('B-'),
+                                              _dropdownItem('AB+'),
+                                              _dropdownItem('AB-'),
+                                              _dropdownItem('O+'),
+                                              _dropdownItem('O-'),
+                                            ],
+                                            decoration: _selectionDecoration(
+                                              icon: FluentIcons
+                                                  .heart_pulse_24_regular,
+                                            ),
+                                            onChanged: (value) => setState(() =>
+                                                _selectedBloodType = value),
+                                            validator: (value) => (value ==
+                                                        null ||
+                                                    value.isEmpty)
+                                                ? 'Golongan darah wajib dipilih'
+                                                : null,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          TextFormField(
+                                            controller: _heightController,
+                                            keyboardType: TextInputType.number,
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              color: Color(0xFF1F2937),
+                                            ),
+                                            decoration: _inputDecoration(
+                                              hint: 'Tinggi Badan',
+                                              icon:
+                                                  FluentIcons.ruler_24_regular,
+                                            ).copyWith(
+                                              suffixText: 'cm',
+                                              suffixStyle: const TextStyle(
+                                                color: Color(0xFF64748B),
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            validator: (value) {
+                                              final text = (value ?? '').trim();
+                                              if (text.isEmpty) {
+                                                return 'Tinggi badan wajib diisi';
+                                              }
+                                              if (double.tryParse(text) ==
+                                                  null) {
+                                                return 'Tinggi badan harus angka';
+                                              }
+                                              return null;
+                                            },
+                                          ),
+                                          const SizedBox(height: 12),
+                                          // DropdownButtonFormField<bool>(
+                                          //   dropdownColor: Colors.white,
+                                          //   value: _isSmoking,
+                                          //   isExpanded: true,
+                                          //   itemHeight: _fieldMinHeight,
+                                          //   alignment: Alignment.centerLeft,
+                                          //   icon: const Icon(
+                                          //     FluentIcons.chevron_down_24_regular,
+                                          //     size: 24,
+                                          //     color: Color(0xFF64748B),
+                                          //   ),
+                                          //   style: _dropdownTextStyle,
+                                          //   items: [
+                                          //     _dropdownItemBool(true, 'Ya'),
+                                          //     _dropdownItemBool(false, 'Tidak'),
+                                          //   ],
+                                          //   decoration: _inputDecoration(
+                                          //     hint: 'Apakah Anda Merokok?',
+                                          //     icon:
+                                          //         FluentIcons.question_24_regular,
+                                          //   ).copyWith(
+                                          //     contentPadding:
+                                          //         const EdgeInsets.symmetric(
+                                          //             horizontal: 18),
+                                          //   ),
+                                          //   onChanged: (value) => setState(
+                                          //       () => _isSmoking = value),
+                                          //   validator: (value) => value == null
+                                          //       ? 'Wajib dipilih'
+                                          //       : null,
+                                          // ),
+                                          // const SizedBox(height: 12),
+                                          // DropdownButtonFormField<bool>(
+                                          //   dropdownColor: Colors.white,
+                                          //   value: _isElectricSmoking,
+                                          //   isExpanded: true,
+                                          //   itemHeight: _fieldMinHeight,
+                                          //   alignment: Alignment.centerLeft,
+                                          //   icon: const Icon(
+                                          //     FluentIcons.chevron_down_24_regular,
+                                          //     size: 24,
+                                          //     color: Color(0xFF64748B),
+                                          //   ),
+                                          //   style: _dropdownTextStyle,
+                                          //   items: [
+                                          //     _dropdownItemBool(true, 'Ya'),
+                                          //     _dropdownItemBool(false, 'Tidak'),
+                                          //   ],
+                                          //   decoration: _inputDecoration(
+                                          //     hint: 'Merokok Elektrik (Vape)?',
+                                          //     icon:
+                                          //         FluentIcons.question_24_regular,
+                                          //   ).copyWith(
+                                          //     contentPadding:
+                                          //         const EdgeInsets.symmetric(
+                                          //             horizontal: 18),
+                                          //   ),
+                                          //   onChanged: (value) => setState(
+                                          //       () => _isElectricSmoking = value),
+                                          //   validator: (value) => value == null
+                                          //       ? 'Wajib dipilih'
+                                          //       : null,
+                                          // ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed:
+                                        _isSubmitting ? null : _submitProfile,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFE64060),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 18),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: _isSubmitting
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Text(
+                                            'SELESAIKAN PROFIL',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        TextSpan(
-                          text: 'Wise',
-                          style: TextStyle(color: Color(0xFFE64060)),
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/svgs/pulsewise_logo.svg',
+                              width: 122,
+                              height: 122,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(height: size.height * 0.05),
-                ),
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(top: 56),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(47),
-                            topRight: Radius.circular(47),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 72, 24, 36),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Center(
-                                child: Text(
-                                  'Lengkapi Profil',
-                                  style: TextStyle(
-                                    color: Color(0xFF536278),
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Product Sans',
-                                  ),
-                                ),
-                              ),
-                              // const SizedBox(height: 12),
-                              // const Center(
-                              //   child: Text(
-                              //     'Langkah akhir setelah verifikasi OTP',
-                              //     style: TextStyle(
-                              //       color: Color(0xFF64748B),
-                              //       fontSize: 16,
-                              //     ),
-                              //     textAlign: TextAlign.center,
-                              //   ),
-                              // ),
-                              const SizedBox(height: 16),
-                              Expanded(
-                                child: SingleChildScrollView(
-                                  child: Form(
-                                    key: _formKey,
-                                    child: Column(
-                                      children: [
-                                        DropdownButtonFormField<String>(
-                                          dropdownColor: Colors.white,
-                                          value: _selectedGender,
-                                          isExpanded: true,
-                                          itemHeight: _fieldMinHeight,
-                                          alignment: Alignment.centerLeft,
-                                          hint: Text(
-                                            'Jenis Kelamin',
-                                            style: _fieldHintTextStyle,
-                                          ),
-                                          icon: const Icon(
-                                            FluentIcons.chevron_down_24_regular,
-                                            size: 24,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                          style: _dropdownTextStyle,
-                                          items: [
-                                            _dropdownItem('Male'),
-                                            _dropdownItem('Female')
-                                          ],
-                                          decoration: _selectionDecoration(
-                                            icon: FluentIcons
-                                                .person_feedback_24_regular,
-                                          ),
-                                          onChanged: (value) => setState(
-                                              () => _selectedGender = value),
-                                          validator: (value) => (value ==
-                                                      null ||
-                                                  value.isEmpty)
-                                              ? 'Jenis kelamin wajib dipilih'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _buildBirthDateField(),
-                                        if (_selectedBirthDate == null &&
-                                            _showBirthDateValidation)
-                                          const Padding(
-                                            padding: EdgeInsets.only(
-                                                top: 6, left: 4),
-                                            child: Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Text(
-                                                'Tanggal lahir wajib dipilih',
-                                                style: TextStyle(
-                                                  color: Color(0xFFB91C1C),
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        const SizedBox(height: 12),
-                                        TextFormField(
-                                          controller: _addressController,
-                                          maxLines: 1,
-                                          textAlignVertical:
-                                              TextAlignVertical.center,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            color: Color(0xFF1F2937),
-                                          ),
-                                          decoration: _inputDecoration(
-                                            hint: 'Alamat',
-                                            icon:
-                                                FluentIcons.location_24_regular,
-                                          ),
-                                          validator: (value) =>
-                                              (value ?? '').trim().isEmpty
-                                                  ? 'Alamat wajib diisi'
-                                                  : null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        DropdownButtonFormField<String>(
-                                          dropdownColor: Colors.white,
-                                          value: _selectedBloodType,
-                                          isExpanded: true,
-                                          itemHeight: _fieldMinHeight,
-                                          alignment: Alignment.centerLeft,
-                                          hint: Text(
-                                            'Golongan Darah',
-                                            style: _fieldHintTextStyle,
-                                          ),
-                                          icon: const Icon(
-                                            FluentIcons.chevron_down_24_regular,
-                                            size: 24,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                          style: _dropdownTextStyle,
-                                          items: [
-                                            _dropdownItem('A+'),
-                                            _dropdownItem('A-'),
-                                            _dropdownItem('B+'),
-                                            _dropdownItem('B-'),
-                                            _dropdownItem('AB+'),
-                                            _dropdownItem('AB-'),
-                                            _dropdownItem('O+'),
-                                            _dropdownItem('O-'),
-                                          ],
-                                          decoration: _selectionDecoration(
-                                            icon: FluentIcons
-                                                .heart_pulse_24_regular,
-                                          ),
-                                          onChanged: (value) => setState(
-                                              () => _selectedBloodType = value),
-                                          validator: (value) => (value ==
-                                                      null ||
-                                                  value.isEmpty)
-                                              ? 'Golongan darah wajib dipilih'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        TextFormField(
-                                          controller: _heightController,
-                                          keyboardType: TextInputType.number,
-                                          style: const TextStyle(
-                                            fontSize: 18,
-                                            color: Color(0xFF1F2937),
-                                          ),
-                                          decoration: _inputDecoration(
-                                            hint: 'Tinggi Badan',
-                                            icon: FluentIcons.ruler_24_regular,
-                                          ).copyWith(
-                                            suffixText: 'cm',
-                                            suffixStyle: const TextStyle(
-                                              color: Color(0xFF64748B),
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          validator: (value) {
-                                            final text = (value ?? '').trim();
-                                            if (text.isEmpty) {
-                                              return 'Tinggi badan wajib diisi';
-                                            }
-                                            if (double.tryParse(text) == null) {
-                                              return 'Tinggi badan harus angka';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-                                        // DropdownButtonFormField<bool>(
-                                        //   dropdownColor: Colors.white,
-                                        //   value: _isSmoking,
-                                        //   isExpanded: true,
-                                        //   itemHeight: _fieldMinHeight,
-                                        //   alignment: Alignment.centerLeft,
-                                        //   icon: const Icon(
-                                        //     FluentIcons.chevron_down_24_regular,
-                                        //     size: 24,
-                                        //     color: Color(0xFF64748B),
-                                        //   ),
-                                        //   style: _dropdownTextStyle,
-                                        //   items: [
-                                        //     _dropdownItemBool(true, 'Ya'),
-                                        //     _dropdownItemBool(false, 'Tidak'),
-                                        //   ],
-                                        //   decoration: _inputDecoration(
-                                        //     hint: 'Apakah Anda Merokok?',
-                                        //     icon:
-                                        //         FluentIcons.question_24_regular,
-                                        //   ).copyWith(
-                                        //     contentPadding:
-                                        //         const EdgeInsets.symmetric(
-                                        //             horizontal: 18),
-                                        //   ),
-                                        //   onChanged: (value) => setState(
-                                        //       () => _isSmoking = value),
-                                        //   validator: (value) => value == null
-                                        //       ? 'Wajib dipilih'
-                                        //       : null,
-                                        // ),
-                                        // const SizedBox(height: 12),
-                                        // DropdownButtonFormField<bool>(
-                                        //   dropdownColor: Colors.white,
-                                        //   value: _isElectricSmoking,
-                                        //   isExpanded: true,
-                                        //   itemHeight: _fieldMinHeight,
-                                        //   alignment: Alignment.centerLeft,
-                                        //   icon: const Icon(
-                                        //     FluentIcons.chevron_down_24_regular,
-                                        //     size: 24,
-                                        //     color: Color(0xFF64748B),
-                                        //   ),
-                                        //   style: _dropdownTextStyle,
-                                        //   items: [
-                                        //     _dropdownItemBool(true, 'Ya'),
-                                        //     _dropdownItemBool(false, 'Tidak'),
-                                        //   ],
-                                        //   decoration: _inputDecoration(
-                                        //     hint: 'Merokok Elektrik (Vape)?',
-                                        //     icon:
-                                        //         FluentIcons.question_24_regular,
-                                        //   ).copyWith(
-                                        //     contentPadding:
-                                        //         const EdgeInsets.symmetric(
-                                        //             horizontal: 18),
-                                        //   ),
-                                        //   onChanged: (value) => setState(
-                                        //       () => _isElectricSmoking = value),
-                                        //   validator: (value) => value == null
-                                        //       ? 'Wajib dipilih'
-                                        //       : null,
-                                        // ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed:
-                                      _isSubmitting ? null : _submitProfile,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFE64060),
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 18),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: _isSubmitting
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Text(
-                                          'SELESAIKAN PROFIL',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: Center(
-                          child: SvgPicture.asset(
-                            'assets/svgs/pulsewise_logo.svg',
-                            width: 122,
-                            height: 122,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

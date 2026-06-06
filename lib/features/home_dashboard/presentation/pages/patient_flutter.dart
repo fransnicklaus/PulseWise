@@ -348,7 +348,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     }
 
     context.push(
-      '/login/register/ml-questionnaire',
+      '/home/ml-questionnaire',
       extra: {
         AppSessionStore.tokenPrefsKey: token,
         AppSessionStore.userIdPrefsKey: userId,

@@ -55,7 +55,8 @@ class _PatientMlAssessmentPageState
 
     setState(() => _isInitialLoading = true);
     try {
-      final latest = await ref.read(mlAssessmentApiProvider).fetchLatestMlAssessment();
+      final latest =
+          await ref.read(mlAssessmentApiProvider).fetchLatestMlAssessment();
       if (!mounted) return;
 
       if (latest == null) {
@@ -124,7 +125,14 @@ class _PatientMlAssessmentPageState
 
   Future<void> _submitAssessment() async {
     final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid || _isSubmitting) return;
+    if (!valid) {
+      AppToast.warning(
+        context,
+        'Lengkapi semua pertanyaan yang wajib diisi dengan jawaban yang valid.',
+      );
+      return;
+    }
+    if (_isSubmitting) return;
 
     setState(() => _isSubmitting = true);
     try {
@@ -281,54 +289,12 @@ class _PatientMlAssessmentPageState
     );
   }
 
-  String _sectionTitleForGroup(String group) {
-    switch (group) {
-      case 'exami1':
-        return 'Pemeriksaan';
-      case 'labor1':
-      case 'labor2':
-        return 'Laboratorium';
-      default:
-        if (group.startsWith('quest')) {
-          return 'Kuesioner';
-        }
-        return group;
-    }
-  }
-
   String _rangeLabel(num value) {
     final asDouble = value.toDouble();
     if (asDouble == asDouble.roundToDouble()) {
       return asDouble.toInt().toString();
     }
     return asDouble.toStringAsFixed(2).replaceFirst(RegExp(r'\.0+$'), '');
-  }
-
-  Widget _buildSectionCard(String title, List<String> fieldKeys) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...fieldKeys.map(_buildFieldCard),
-        ],
-      ),
-    );
   }
 
   Widget _buildFieldCard(String fieldKey) {
@@ -372,7 +338,7 @@ class _PatientMlAssessmentPageState
               'Rentang: ${_rangeLabel(rangeStart)} - ${_rangeLabel(rangeEnd)}${rangeUnit == null ? '' : ' $rangeUnit'}',
               style: const TextStyle(
                 color: Color(0xFF0F172A),
-                fontSize: 13,
+                fontSize: 15,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -391,35 +357,76 @@ class _PatientMlAssessmentPageState
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: options.entries.map((entry) {
-                        final selected = state.value == entry.key;
-                        return ChoiceChip(
-                          label: Text(entry.value),
-                          selected: selected,
-                          onSelected: (_) {
-                            setState(() {
-                              _selectionValues[fieldKey] = entry.key;
-                            });
-                            state.didChange(entry.key);
-                          },
-                          selectedColor: const Color(0xFFFFE4E8),
-                          backgroundColor: const Color(0xFFF8FAFC),
-                          labelStyle: TextStyle(
-                            color: selected
-                                ? const Color(0xFFE64060)
-                                : const Color(0xFF334155),
-                            fontWeight: FontWeight.w700,
+                    DropdownButtonFormField<int>(
+                      value: state.value,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFFF8FAFC),
+                      hint: const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Pilih salah satu',
+                          style: TextStyle(
+                            color: Color(0xFF475569),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
-                          side: BorderSide(
-                            color: selected
-                                ? const Color(0xFFE64060)
-                                : const Color(0xFFE2E8F0),
-                          ),
-                        );
-                      }).toList(),
+                        ),
+                      ),
+                      decoration: InputDecoration(
+                        // hintText: 'Pilih jawaban',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 16,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE2E8F0)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFE64060)),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFB91C1C)),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              const BorderSide(color: Color(0xFFB91C1C)),
+                        ),
+                      ),
+                      items: options.entries
+                          .map(
+                            (entry) => DropdownMenuItem<int>(
+                              value: entry.key,
+                              child: Text(
+                                entry.value,
+                                style: const TextStyle(
+                                  color: Color(0xFF334155),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectionValues[fieldKey] = value ?? 0;
+                        });
+                        state.didChange(value);
+                      },
                     ),
                     if (state.hasError) ...[
                       const SizedBox(height: 8),
@@ -427,7 +434,8 @@ class _PatientMlAssessmentPageState
                         state.errorText!,
                         style: const TextStyle(
                           color: Color(0xFFB91C1C),
-                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -445,6 +453,11 @@ class _PatientMlAssessmentPageState
                 hintText: rangeStart != null && rangeEnd != null
                     ? '${_rangeLabel(rangeStart)} - ${_rangeLabel(rangeEnd)}${rangeUnit == null ? '' : ' $rangeUnit'}'
                     : null,
+                hintStyle: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
                 contentPadding:
@@ -486,14 +499,6 @@ class _PatientMlAssessmentPageState
 
   @override
   Widget build(BuildContext context) {
-    final sections = <String, List<String>>{};
-    for (final fieldKey in MlMapping.dynamic_form_mapping) {
-      final group = MlMapping.getGroupFromFieldKey(fieldKey);
-      if (group == null) continue;
-      sections.putIfAbsent(group, () => <String>[]);
-      sections[group]!.add(fieldKey);
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: CustomAppBar(
@@ -514,13 +519,10 @@ class _PatientMlAssessmentPageState
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                         children: [
                           _buildHeaderCard(),
-                          ...sections.entries.map(
-                            (entry) => Container(
+                          ...MlMapping.dynamic_form_mapping.map(
+                            (fieldKey) => Container(
                               margin: const EdgeInsets.only(bottom: 4),
-                              child: _buildSectionCard(
-                                _sectionTitleForGroup(entry.key),
-                                entry.value,
-                              ),
+                              child: _buildFieldCard(fieldKey),
                             ),
                           ),
                         ],
