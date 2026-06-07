@@ -820,8 +820,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                   ),
                   if (isAdminViewer) ...[
                     const SizedBox(height: 12),
-                    _buildAdminPanelButton(),
-                    const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: SizedBox(
@@ -1035,8 +1033,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        _buildAdminPanelButton(),
-                        const SizedBox(height: 12),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: SizedBox(
@@ -1447,31 +1443,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAdminPanelButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: () => context.push('/admin/home'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF7C3AED),
-            side: const BorderSide(color: Color(0xFFC4B5FD)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          icon: const Icon(Icons.admin_panel_settings_outlined, size: 22),
-          label: const Text(
-            'Buka Admin Panel',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-        ),
       ),
     );
   }

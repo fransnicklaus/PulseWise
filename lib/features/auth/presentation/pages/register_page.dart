@@ -59,7 +59,6 @@ class _RegisterPageState extends State<RegisterPage> {
   int _otpResendCooldown = 0;
   Timer? _otpCooldownTimer;
   bool _googleRegistrationCompleted = false;
-  String _selectedRole = AppRoles.patient;
   bool _hasAgreedPrivacyPolicy = false;
 
   String? _registeredUserId;
@@ -71,13 +70,12 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   String get _registrationRole {
-    return _selectedRole;
+    return AppRoles.patient;
   }
 
   @override
   void initState() {
     super.initState();
-    _selectedRole = normalizeAppRole(widget.googleRole);
     _firstNameController.text = widget.googleFirstName ?? '';
     _lastNameController.text = widget.googleLastName ?? '';
 
@@ -90,6 +88,12 @@ class _RegisterPageState extends State<RegisterPage> {
     _currentStep = widget.startAtOtp ? 1 : 0;
     if (_isGoogleFlow && widget.startAtOtp) {
       _googleRegistrationCompleted = true;
+    }
+  }
+
+  void _ensureReleaseSupportedRole(String? role) {
+    if (!isReleaseSupportedRole(role)) {
+      throw Exception(releaseUnsupportedRoleMessage);
     }
   }
 
@@ -553,39 +557,10 @@ class _RegisterPageState extends State<RegisterPage> {
           );
         }
 
+        _ensureReleaseSupportedRole(session.role);
+
         if (!mounted) return;
         setState(() => _isSubmitting = false);
-
-        if (normalizeAppRole(session.role) == AppRoles.doctor) {
-          await AppSessionStore.saveSession(
-            token: session.token,
-            userId: session.userId,
-            role: session.role,
-            nextStep: session.nextStep,
-            accountStatus: session.accountStatus,
-          );
-          if (!mounted) return;
-          if (isDoctorPendingAdminVerification(
-            role: session.role,
-            nextStep: session.nextStep,
-            accountStatus: session.accountStatus,
-          )) {
-            AppToast.info(
-              context,
-              'Email dokter berhasil diverifikasi. Lengkapi profil sambil menunggu verifikasi admin.',
-            );
-          } else {
-            AppToast.success(context, 'Akun dokter berhasil dibuat');
-          }
-          context.go(
-            routeForRoleSession(
-              role: session.role,
-              nextStep: session.nextStep,
-              accountStatus: session.accountStatus,
-            ),
-          );
-          return;
-        }
 
         context.push(
           '/login/register/profile-setup',
@@ -657,62 +632,12 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  Widget _buildRoleSelector() {
-    final isDoctor = _selectedRole == AppRoles.doctor;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FBFD),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _RoleOptionChip(
-              label: 'Pasien',
-              icon: Icons.favorite_outline_rounded,
-              selected: !isDoctor,
-              onTap: () => setState(() => _selectedRole = AppRoles.patient),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: _RoleOptionChip(
-              label: 'Dokter',
-              icon: Icons.medical_services_outlined,
-              selected: isDoctor,
-              onTap: () => setState(() => _selectedRole = AppRoles.doctor),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStepContent() {
     return switch (_currentStep) {
       0 => Form(
           key: _step1Key,
           child: Column(
             children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _isGoogleFlow
-                      ? 'Lanjutkan akun Google sebagai'
-                      : 'Daftar sebagai',
-                  style: const TextStyle(
-                    color: Color(0xFF475569),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _buildRoleSelector(),
-              const SizedBox(height: 12),
               TextFormField(
                 controller: _usernameController,
                 style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
@@ -1278,68 +1203,6 @@ class _SessionData {
     this.nextStep,
     this.accountStatus,
   });
-}
-
-class _RoleOptionChip extends StatelessWidget {
-  const _RoleOptionChip({
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE64060) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFFE64060).withOpacity(0.18),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: selected ? Colors.white : const Color(0xFF536278),
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF334155),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _OtpDotField extends StatefulWidget {

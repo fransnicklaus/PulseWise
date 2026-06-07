@@ -57,6 +57,10 @@ Future<String> _resolveInitialLocation() async {
       await AppSessionStore.clearSession();
       return '/login';
     }
+    if (!isReleaseSupportedRole(role)) {
+      await AppSessionStore.clearSession();
+      return '/login';
+    }
     return routeForRoleSession(
       role: role,
       nextStep: nextStep,
@@ -112,13 +116,6 @@ class _MyAppState extends State<MyApp> {
     if (currentPath.startsWith('/login')) {
       debugPrint(
         '[ReminderNotification][Router] Still on login flow, keeping payload queued.',
-      );
-      return;
-    }
-
-    if (currentPath.startsWith('/doctor') || currentPath.startsWith('/admin')) {
-      debugPrint(
-        '[ReminderNotification][Router] Non-patient flow active, keeping patient reminder payload queued.',
       );
       return;
     }

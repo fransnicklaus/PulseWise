@@ -214,6 +214,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final accountStatus = _extractAccountStatus(responseData);
       final restrictedAccess = _extractRestrictedAccess(responseData);
 
+      if (!isReleaseSupportedRole(role)) {
+        await AppSessionStore.clearSession();
+        state = AuthState(
+          isLoading: false,
+          error: releaseUnsupportedRoleMessage,
+        );
+        return;
+      }
+
       await AppSessionStore.saveSession(
         token: token,
         userId: userId,
@@ -713,6 +722,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final resolvedRole = _extractRole(body);
     final accountStatus = _extractAccountStatus(body);
     final restrictedAccess = _extractRestrictedAccess(body);
+
+    if (!isReleaseSupportedRole(resolvedRole)) {
+      await AppSessionStore.clearSession();
+      return GoogleAuthFlowResult.error(releaseUnsupportedRoleMessage);
+    }
 
     if (nextStep == GoogleAuthNextStep.home) {
       final token = _extractToken(body) ?? _extractToken(data);

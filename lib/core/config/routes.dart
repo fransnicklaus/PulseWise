@@ -1,33 +1,13 @@
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
-import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
-import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_resolver_page.dart';
-import 'package:pulsewise/features/admin/presentation/pages/admin_doctors_review_page.dart';
-import 'package:pulsewise/features/admin/presentation/pages/admin_user_detail_page.dart';
-import 'package:pulsewise/features/admin/presentation/pages/admin_users_page.dart';
-import 'package:pulsewise/features/admin_shell/presentation/pages/admin_home_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/profile_setup_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/register_page.dart';
 import 'package:pulsewise/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/pages/home_page.dart';
-import 'package:pulsewise/features/doctor/data/models/doctor_dashboard_models.dart';
-import 'package:pulsewise/features/doctor/data/models/doctor_heart_risk_models.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_pending_verification_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_form_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_history_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_heart_risk_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_diary_history_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_ml_recommendation_history_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/doctor_patient_dashboard_page.dart';
-import 'package:pulsewise/features/doctor/presentation/pages/update_doctor_profile_page.dart';
-import 'package:pulsewise/features/doctor_shell/presentation/pages/doctor_home_page.dart';
 import 'package:pulsewise/features/education/presentation/pages/education_article_detail_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/add_diary_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/detail_diari_page.dart';
-import 'package:pulsewise/features/diary/presentation/pages/diary_qr_page.dart';
-import 'package:pulsewise/features/diary/presentation/pages/qr_scanner_page.dart';
 import 'package:pulsewise/features/diary/presentation/pages/riwayat_diari_page.dart';
 // import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
@@ -184,14 +164,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             builder: (context, state) => const AddDiaryPage(),
           ),
           GoRoute(
-            path: 'diary-qr',
-            builder: (context, state) => const DiaryQrPage(),
-          ),
-          GoRoute(
-            path: 'diary-qr/scan',
-            builder: (context, state) => const QrScannerPage(),
-          ),
-          GoRoute(
             path: 'health-connect',
             builder: (context, state) => const HealthConnectPage(),
           ),
@@ -282,128 +254,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               GoRoute(
                 path: 'print',
                 builder: (context, state) => const PrintPage(),
-              ),
-            ],
-          ),
-        ],
-      ),
-      GoRoute(
-        path: '/admin/home',
-        builder: (context, state) => const AdminHomePage(),
-        routes: [
-          GoRoute(
-            path: 'users',
-            builder: (context, state) => const AdminUsersPage(),
-          ),
-          GoRoute(
-            path: 'users/:userId',
-            builder: (context, state) {
-              final userId = state.pathParameters['userId'] ?? '';
-              return AdminUserDetailPage(userId: userId);
-            },
-          ),
-          GoRoute(
-            path: 'doctors',
-            builder: (context, state) => const AdminDoctorsReviewPage(),
-          ),
-          GoRoute(
-            path: 'doctors/by-user/:userId',
-            builder: (context, state) {
-              final userId = state.pathParameters['userId'] ?? '';
-              return AdminDoctorDetailResolverPage(userId: userId);
-            },
-          ),
-          GoRoute(
-            path: 'doctors/:doctorId',
-            builder: (context, state) {
-              final doctorId = state.pathParameters['doctorId'] ?? '';
-              return AdminDoctorDetailPage(doctorId: doctorId);
-            },
-          ),
-        ],
-      ),
-      GoRoute(
-        path: doctorPendingVerificationRoute,
-        builder: (context, state) => const DoctorPendingVerificationPage(),
-        routes: [
-          GoRoute(
-            path: 'update-profile',
-            builder: (context, state) => const UpdateDoctorProfilePage(),
-          ),
-        ],
-      ),
-      GoRoute(
-        path: '/doctor/home',
-        builder: (context, state) => const DoctorHomePage(),
-        routes: [
-          GoRoute(
-            path: 'update-profile',
-            builder: (context, state) => const UpdateDoctorProfilePage(),
-          ),
-          GoRoute(
-            path: 'patients/:patientId',
-            builder: (context, state) {
-              final patientId = state.pathParameters['patientId'] ?? '';
-              final extra = state.extra;
-              return DoctorPatientDashboardPage(
-                patientId: patientId,
-                initialSummary:
-                    extra is DoctorDashboardPatientSummaryData ? extra : null,
-              );
-            },
-            routes: [
-              GoRoute(
-                path: 'diary-history',
-                builder: (context, state) {
-                  final patientId = state.pathParameters['patientId'] ?? '';
-                  return DoctorPatientDiaryHistoryPage(patientId: patientId);
-                },
-              ),
-              GoRoute(
-                path: 'ml-recommendation-history',
-                builder: (context, state) {
-                  final patientId = state.pathParameters['patientId'] ?? '';
-                  return DoctorMlRecommendationHistoryPage(
-                    patientId: patientId,
-                  );
-                },
-              ),
-              GoRoute(
-                path: 'heart-risk-model',
-                builder: (context, state) {
-                  final patientId = state.pathParameters['patientId'] ?? '';
-                  final extra = state.extra;
-                  return DoctorPatientHeartRiskPage(
-                    patientId: patientId,
-                    entryData: extra is DoctorHeartRiskEntryData ? extra : null,
-                  );
-                },
-                routes: [
-                  GoRoute(
-                    path: 'form',
-                    builder: (context, state) {
-                      final patientId = state.pathParameters['patientId'] ?? '';
-                      final extra = state.extra;
-                      return DoctorPatientHeartRiskFormPage(
-                        patientId: patientId,
-                        entryData:
-                            extra is DoctorHeartRiskEntryData ? extra : null,
-                      );
-                    },
-                  ),
-                  GoRoute(
-                    path: 'history',
-                    builder: (context, state) {
-                      final patientId = state.pathParameters['patientId'] ?? '';
-                      final extra = state.extra;
-                      return DoctorPatientHeartRiskHistoryPage(
-                        patientId: patientId,
-                        entryData:
-                            extra is DoctorHeartRiskEntryData ? extra : null,
-                      );
-                    },
-                  ),
-                ],
               ),
             ],
           ),

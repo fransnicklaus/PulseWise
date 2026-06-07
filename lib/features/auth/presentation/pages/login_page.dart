@@ -11,7 +11,6 @@ import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/auth/presentation/widgets/google_sign_in_entry_button.dart';
-import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
@@ -61,12 +60,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       nextStep: nextStep,
       accountStatus: accountStatus,
     );
-    if (normalizedRole == AppRoles.doctor) {
-      ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      context.go(targetRoute);
-      return;
-    }
 
     ref.read(previousNavIndexProvider.notifier).state = 0;
     ref.read(dashboardNavIndexProvider.notifier).state = 0;
@@ -93,20 +86,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       final authState = ref.read(authProvider);
       if (authState.isAuthenticated) {
-        _navigateAfterLogin(
-          role: authState.role,
-          nextStep: authState.nextStep,
-          accountStatus: authState.accountStatus,
-        );
-      } else if (isDoctorPendingAdminVerification(
-        role: authState.role,
-        nextStep: authState.nextStep,
-        accountStatus: authState.accountStatus,
-      )) {
-        AppToast.info(
-          context,
-          'Akun dokter sedang menunggu verifikasi admin. Lengkapi profil dulu ya.',
-        );
         _navigateAfterLogin(
           role: authState.role,
           nextStep: authState.nextStep,
@@ -190,15 +169,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
 
     if (result.nextStep == GoogleAuthNextStep.waitAdminVerification) {
-      AppToast.info(
-        context,
-        'Akun dokter sedang menunggu verifikasi admin. Lengkapi profil dulu ya.',
-      );
-      _navigateAfterLogin(
-        role: result.role,
-        nextStep: AppAuthNextSteps.waitAdminVerification,
-        accountStatus: result.accountStatus,
-      );
+      AppToast.error(context, releaseUnsupportedRoleMessage);
+      unawaited(ref.read(authProvider.notifier).logout());
       return;
     }
 

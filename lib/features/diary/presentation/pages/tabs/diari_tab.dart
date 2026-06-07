@@ -452,54 +452,28 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                       ],
                                     ),
                                     if (!isSkeleton)
-                                      Row(
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () =>
-                                                context.push('/home/diary'),
-                                            child: Container(
-                                              width: 48,
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.2),
-                                                border: Border.all(
-                                                    color: Colors.grey
-                                                        .withOpacity(0.2)),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: const Icon(
-                                                Icons.history,
-                                                color: Color(0xFFE64060),
-                                                size: 24,
-                                              ),
+                                      GestureDetector(
+                                        onTap: () =>
+                                            context.push('/home/diary'),
+                                        child: Container(
+                                          width: 48,
+                                          height: 48,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.2),
+                                            border: Border.all(
+                                              color:
+                                                  Colors.grey.withOpacity(0.2),
                                             ),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                           ),
-                                          const SizedBox(width: 10),
-                                          GestureDetector(
-                                            onTap: () => context
-                                                .push('/home/diary-qr/scan'),
-                                            child: Container(
-                                              width: 48,
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.2),
-                                                border: Border.all(
-                                                    color: Colors.grey
-                                                        .withOpacity(0.2)),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: const Icon(
-                                                Icons.qr_code_scanner,
-                                                color: Color(0xFFE64060),
-                                                size: 24,
-                                              ),
-                                            ),
+                                          child: const Icon(
+                                            Icons.history,
+                                            color: Color(0xFFE64060),
+                                            size: 24,
                                           ),
-                                        ],
+                                        ),
                                       ),
                                   ],
                                 ),

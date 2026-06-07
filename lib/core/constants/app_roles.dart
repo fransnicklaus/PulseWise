@@ -22,6 +22,8 @@ class AppAccountStatuses {
 }
 
 const doctorPendingVerificationRoute = '/doctor/wait-admin-verification';
+const releaseUnsupportedRoleMessage =
+    'Versi aplikasi ini hanya mendukung akun pengguna umum. Akses selain pengguna umum belum tersedia di rilis ini.';
 
 String normalizeAppRole(String? role) {
   switch ((role ?? '').trim().toLowerCase()) {
@@ -47,6 +49,10 @@ bool isAdminRole(String? role) {
   return normalizeAppRole(role) == AppRoles.admin;
 }
 
+bool isReleaseSupportedRole(String? role) {
+  return isPatientRole(role);
+}
+
 String normalizeAuthNextStep(String? nextStep) {
   return (nextStep ?? '').trim().toUpperCase();
 }
@@ -69,15 +75,7 @@ bool isDoctorPendingAdminVerification({
 }
 
 String homeRouteForRole(String? role) {
-  switch (normalizeAppRole(role)) {
-    case AppRoles.doctor:
-      return '/doctor/home';
-    case AppRoles.admin:
-      return '/home';
-    case AppRoles.patient:
-    default:
-      return '/home';
-  }
+  return isReleaseSupportedRole(role) ? '/home' : '/login';
 }
 
 String routeForRoleSession({
@@ -85,12 +83,16 @@ String routeForRoleSession({
   String? nextStep,
   String? accountStatus,
 }) {
+  if (!isReleaseSupportedRole(role)) {
+    return '/login';
+  }
+
   if (isDoctorPendingAdminVerification(
     role: role,
     nextStep: nextStep,
     accountStatus: accountStatus,
   )) {
-    return doctorPendingVerificationRoute;
+    return '/login';
   }
 
   return homeRouteForRole(role);
