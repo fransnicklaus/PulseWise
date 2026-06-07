@@ -760,6 +760,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         nextStep: AppAuthNextSteps.waitAdminVerification,
         accountStatus: accountStatus,
       );
+      await _syncFcmTokenForCurrentSession('google_wait_admin_verification');
 
       return GoogleAuthFlowResult(
         success: true,

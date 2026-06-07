@@ -108,7 +108,9 @@ class _FcmTokenPageState extends ConsumerState<FcmTokenPage> {
 
   Future<void> _requestPermission() async {
     final settings =
-        await AppFcmService.instance.requestNotificationPermission();
+        await AppFcmService.instance.requestNotificationPermissionAndSync(
+      trigger: 'fcm_token_page_permission_request',
+    );
     final token = await AppFcmService.instance.getBestAvailableToken(
       printToDebugger: true,
     );

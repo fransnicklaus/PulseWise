@@ -6,6 +6,7 @@ import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 
 class AddPengingatPage extends ConsumerStatefulWidget {
   const AddPengingatPage({super.key});
@@ -1004,6 +1005,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
           );
 
       if (!mounted) return;
+      invalidateMedicationCalendarCache(ref);
       ref.read(dashboardNavIndexProvider.notifier).state = 3;
       context.pop(true);
     } catch (e) {

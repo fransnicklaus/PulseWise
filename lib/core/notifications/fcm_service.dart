@@ -152,6 +152,17 @@ class AppFcmService {
     }
   }
 
+  Future<NotificationSettings?> requestNotificationPermissionAndSync({
+    String trigger = 'permission_request',
+  }) async {
+    final settings = await requestNotificationPermission();
+    await _syncTokenRegistrationAfterPermission(
+      settings,
+      trigger: trigger,
+    );
+    return settings;
+  }
+
   Future<void> maybePromptNotificationPermissionOnFirstLaunch() async {
     if (!_initialized) {
       await initialize();
@@ -179,7 +190,9 @@ class AppFcmService {
       return;
     }
 
-    final requestedSettings = await requestNotificationPermission();
+    final requestedSettings = await requestNotificationPermissionAndSync(
+      trigger: 'first_launch_permission_prompt',
+    );
     await prefs.setBool(notificationPromptedPrefsKey, true);
     debugPrint(
       '[FCM] Notification permission request completed with status='
@@ -491,6 +504,33 @@ class AppFcmService {
   Future<void> _persistToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenPrefsKey, token);
+  }
+
+  Future<void> _syncTokenRegistrationAfterPermission(
+    NotificationSettings? settings, {
+    required String trigger,
+  }) async {
+    final status = settings?.authorizationStatus;
+    if (status != AuthorizationStatus.authorized &&
+        status != AuthorizationStatus.provisional) {
+      debugPrint(
+        '[FCM] Skip token sync after permission request. status=$status',
+      );
+      return;
+    }
+
+    final token = await getToken();
+    if (token == null || token.trim().isEmpty) {
+      debugPrint(
+        '[FCM] Permission granted but no token available yet for trigger=$trigger',
+      );
+      return;
+    }
+
+    await registerTokenForCurrentSession(
+      trigger: trigger,
+      tokenOverride: token,
+    );
   }
 
   Future<_FcmAuthSession?> _getCurrentSession() async {

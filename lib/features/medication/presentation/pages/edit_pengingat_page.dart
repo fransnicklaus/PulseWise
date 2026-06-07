@@ -7,6 +7,7 @@ import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
 
 class EditPengingatPage extends ConsumerStatefulWidget {
@@ -665,6 +666,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
 
       if (!mounted) return;
 
+      invalidateMedicationCalendarCache(ref);
       ref.invalidate(medicationDetailProvider(widget.medicationId));
       await ref.read(medicationHistoryProvider.notifier).refreshMedications();
 

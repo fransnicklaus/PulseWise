@@ -43,3 +43,7 @@ final medicationCalendarRangeProvider = FutureProvider.autoDispose
         );
   },
 );
+
+void invalidateMedicationCalendarCache(WidgetRef ref) {
+  ref.invalidate(medicationCalendarRangeProvider);
+}
