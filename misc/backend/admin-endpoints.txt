@@ -1,0 +1,159 @@
+1. Ringkasan admin
+GET /admin/overview
+
+Response:
+
+{
+"success": true,
+"message": "Ringkasan admin berhasil diambil",
+"data": {
+"totalUsers": 0,
+"totalDoctors": 0,
+"totalPatients": 0,
+"totalAdmins": 0,
+"pendingDoctors": 0,
+"suspendedUsers": 0
+}
+}
+
+2. List user
+GET /admin/users?page=1&limit=20&q=&role=doctor&accountStatus=active
+
+Query opsional:
+page
+limit
+q
+role: patient | doctor | admin
+accountStatus: pending_verification | pending_admin_verification | active | rejected | suspended
+
+Response item:
+
+{
+"userId": "uuid",
+"username": "string",
+"email": "string",
+"firstName": "string",
+"lastName": "string",
+"avatarPhoto": null,
+"accountStatus": "active",
+"isActive": true,
+"emailVerifiedAt": "timestamp",
+"createdAt": "timestamp",
+"updatedAt": "timestamp",
+"role": "admin",
+"roles": ["admin", "patient"]
+}
+
+3. Detail user
+GET /admin/users/:userId
+
+Response:
+shape user seperti di atas
+kalau user dokter, ada doctorProfile
+
+4. Ubah status user umum
+PATCH /admin/users/:userId/status
+
+Body:
+
+{
+"accountStatus": "active"
+}
+
+Nilai yang diterima di endpoint ini:
+active
+suspended
+
+Catatan:
+dokter jangan pakai endpoint ini
+dokter pakai endpoint verifikasi dokter di bawah
+
+5. List dokter pending
+GET /admin/doctors/pending
+
+Response item:
+
+{
+"userId": "uuid",
+"email": "doctor@example.com",
+"role": "doctor",
+"roles": ["doctor"],
+"accountStatus": "pending_admin_verification",
+"doctorProfile": {
+"doctorId": "uuid",
+"specialization": null,
+"licenseNo": null,
+"hospitalName": null,
+"isVerified": false,
+"verifiedAt": null,
+"verifiedBy": null,
+"verificationNote": null,
+"rejectionReason": null,
+"createdAt": "timestamp"
+}
+}
+
+6. List semua dokter review
+GET /admin/doctors?status=active
+
+Status opsional:
+pending_admin_verification
+active
+rejected
+suspended
+
+7. Detail dokter
+GET /admin/doctors/:doctorId
+
+Response:
+sama seperti item dokter review di atas
+
+8. Approve dokter
+POST /admin/doctors/:doctorId/approve
+
+Body:
+
+{
+"verificationNote": "Dokumen SIP sudah diverifikasi"
+}
+
+Efek:
+doctor_profiles.is_verified = true
+users.account_status = active
+
+9. Reject dokter
+POST /admin/doctors/:doctorId/reject
+
+Body:
+
+{
+"rejectionReason": "Dokumen STR belum lengkap"
+}
+
+Efek:
+doctor_profiles.is_verified = false
+users.account_status = rejected
+
+10. Suspend dokter
+POST /admin/doctors/:doctorId/suspend
+
+Body:
+
+{
+"verificationNote": "Akun dinonaktifkan sementara untuk review"
+}
+
+Efek:
+users.account_status = suspended
+
+11. Reactivate dokter
+POST /admin/doctors/:doctorId/reactivate
+
+Body:
+
+{}
+
+Efek:
+kalau is_verified = true -> balik ke active
+kalau belum verified -> balik ke pending_admin_verification
+
