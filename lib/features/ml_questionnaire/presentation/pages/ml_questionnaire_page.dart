@@ -48,10 +48,11 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
 
     setState(() => _isInitialLoading = true);
     try {
-      final existing = await ref.read(mlQuestionnaireApiProvider).fetchMlProfile(
-            token: widget.token,
-            patientId: widget.patientId,
-          );
+      final existing =
+          await ref.read(mlQuestionnaireApiProvider).fetchMlProfile(
+                token: widget.token,
+                patientId: widget.patientId,
+              );
 
       if (!mounted) return;
 
@@ -177,12 +178,18 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
             alignment: AlignmentDirectional.centerStart,
             dropdownColor: Colors.white,
             iconEnabledColor: const Color(0xFF64748B),
-            decoration: InputDecoration(
-              hintText: 'Pilih jawaban',
-              hintStyle: const TextStyle(
-                fontSize: 18,
-                color: Color(0xFF334155),
+            hint: const Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Pilih salah satu',
+                style: TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
+            ),
+            decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               contentPadding:

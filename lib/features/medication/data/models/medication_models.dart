@@ -185,10 +185,12 @@ class MedicationCalendarRange {
 class MedicationLogResponse {
   final List<MedicationLogItem> items;
   final MedicationPagination pagination;
+  final MedicationLogSummary summary;
 
   const MedicationLogResponse({
     required this.items,
     required this.pagination,
+    required this.summary,
   });
 
   factory MedicationLogResponse.fromJson(Map<String, dynamic> json) {
@@ -199,6 +201,34 @@ class MedicationLogResponse {
       pagination: MedicationPagination.fromJson(
         (json['pagination'] as Map<String, dynamic>?) ?? const {},
       ),
+      summary: MedicationLogSummary.fromJson(
+        (json['summary'] as Map<String, dynamic>?) ?? const {},
+      ),
+    );
+  }
+}
+
+class MedicationLogSummary {
+  final int taken;
+  final int skipped;
+  final int missed;
+
+  const MedicationLogSummary({
+    required this.taken,
+    required this.skipped,
+    required this.missed,
+  });
+
+  const MedicationLogSummary.empty()
+      : taken = 0,
+        skipped = 0,
+        missed = 0;
+
+  factory MedicationLogSummary.fromJson(Map<String, dynamic> json) {
+    return MedicationLogSummary(
+      taken: (json['taken'] as num?)?.toInt() ?? 0,
+      skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+      missed: (json['missed'] as num?)?.toInt() ?? 0,
     );
   }
 }

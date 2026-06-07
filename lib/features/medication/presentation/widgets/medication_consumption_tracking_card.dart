@@ -47,6 +47,7 @@ class _MedicationConsumptionTrackingCardState
   int _page = 1;
   int _totalPages = 1;
   List<MedicationLogItem> _items = const [];
+  MedicationLogSummary _summary = const MedicationLogSummary.empty();
 
   @override
   void initState() {
@@ -99,6 +100,7 @@ class _MedicationConsumptionTrackingCardState
           _hasMore = true;
           if (!keepVisibleData) {
             _items = const [];
+            _summary = const MedicationLogSummary.empty();
             _hasLoadedOnce = false;
           }
         });
@@ -130,6 +132,7 @@ class _MedicationConsumptionTrackingCardState
       final nextItems = reset ? response.items : [..._items, ...response.items];
       setState(() {
         _items = nextItems;
+        _summary = response.summary;
         _page = response.pagination.page;
         _totalPages = response.pagination.totalPages;
         _hasMore = _page < _totalPages;
@@ -172,9 +175,9 @@ class _MedicationConsumptionTrackingCardState
 
   @override
   Widget build(BuildContext context) {
-    final takenCount = _countByStatus('taken');
-    final skippedCount = _countByStatus('skipped');
-    final missedCount = _countByStatus('missed');
+    final takenCount = _summary.taken;
+    final skippedCount = _summary.skipped;
+    final missedCount = _summary.missed;
     final hasNetworkError =
         _errorCause != null && isNetworkRequestError(_errorCause!);
     final showInitialNoConnection = hasNetworkError && !_hasLoadedOnce;
@@ -415,10 +418,6 @@ class _MedicationConsumptionTrackingCardState
         ],
       ),
     );
-  }
-
-  int _countByStatus(String status) {
-    return _items.where((item) => item.status.toLowerCase() == status).length;
   }
 
   DateTime _dateOnly(DateTime date) {
