@@ -12,6 +12,7 @@ import 'package:pulsewise/features/diary/presentation/pages/riwayat_diari_page.d
 // import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_dashboard_page.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flutter.dart'
     as patient_ui;
+import 'package:pulsewise/features/home_dashboard/presentation/pages/wellness_disclaimer_page.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/ml_assessment/presentation/pages/patient_ml_assessment_page.dart';
@@ -24,6 +25,7 @@ import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questi
 import 'package:pulsewise/features/profile/presentation/pages/date_time_picker_demo_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/delete_account_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
+import 'package:pulsewise/features/profile/presentation/pages/about_app_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
 import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
 
@@ -150,6 +152,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             builder: (context, state) => const UpdateProfilePage(),
           ),
           GoRoute(
+            path: 'about-app',
+            builder: (context, state) => const AboutAppPage(),
+          ),
+          GoRoute(
             path: 'contacts',
             builder: (context, state) => const ContactsPage(),
             routes: [
@@ -166,6 +172,10 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'health-connect',
             builder: (context, state) => const HealthConnectPage(),
+          ),
+          GoRoute(
+            path: 'wellness-disclaimer',
+            builder: (context, state) => const WellnessDisclaimerPage(),
           ),
           GoRoute(
             path: 'fcm-token',

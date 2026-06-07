@@ -986,6 +986,10 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             onTap: _openPrivacyPolicy,
                           ),
                           _ActionRow(
+                            label: 'Tentang PulseWise',
+                            onTap: () => context.push('/home/about-app'),
+                          ),
+                          _ActionRow(
                             label: 'Edit Profil',
                             onTap: () => context.push('/home/update-profile'),
                           ),

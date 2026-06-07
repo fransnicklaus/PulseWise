@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
+import 'package:pulsewise/core/storage/wellness_disclaimer_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/diary/presentation/pages/tabs/diari_tab.dart';
@@ -33,7 +34,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver {
   bool _isHandlingHealthConnectPrompt = false;
   bool _isHandlingMissingProfilePrompt = false;
+  bool _isHandlingWellnessDisclaimer = false;
   bool _didPromptMissingProfileSetup = false;
+  bool _didResolveWellnessDisclaimer = false;
+  bool _hasAcknowledgedWellnessDisclaimer = false;
 
   @override
   void initState() {
@@ -44,6 +48,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     // Sync on first open
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleReminderNotification();
+      _ensureWellnessDisclaimerAcknowledged();
       _triggerHealthConnectSync();
     });
   }
@@ -232,6 +237,39 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       ref.invalidate(authMeProvider);
     } finally {
       _isHandlingMissingProfilePrompt = false;
+    }
+  }
+
+  Future<void> _ensureWellnessDisclaimerAcknowledged() async {
+    if (_isHandlingWellnessDisclaimer) return;
+
+    _isHandlingWellnessDisclaimer = true;
+    try {
+      var isAcknowledged = false;
+      try {
+        isAcknowledged = await WellnessDisclaimerStore.isAcknowledged();
+      } catch (_) {
+        isAcknowledged = false;
+      }
+      if (!mounted) return;
+
+      if (isAcknowledged) {
+        setState(() {
+          _didResolveWellnessDisclaimer = true;
+          _hasAcknowledgedWellnessDisclaimer = true;
+        });
+        return;
+      }
+
+      final result = await context.push<bool>('/home/wellness-disclaimer');
+      if (!mounted) return;
+
+      setState(() {
+        _didResolveWellnessDisclaimer = true;
+        _hasAcknowledgedWellnessDisclaimer = result == true;
+      });
+    } finally {
+      _isHandlingWellnessDisclaimer = false;
     }
   }
 
@@ -454,8 +492,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final navIndex = ref.watch(dashboardNavIndexProvider);
     final promptArmed = ref.watch(healthConnectLoginPromptArmedProvider);
     final profileAsync = ref.watch(patientProfileProvider);
+    final canShowFollowUpPrompts =
+        _didResolveWellnessDisclaimer && _hasAcknowledgedWellnessDisclaimer;
 
-    if (profileAsync.hasError &&
+    if (canShowFollowUpPrompts &&
+        profileAsync.hasError &&
         isPatientProfileNotSetupError(profileAsync.error)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -465,7 +506,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       _didPromptMissingProfileSetup = false;
     }
 
-    if (promptArmed && profileAsync.hasValue) {
+    if (canShowFollowUpPrompts && promptArmed && profileAsync.hasValue) {
       final profile = profileAsync.value;
       if (profile != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

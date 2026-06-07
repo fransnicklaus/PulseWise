@@ -2,9 +2,11 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/wellness_disclaimer.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
+import 'package:pulsewise/core/widgets/wellness_disclaimer_card.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/data/models/dashboard_overview_models.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
@@ -177,6 +179,22 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     final dayName = weekdays[now.weekday - 1];
     final monthName = months[now.month - 1];
     return '$dayName, ${now.day} $monthName ${now.year}';
+  }
+
+  Widget _buildWellnessDisclaimerCard() {
+    return const WellnessDisclaimerCard(
+      title: 'Informasi PulseWise',
+      // caption: 'Aplikasi ini untuk kebutuhan wellness dan catatan harian.',
+      margin: EdgeInsets.symmetric(horizontal: 24),
+      icon: Icons.lightbulb_outline_rounded,
+      // badgeLabel: 'INFO',
+      bodyText: wellnessDisclaimerTextId,
+      isExpandable: true,
+      initiallyExpanded: false,
+      compact: true,
+      expandLabel: 'Lihat disclaimer',
+      collapseLabel: 'Sembunyikan',
+    );
   }
 
   // String _healthStatusTabLabel() {
@@ -839,6 +857,8 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 ),
 
                 // Emergency Contact Card
+                const SizedBox(height: 16),
+                _buildWellnessDisclaimerCard(),
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () {
