@@ -994,7 +994,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                             onTap: () => context.push('/home/update-profile'),
                           ),
                           _ActionRow(
-                            label: 'Isi Kuisioner ML',
+                            label: 'Isi Kuesioner Insight',
                             onTap: _goToMlQuestionnaire,
                           ),
                           _ActionRow(

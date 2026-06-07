@@ -240,16 +240,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
 
     if (_isNoConnectionAsyncError(latestRecommendation)) {
       return NoConnectionState.card(
-        title: 'Rekomendasi belum bisa dimuat',
+        title: 'Insight belum bisa dimuat',
         message:
-            'Kami belum bisa mengambil rekomendasi kesehatan terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            'Kami belum bisa mengambil ringkasan insight terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
         onRetry: _retryHealthStatusSection,
       );
     }
 
     if (_hasNonNetworkErrorWithoutValue(latestRecommendation)) {
       return const _HealthStatusEmptyState(
-        title: 'Gagal memuat rekomendasi',
+        title: 'Gagal memuat insight',
         subtitle: 'Tarik ke bawah untuk memuat ulang.',
       );
     }
@@ -291,7 +291,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                     children: [
                       const Expanded(
                         child: Text(
-                          'Risiko Eksisting',
+                          'Skor Insight',
                           style: TextStyle(
                             color: Color(0xFF525252),
                             fontSize: 18,
@@ -333,7 +333,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Text(
-                          'Belum ada rekomendasi terbaru',
+                          'Belum ada insight terbaru',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFF334155),
@@ -343,7 +343,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Jalankan prediksi kesehatan untuk melihat ringkasan risiko Anda.',
+                          'Perbarui insight untuk melihat ringkasan pola terbaru Anda.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Color(0xFF64748B),
@@ -529,16 +529,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
 
     if (_isNoConnectionAsyncError(quickDash)) {
       return NoConnectionState.card(
-        title: 'Vitals belum bisa dimuat',
+        title: 'Metrik belum bisa dimuat',
         message:
-            'Kami belum bisa mengambil data vitals terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            'Kami belum bisa mengambil data metrik terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
         onRetry: _retryHealthStatusSection,
       );
     }
 
     if (_hasNonNetworkErrorWithoutValue(quickDash)) {
       return const _HealthStatusEmptyState(
-        title: 'Gagal memuat vitals',
+        title: 'Gagal memuat metrik',
         subtitle: 'Tarik ke bawah untuk memuat ulang.',
       );
     }

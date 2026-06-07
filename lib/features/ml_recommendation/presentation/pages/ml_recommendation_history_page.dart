@@ -238,9 +238,9 @@ class _MlRecommendationHistoryPageState
   Widget build(BuildContext context) {
     final state = ref.watch(recommendationHistoryNotifierProvider);
     final startLabel =
-        state.startDate != null ? _formatDate(state.startDate) : 'Start date';
+        state.startDate != null ? _formatDate(state.startDate) : 'Tanggal awal';
     final endLabel =
-        state.endDate != null ? _formatDate(state.endDate) : 'End date';
+        state.endDate != null ? _formatDate(state.endDate) : 'Tanggal akhir';
     final showInitialLoading = state.isLoading && state.items.isEmpty;
     final showOfflinePage = _isNetworkError(state.errorCause) &&
         state.items.isEmpty &&
@@ -252,8 +252,8 @@ class _MlRecommendationHistoryPageState
       backgroundColor: const Color(0xFFF8F9FA),
       extendBody: true,
       appBar: CustomAppBar(
-        title: 'Riwayat Prediksi ML',
-        subtitle: 'Hasil Prediksi & Rekomendasi',
+        title: 'Riwayat Insight',
+        subtitle: 'Ringkasan insight sebelumnya',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -333,7 +333,7 @@ class _MlRecommendationHistoryPageState
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: NoConnectionState.compact(
-                          title: 'Riwayat prediksi belum tersinkron',
+                          title: 'Riwayat insight belum tersinkron',
                           message:
                               'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
                           onRetry: () => ref
@@ -357,9 +357,9 @@ class _MlRecommendationHistoryPageState
                       Padding(
                         padding: const EdgeInsets.all(16),
                         child: NoConnectionState.card(
-                          title: 'Riwayat prediksi belum bisa dimuat',
+                          title: 'Riwayat insight belum bisa dimuat',
                           message:
-                              'Kami belum bisa mengambil riwayat prediksi ML untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+                              'Kami belum bisa mengambil riwayat insight untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
                           onRetry: () => ref
                               .read(recommendationHistoryNotifierProvider
                                   .notifier)
@@ -374,7 +374,7 @@ class _MlRecommendationHistoryPageState
                         height: 240,
                         child: Center(
                           child: Text(
-                            'Belum ada riwayat prediksi ML',
+                            'Belum ada riwayat insight',
                             style: TextStyle(
                               color: Color(0xFF64748B),
                               fontSize: 16,
@@ -706,7 +706,7 @@ class _ExpandedArea extends StatelessWidget {
     if (error != null) {
       if (errorCause != null && isNetworkRequestError(errorCause!)) {
         return NoConnectionState.card(
-          title: 'Detail prediksi belum bisa dimuat',
+          title: 'Detail insight belum bisa dimuat',
           message:
               'Koneksi internet sedang bermasalah. Sambungkan lagi lalu coba muat detail ini.',
           onRetry: onRetry,
@@ -738,7 +738,7 @@ class _ExpandedArea extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Prediksi',
+            const Text('Insight',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -773,7 +773,7 @@ class _ExpandedArea extends StatelessWidget {
             const SizedBox(height: 24),
             Center(
               child: Text(
-                'Risiko Saat Ini: $currentRiskPercentage%',
+                'Skor Insight Saat Ini: $currentRiskPercentage%',
                 style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w600,
@@ -831,7 +831,7 @@ Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
         //     ),
         //   ],
         // ),
-        const Text('Rekomendasi',
+        const Text('Saran Kebiasaan',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -840,7 +840,7 @@ Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
         const SizedBox(height: 20),
         if (lifestyle.isEmpty)
           const Text(
-            'Tidak ada rekomendasi spesifik saat ini.',
+            'Belum ada saran kebiasaan khusus saat ini.',
             style: TextStyle(color: Color(0xFF4A5568)),
           ),
         ...recommendationIncrease.map((item) {

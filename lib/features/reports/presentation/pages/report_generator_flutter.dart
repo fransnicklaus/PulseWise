@@ -61,9 +61,9 @@ extension PatientReportPresetX on PatientReportPreset {
   String get label {
     switch (this) {
       case PatientReportPreset.lastTwoWeeks:
-        return 'Last 2 Weeks';
+        return '14 Hari Terakhir';
       case PatientReportPreset.lastOneMonth:
-        return 'Last 1 Month';
+        return '1 Bulan Terakhir';
     }
   }
 
@@ -264,7 +264,7 @@ class PatientReportDocument extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Medical Vitals Report',
+                      'Laporan Ringkasan Metrik',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -273,7 +273,7 @@ class PatientReportDocument extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Period: ${_longDate(startDate)} - ${_longDate(endDate)}',
+                      'Periode: ${_longDate(startDate)} - ${_longDate(endDate)}',
                       style: const TextStyle(
                         color: Color(0xFF4A5568),
                         fontSize: 13,
@@ -295,7 +295,7 @@ class PatientReportDocument extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
-                      'CONFIDENTIAL',
+                      'PRIBADI',
                       style: TextStyle(
                         color: Color(0xFFE13D5A),
                         fontWeight: FontWeight.w700,
@@ -305,7 +305,7 @@ class PatientReportDocument extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Generated: ${_longDate(DateTime.now())}',
+                    'Dibuat: ${_longDate(DateTime.now())}',
                     style: const TextStyle(
                       color: Color(0xFF94A3B8),
                       fontSize: 12,
@@ -319,30 +319,30 @@ class PatientReportDocument extends StatelessWidget {
           Container(height: 2, color: const Color(0xFFE13D5A)),
           const SizedBox(height: 24),
           _ReportBlock(
-            title: 'Patient Information',
+            title: 'Informasi Pengguna',
             child: Wrap(
               spacing: 16,
               runSpacing: 16,
               children: [
+                _InfoTile(label: 'Nama', value: report.patientInfo.name),
+                _InfoTile(label: 'ID Pengguna', value: report.patientInfo.id),
                 _InfoTile(
-                    label: 'Patient Name', value: report.patientInfo.name),
-                _InfoTile(label: 'Patient ID', value: report.patientInfo.id),
+                    label: 'Tanggal Lahir', value: report.patientInfo.dob),
                 _InfoTile(
-                    label: 'Date of Birth', value: report.patientInfo.dob),
-                _InfoTile(label: 'Sex', value: report.patientInfo.sex),
+                    label: 'Jenis Kelamin', value: report.patientInfo.sex),
               ],
             ),
           ),
           const SizedBox(height: 24),
           _ReportBlock(
-            title: 'Period Statistics',
+            title: 'Ringkasan Periode',
             subtitle: '(Avg / Min / Max)',
             child: Wrap(
               spacing: 16,
               runSpacing: 16,
               children: [
                 _StatCard(
-                  title: 'Blood Pressure',
+                  title: 'Tekanan Darah',
                   value:
                       '${report.stats.systolicBp.avg}/${report.stats.diastolicBp.avg} mmHg',
                   range:
@@ -350,7 +350,7 @@ class PatientReportDocument extends StatelessWidget {
                       '${report.stats.systolicBp.max}/${report.stats.diastolicBp.max}',
                 ),
                 _StatCard(
-                  title: 'Heart Rate',
+                  title: 'Detak Jantung',
                   value: '${report.stats.heartRate.avg} bpm',
                   range:
                       '${report.stats.heartRate.min} - ${report.stats.heartRate.max}',
@@ -362,7 +362,7 @@ class PatientReportDocument extends StatelessWidget {
                       '${report.stats.oxygenSaturation.max}%',
                 ),
                 _StatCard(
-                  title: 'Weight',
+                  title: 'Berat Badan',
                   value: '${report.stats.weight.avg} kg',
                   range:
                       '${report.stats.weight.min} - ${report.stats.weight.max}',
@@ -377,7 +377,7 @@ class PatientReportDocument extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           _ReportBlock(
-            title: 'Critical Alerts / Abnormalities',
+            title: 'Catatan Nilai Menonjol',
             child: rows.isEmpty
                 ? Container(
                     width: double.infinity,
@@ -388,7 +388,7 @@ class PatientReportDocument extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFBBF7D0)),
                     ),
                     child: const Text(
-                      'No abnormal vital signs detected in this reporting period.',
+                      'Tidak ada nilai metrik yang menonjol pada periode ini.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xFF15803D),
@@ -403,9 +403,9 @@ class PatientReportDocument extends StatelessWidget {
                         const Color(0xFFF8FAFC),
                       ),
                       columns: const [
-                        DataColumn(label: Text('Date & Time')),
-                        DataColumn(label: Text('Metric')),
-                        DataColumn(label: Text('Value')),
+                        DataColumn(label: Text('Tanggal & Waktu')),
+                        DataColumn(label: Text('Metrik')),
+                        DataColumn(label: Text('Nilai')),
                       ],
                       rows: rows
                           .map(
@@ -652,7 +652,7 @@ class _PatientReportPresetSheet extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text(
-                    'Generate Report',
+                    'Buat Ringkasan',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
@@ -668,12 +668,12 @@ class _PatientReportPresetSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              "Select a timeframe to compile the patient's medical history.",
+              'Pilih rentang waktu untuk menyusun ringkasan metrik pribadi Anda.',
               style: TextStyle(color: Color(0xFF4A5568)),
             ),
             const SizedBox(height: 20),
             _PresetButton(
-              label: 'Last 2 Weeks',
+              label: '14 Hari Terakhir',
               active: true,
               onTap: () => Navigator.of(
                 context,
@@ -681,7 +681,7 @@ class _PatientReportPresetSheet extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _PresetButton(
-              label: 'Last 1 Month',
+              label: '1 Bulan Terakhir',
               onTap: () => Navigator.of(
                 context,
               ).pop(PatientReportPreset.lastOneMonth),
@@ -746,7 +746,7 @@ class _ReportLoadingDialog extends StatelessWidget {
             CircularProgressIndicator(color: Color(0xFFE13D5A)),
             SizedBox(height: 16),
             Text(
-              'Generating medical report...',
+              'Menyusun ringkasan metrik...',
               style: TextStyle(
                 color: Color(0xFF4A5568),
                 fontWeight: FontWeight.w500,
@@ -767,12 +767,12 @@ class _ReportErrorDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Failed to generate report'),
+      title: const Text('Gagal membuat ringkasan'),
       content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text('Tutup'),
         ),
       ],
     );
@@ -788,7 +788,7 @@ class _EmptyReportState extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: 60),
       child: Center(
         child: Text(
-          'No vitals data found for this patient in the selected date range.',
+          'Belum ada data metrik pada rentang waktu yang dipilih.',
           style: TextStyle(color: Color(0xFF4A5568)),
           textAlign: TextAlign.center,
         ),

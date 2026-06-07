@@ -312,7 +312,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Kuisioner Prediksi ML',
+                    'Kuesioner Insight Harian',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
@@ -321,7 +321,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Apakah anda ingin mengisi kuisioner untuk kebutuhan prediksi machine learning?',
+                    'Apakah Anda ingin mengisi kuesioner untuk membantu menyusun insight dan ringkasan pribadi Anda?',
                     style: TextStyle(
                       fontSize: 15,
                       color: Color(0xFF475569),
@@ -342,7 +342,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
                         ),
                       ),
                       child: const Text(
-                        'Ya, Isi Kuisioner',
+                        'Ya, Isi Kuesioner',
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.w700),
                       ),

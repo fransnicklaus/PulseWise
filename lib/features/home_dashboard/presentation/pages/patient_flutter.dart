@@ -117,7 +117,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
       final dashboardData = vitals.data;
       if (dashboardData == null) {
-        throw Exception('Data dashboard vitals tidak tersedia.');
+        throw Exception('Data ringkasan metrik belum tersedia.');
       }
 
       final patient = dashboardData.patient;
@@ -459,7 +459,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: CustomAppBar(
-        title: 'Dashboard Pasien',
+        title: 'Dasbor Insight',
         // subtitle: 'Hubungi segera jika diperlukan',
         showBackButton: true,
         onBackPressed: () => context.pop(),
@@ -517,8 +517,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                           fontWeight: FontWeight.w300,
                                           fontSize: 17),
                                       tabs: [
-                                        Tab(text: 'Prediksi'),
-                                        Tab(text: 'Dashboard Metrik'),
+                                        Tab(text: 'Insight'),
+                                        Tab(text: 'Ringkasan Metrik'),
                                       ],
                                     ),
                                   ),
@@ -550,7 +550,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                     ),
                                                     SizedBox(height: 16),
                                                     Text(
-                                                      'Mengecek kesiapan data dan\nmemproses prediksi...',
+                                                      'Mengecek kelengkapan data dan\nmenyusun insight...',
                                                       textAlign:
                                                           TextAlign.center,
                                                       style: TextStyle(
@@ -563,9 +563,9 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                           : _showPredictionOfflinePage
                                               ? NoConnectionState.card(
                                                   title:
-                                                      'Prediksi belum bisa dimuat',
+                                                      'Insight belum bisa dimuat',
                                                   message:
-                                                      'Kami belum bisa mengambil hasil prediksi ML terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                                                      'Kami belum bisa mengambil insight terbaru untuk saat ini karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                                                   onRetry: _fetchInitialData,
                                                 )
                                               : _mlRecommendation != null
@@ -606,7 +606,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                                 Icons.refresh,
                                                                 size: 28),
                                                             label: const Text(
-                                                                'Jalankan Prediksi Lagi',
+                                                                'Perbarui Insight',
                                                                 style: TextStyle(
                                                                     fontSize:
                                                                         18)),
@@ -686,7 +686,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                                         .history,
                                                                     size: 28),
                                                                 label: const Text(
-                                                                    'Cek History',
+                                                                    'Lihat Riwayat',
                                                                     style: TextStyle(
                                                                         fontSize:
                                                                             18)),
@@ -702,7 +702,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                             width: fullWidth,
                                                             child:
                                                                 PredictionMetricCard(
-                                                              title: 'Prediksi',
+                                                              title: 'Insight',
                                                               icon: Icons
                                                                   .insights_rounded,
                                                               iconColor:
@@ -769,7 +769,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                                             .analytics),
                                                                     label:
                                                                         const Text(
-                                                                      'Cek Prediksi ML Hari Ini',
+                                                                      'Lihat Insight Hari Ini',
                                                                       style:
                                                                           TextStyle(
                                                                         fontSize:
@@ -816,7 +816,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                                             18),
                                                                     label:
                                                                         const Text(
-                                                                      'Isi Form Asesmen',
+                                                                      'Isi Form Insight',
                                                                       style: TextStyle(
                                                                           fontSize:
                                                                               15,
@@ -990,7 +990,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                 children: [
                                                   Expanded(
                                                     child: _MiniStatCard(
-                                                      title: 'Latest BMI',
+                                                      title: 'BMI Terbaru',
                                                       value: data.latestBmi ==
                                                               null
                                                           ? '-'
@@ -1005,7 +1005,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                   const SizedBox(width: 24),
                                                   Expanded(
                                                     child: _MiniStatCard(
-                                                      title: 'Height',
+                                                      title: 'Tinggi Badan',
                                                       value:
                                                           '${data.latestHeightCm.toStringAsFixed(0)} cm',
                                                       background: const Color(
@@ -1020,7 +1020,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                             return Column(
                                               children: [
                                                 _MiniStatCard(
-                                                  title: 'Latest BMI',
+                                                  title: 'BMI Terbaru',
                                                   value: data.latestBmi == null
                                                       ? '-'
                                                       : data.latestBmi!
@@ -1031,7 +1031,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                 ),
                                                 const SizedBox(height: 12),
                                                 _MiniStatCard(
-                                                  title: 'Height',
+                                                  title: 'Tinggi Badan',
                                                   value:
                                                       '${data.latestHeightCm.toStringAsFixed(0)} cm',
                                                   background:
@@ -1146,7 +1146,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Gagal memuat prediksi terbaru',
+                  'Gagal memuat insight terbaru',
                   style: TextStyle(
                     color: Color(0xFFB91C1C),
                     fontSize: 16,
@@ -1156,7 +1156,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                 const SizedBox(height: 8),
                 Text(
                   _latestRecommendationError ??
-                      'Terjadi kendala saat memuat prediksi terbaru.',
+                      'Terjadi kendala saat memuat insight terbaru.',
                   style: const TextStyle(
                     color: Color(0xFF991B1B),
                     fontSize: 14,
@@ -1194,7 +1194,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
             ),
             icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
             label: const Text(
-              'Isi Form Asesmen',
+              'Isi Form Insight',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             ),
           ),
@@ -1296,7 +1296,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Beberapa data kesehatan pasien belum lengkap untuk melakukan prediksi ML. Silakan lengkapi form kuisioner atau data harian.',
+            'Beberapa data profil dan catatan harian Anda belum lengkap untuk menyusun insight. Silakan lengkapi kuesioner atau catatan harian terlebih dahulu.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Color(0xFF64748B),
@@ -1605,7 +1605,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
               ),
               const SizedBox(width: 16),
               const Text(
-                'Rekomendasi',
+                'Saran Kebiasaan',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -1617,7 +1617,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           const SizedBox(height: 20),
           if (lifestyle.isEmpty)
             const Text(
-              'Tidak ada rekomendasi spesifik saat ini.',
+              'Belum ada saran kebiasaan khusus saat ini.',
               style: TextStyle(color: Color(0xFF4A5568)),
             ),
           ...recommendationIncrease.map((item) {
@@ -1995,7 +1995,7 @@ class _DashboardSidebar extends StatelessWidget {
                       ),
                     ),
                     icon: const Icon(Icons.description_rounded),
-                    label: const Text('Generate Report'),
+                    label: const Text('Buat Ringkasan'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
@@ -2098,9 +2098,9 @@ class _PatientHeaderCard extends StatelessWidget {
                   spacing: 16,
                   runSpacing: 8,
                   children: [
-                    _DetailItem(label: 'Sex', value: properGender),
+                    _DetailItem(label: 'Jenis Kelamin', value: properGender),
                     _DetailItem(
-                      label: 'Date of Birth',
+                      label: 'Tanggal Lahir',
                       value: patient.dateOfBirth ?? '-',
                     ),
                   ],
@@ -2312,7 +2312,7 @@ class PredictionMetricCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 const Text(
-                  'Berikut adalah skor risiko kesehatan terbaru pasien yang menunjukkan probabilitas komplikasi serius dalam waktu dekat',
+                  'Berikut adalah skor insight terbaru yang membantu Anda melihat ringkasan pola dari data yang tersedia saat ini.',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

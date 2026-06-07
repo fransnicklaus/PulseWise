@@ -15,14 +15,14 @@ class PrintPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Print Medical Report'),
+        title: const Text('Cetak Ringkasan Metrik'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
       ),
       body: PdfPreview(
-        build: (format) => _generatePdf(format, 'Medical Vitals Report'),
+        build: (format) => _generatePdf(format, 'Laporan Ringkasan Metrik'),
         canChangeOrientation: false,
         canChangePageFormat: false,
       ),
@@ -34,12 +34,12 @@ class PrintPage extends ConsumerWidget {
     final now = DateTime.now();
     final dateFormat = DateFormat('MMMM d, yyyy');
 
-    // Fake Patient Info
+    // Fake User Info
     final patientInfo = {
-      'Name': 'John Doe',
+      'Nama': 'John Doe',
       'ID': 'PW-123456',
-      'Date of Birth': 'January 1, 1980',
-      'Sex': 'Male',
+      'Tanggal Lahir': '1 Januari 1980',
+      'Jenis Kelamin': 'Laki-laki',
     };
 
     // Fake Stats
@@ -69,13 +69,13 @@ class PrintPage extends ConsumerWidget {
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Text('Medical Vitals Report',
+                    pw.Text('Laporan Ringkasan Metrik',
                         style: pw.TextStyle(
                             fontSize: 24,
                             fontWeight: pw.FontWeight.bold,
                             color: PdfColors.red800)),
                     pw.SizedBox(height: 4),
-                    pw.Text('Period: Last 14 Days',
+                    pw.Text('Periode: 14 Hari Terakhir',
                         style: const pw.TextStyle(
                             fontSize: 12, color: PdfColors.grey600)),
                   ],
@@ -91,14 +91,14 @@ class PrintPage extends ConsumerWidget {
                         borderRadius:
                             const pw.BorderRadius.all(pw.Radius.circular(4)),
                       ),
-                      child: pw.Text('CONFIDENTIAL',
+                      child: pw.Text('PRIBADI',
                           style: pw.TextStyle(
                               fontSize: 10,
                               fontWeight: pw.FontWeight.bold,
                               color: PdfColors.red800)),
                     ),
                     pw.SizedBox(height: 4),
-                    pw.Text('Generated: ${dateFormat.format(now)}',
+                    pw.Text('Dibuat: ${dateFormat.format(now)}',
                         style: const pw.TextStyle(
                             fontSize: 10, color: PdfColors.grey500)),
                   ],
@@ -109,7 +109,7 @@ class PrintPage extends ConsumerWidget {
             pw.Divider(color: PdfColors.red800, thickness: 2),
             pw.SizedBox(height: 20),
 
-            // Patient Information
+            // User Information
             pw.Container(
               padding: const pw.EdgeInsets.all(16),
               decoration: pw.BoxDecoration(
@@ -120,7 +120,7 @@ class PrintPage extends ConsumerWidget {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text('PATIENT INFORMATION',
+                  pw.Text('INFORMASI PENGGUNA',
                       style: pw.TextStyle(
                           fontSize: 10,
                           fontWeight: pw.FontWeight.bold,
@@ -152,8 +152,8 @@ class PrintPage extends ConsumerWidget {
             ),
             pw.SizedBox(height: 24),
 
-            // Period Statistics
-            pw.Text('PERIOD STATISTICS (AVG / MIN / MAX)',
+            // Period Summary
+            pw.Text('RINGKASAN PERIODE (AVG / MIN / MAX)',
                 style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -205,8 +205,8 @@ class PrintPage extends ConsumerWidget {
             ),
             pw.SizedBox(height: 24),
 
-            // Critical Alerts / Abnormalities
-            pw.Text('CRITICAL ALERTS / ABNORMALITIES',
+            // Highlighted values
+            pw.Text('CATATAN NILAI MENONJOL',
                 style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -221,7 +221,7 @@ class PrintPage extends ConsumerWidget {
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
               ),
               child: pw.Text(
-                'No abnormal vital signs detected in this reporting period.',
+                'Tidak ada nilai metrik yang menonjol pada periode ini.',
                 textAlign: pw.TextAlign.center,
                 style: pw.TextStyle(
                     fontSize: 12,
@@ -236,7 +236,7 @@ class PrintPage extends ConsumerWidget {
             pw.SizedBox(height: 8),
             pw.Center(
               child: pw.Text(
-                  'End of Report. Automatically generated by PulseWise System.',
+                  'Akhir ringkasan. Dokumen ini dibuat otomatis oleh PulseWise.',
                   style: const pw.TextStyle(
                       fontSize: 10, color: PdfColors.grey500)),
             ),

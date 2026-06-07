@@ -169,11 +169,11 @@ class _PatientMlAssessmentPageState
 
       if (!mounted) return;
       if (saved.isEmpty) {
-        AppToast.error(context, 'Gagal menyimpan asesmen. Silakan coba lagi.');
+        AppToast.error(context, 'Gagal menyimpan form. Silakan coba lagi.');
         return;
       } else {
         context.pop();
-        AppToast.success(context, 'Asesmen berhasil disimpan');
+        AppToast.success(context, 'Form insight berhasil disimpan');
       }
       // Navigator.of(context).pop(saved.isNotEmpty);
     } catch (e) {
@@ -203,7 +203,7 @@ class _PatientMlAssessmentPageState
             ),
             SizedBox(height: 16),
             Text(
-              'Menyiapkan Form Asesmen',
+              'Menyiapkan Form Insight',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF0F172A),
@@ -213,7 +213,7 @@ class _PatientMlAssessmentPageState
             ),
             SizedBox(height: 8),
             Text(
-              'Kami sedang memuat asesmen terbaru agar Anda bisa langsung memperbaruinya.',
+              'Kami sedang memuat isian terakhir agar Anda bisa langsung memperbaruinya.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFF64748B),
@@ -256,7 +256,7 @@ class _PatientMlAssessmentPageState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Form Asesmen ML',
+                  'Form Insight Harian',
                   style: TextStyle(
                     color: Color(0xFF0F172A),
                     fontSize: 20,
@@ -282,7 +282,7 @@ class _PatientMlAssessmentPageState
               foregroundColor: const Color(0xFFE64060),
             ),
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Muat terbaru'),
+            label: const Text('Muat terakhir'),
           ),
         ],
       ),
@@ -502,8 +502,8 @@ class _PatientMlAssessmentPageState
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: CustomAppBar(
-        title: 'Form Asesmen Pasien',
-        subtitle: 'Isi asesmen terbaru pasien',
+        title: 'Form Insight Harian',
+        subtitle: 'Lengkapi isian terbaru Anda',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -553,7 +553,9 @@ class _PatientMlAssessmentPageState
                                 )
                               : const Icon(Icons.save_rounded, size: 20),
                           label: Text(
-                            _isSubmitting ? 'Menyimpan...' : 'Simpan Asesmen',
+                            _isSubmitting
+                                ? 'Menyimpan...'
+                                : 'Simpan Form Insight',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
