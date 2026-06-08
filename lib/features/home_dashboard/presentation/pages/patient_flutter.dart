@@ -6,15 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
-import 'package:pulsewise/core/storage/app_session_store.dart';
-import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
-import 'package:pulsewise/features/ml_assessment/presentation/providers/ml_assessment_provider.dart';
 import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
-import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:pulsewise/features/reports/presentation/pages/report_generator_flutter.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -65,12 +61,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     TimePeriodOption(id: 'all', label: 'Semua Data'),
   ];
 
-  bool _isLoadingLast = true;
-  bool _isCheckingMl = false;
   List<String> _missingFields = [];
-  String? _latestRecommendationError;
-  Object? _latestRecommendationErrorCause;
-  MlRecommendationResponse? _mlRecommendation;
   MlRecommendationResponse? _mlPredictionResult;
 
   @override
@@ -86,7 +77,6 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
-      _fetchInitialData();
     });
   }
 
@@ -201,50 +191,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     }
   }
 
-  Future<void> _fetchInitialData() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoadingLast = true;
-      _latestRecommendationError = null;
-      _latestRecommendationErrorCause = null;
-    });
-    try {
-      final api = ref.read(mlRecommendationApiProvider);
-      final rec = await api.fetchLatestMlRecommendation();
-
-      if (mounted) {
-        setState(() {
-          if (rec != null && rec.success) {
-            _mlRecommendation = rec;
-            _mlPredictionResult = rec.data?.upstream != null ? rec : null;
-          }
-          _isLoadingLast = false;
-          _latestRecommendationError = null;
-          _latestRecommendationErrorCause = null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingLast = false;
-          _latestRecommendationError =
-              e.toString().replaceFirst('Exception: ', '');
-          _latestRecommendationErrorCause = e;
-        });
-      }
-    }
-  }
-
   bool _isNetworkError(Object? error) {
     return error != null && isNetworkRequestError(error);
-  }
-
-  bool get _showPredictionOfflinePage {
-    return _isNetworkError(_latestRecommendationErrorCause) &&
-        _mlRecommendation == null &&
-        _missingFields.isEmpty &&
-        !_isLoadingLast &&
-        !_isCheckingMl;
   }
 
   bool get _showMetricsOfflinePage {
@@ -257,180 +205,22 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     return _isNetworkError(_dashboardErrorCause) && _dashboardData != null;
   }
 
-  Future<void> _checkMlReadinessAndPredict() async {
-    if (!mounted) return;
-    setState(() {
-      _isCheckingMl = true;
-      _missingFields = [];
-    });
-    try {
-      final date = DateTime.now().toIso8601String().split('T').first;
-      final recommendationApi = ref.read(mlRecommendationApiProvider);
-      final readiness =
-          await ref.read(mlAssessmentApiProvider).fetchMlReadiness(date);
-
-      final isReady = readiness.ready;
-      if (isReady) {
-        final rec = await recommendationApi.fetchMlRecommendations(date);
-        if (mounted) {
-          setState(() {
-            // Kita map rec result sebagai prediction result jika available
-            if (rec.data?.upstream != null) {
-              _mlPredictionResult = rec;
-            }
-            _mlRecommendation = rec;
-            _isCheckingMl = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _missingFields = readiness.missingFields;
-            _isCheckingMl = false;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking ML readiness: $e');
-      if (mounted) {
-        setState(() {
-          _isCheckingMl = false;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleGenerateReport() async {
-    final repository = widget.reportRepository;
-    final data = _dashboardData;
-    if (repository == null) {
-      return;
-    }
-    if (data == null) {
-      return;
-    }
+  List<MlReadinessGroup> get _readinessGroups => const [];
 
-    await showPatientReportFlow(
-      context,
-      patientId: data.patient.id,
-      repository: repository,
-      onPrintRequested: widget.onPrintReport,
-    );
-  }
-
-  void _handleSearchChanged(String value) {
-    setState(() {});
-    widget.onSearchChanged?.call(value);
-  }
-
-  List<MlReadinessGroup> get _readinessGroups =>
-      buildMlReadinessGroups(_missingFields);
-
-  Future<void> _openMlQuestionnaireFromReadiness() async {
-    final session = await AppSessionStore.readSession(allowEnvFallback: false);
-    final token = session.token ?? '';
-    final userId = session.userId ?? '';
-
-    if (!mounted) return;
-
-    if (token.isEmpty || userId.isEmpty) {
-      AppToast.warning(
-        context,
-        'Sesi login tidak ditemukan. Silakan login ulang.',
-      );
-      return;
-    }
-
-    context.push(
-      '/home/ml-questionnaire',
-      extra: {
-        AppSessionStore.tokenPrefsKey: token,
-        AppSessionStore.userIdPrefsKey: userId,
-      },
-    );
-  }
-
-  void _openDiarySectionFromReadiness(String sectionTitle) {
-    ref.read(dashboardNavIndexProvider.notifier).state = 2;
-    ref.read(pendingDiarySectionProvider.notifier).state = sectionTitle;
-    context.go('/home');
-  }
-
-  Future<void> _handleReadinessGroupAction(MlReadinessGroup group) async {
-    switch (group.type) {
-      case MlReadinessGroupType.profile:
-        context.push('/home/update-profile');
-        return;
-      case MlReadinessGroupType.mlQuestionnaire:
-        await _openMlQuestionnaireFromReadiness();
-        return;
-      case MlReadinessGroupType.mlAssessment:
-        context.push('/home/patient-dashboard/ml-assessment');
-        return;
-      case MlReadinessGroupType.diaryBodyMetrics:
-      case MlReadinessGroupType.diaryConsumption:
-      case MlReadinessGroupType.diaryActivity:
-      case MlReadinessGroupType.diarySleep:
-      case MlReadinessGroupType.diarySymptoms:
-        final sectionTitle = group.diarySectionTitle;
-        if (sectionTitle == null || sectionTitle.trim().isEmpty) return;
-        _openDiarySectionFromReadiness(sectionTitle);
-        return;
-      case MlReadinessGroupType.unknown:
-        return;
-    }
-  }
+  Future<void> _handleReadinessGroupAction(MlReadinessGroup group) async {}
 
   IconData _readinessGroupIcon(MlReadinessGroupType type) {
-    switch (type) {
-      case MlReadinessGroupType.profile:
-        return Icons.person_outline_rounded;
-      case MlReadinessGroupType.mlQuestionnaire:
-        return Icons.assignment_ind_outlined;
-      case MlReadinessGroupType.mlAssessment:
-        return Icons.fact_check_outlined;
-      case MlReadinessGroupType.diaryBodyMetrics:
-        return Icons.favorite_border_rounded;
-      case MlReadinessGroupType.diaryConsumption:
-        return Icons.restaurant_menu_rounded;
-      case MlReadinessGroupType.diaryActivity:
-        return Icons.directions_walk_rounded;
-      case MlReadinessGroupType.diarySleep:
-        return Icons.bedtime_outlined;
-      case MlReadinessGroupType.diarySymptoms:
-        return Icons.healing_outlined;
-      case MlReadinessGroupType.unknown:
-        return Icons.info_outline_rounded;
-    }
+    return Icons.info_outline_rounded;
   }
 
   Color _readinessGroupAccent(MlReadinessGroupType type) {
-    switch (type) {
-      case MlReadinessGroupType.profile:
-        return const Color(0xFF7C3AED);
-      case MlReadinessGroupType.mlQuestionnaire:
-        return const Color(0xFF2563EB);
-      case MlReadinessGroupType.mlAssessment:
-        return const Color(0xFFE13D5A);
-      case MlReadinessGroupType.diaryBodyMetrics:
-        return const Color(0xFF0F766E);
-      case MlReadinessGroupType.diaryConsumption:
-        return const Color(0xFFEA580C);
-      case MlReadinessGroupType.diaryActivity:
-        return const Color(0xFF0284C7);
-      case MlReadinessGroupType.diarySleep:
-        return const Color(0xFF4F46E5);
-      case MlReadinessGroupType.diarySymptoms:
-        return const Color(0xFFDC2626);
-      case MlReadinessGroupType.unknown:
-        return const Color(0xFF64748B);
-    }
+    return const Color(0xFF64748B);
   }
 
   @override
@@ -440,18 +230,12 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
     final sidebar = _DashboardSidebar(
       data: data,
-      searchController: _searchController,
-      searchResults: widget.searchResults,
       selectedPeriod: _selectedPeriod,
-      onSearchChanged: _handleSearchChanged,
-      onPatientSelected: widget.onPatientSelected,
       onPeriodChanged: (period) {
         if (period == null) return;
         _loadDashboardData(period: period);
         widget.onTimePeriodChanged?.call(period);
       },
-      onGenerateReport:
-          widget.reportRepository == null ? null : _handleGenerateReport,
       onLogout: widget.onLogout,
       logoUrl: widget.logoUrl,
     );
@@ -460,13 +244,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: CustomAppBar(
         title: 'Dasbor Insight',
-        // subtitle: 'Hubungi segera jika diperlukan',
         showBackButton: true,
         onBackPressed: () => context.pop(),
-        action: IconButton(
-          icon: const Icon(Icons.print, color: Colors.white),
-          onPressed: () => context.push('/home/patient-dashboard/print'),
-        ),
       ),
       // drawer: isDesktop
       //     ? null
@@ -517,8 +296,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                           fontWeight: FontWeight.w300,
                                           fontSize: 17),
                                       tabs: [
-                                        Tab(text: 'Insight'),
-                                        Tab(text: 'Ringkasan Metrik'),
+                                        Tab(text: 'Ringkasan'),
+                                        Tab(text: 'Grafik Metrik'),
                                       ],
                                     ),
                                   ),
@@ -527,306 +306,12 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                             },
                             body: TabBarView(
                               children: [
-                                // Tab 1: Prediction results + Rekomendasi
                                 SingleChildScrollView(
                                   padding: const EdgeInsets.all(24),
-                                  child: _isLoadingLast
-                                      ? const Center(
-                                          child: Padding(
-                                            padding: EdgeInsets.all(40),
-                                            child: CircularProgressIndicator(
-                                              color: Color(0xFFE13D5A),
-                                            ),
-                                          ),
-                                        )
-                                      : _isCheckingMl
-                                          ? const Center(
-                                              child: Padding(
-                                                padding: EdgeInsets.all(40),
-                                                child: Column(
-                                                  children: [
-                                                    CircularProgressIndicator(
-                                                      color: Color(0xFFE13D5A),
-                                                    ),
-                                                    SizedBox(height: 16),
-                                                    Text(
-                                                      'Mengecek kelengkapan data dan\nmenyusun insight...',
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                          color: Colors.grey),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            )
-                                          : _showPredictionOfflinePage
-                                              ? NoConnectionState.card(
-                                                  title:
-                                                      'Insight belum bisa dimuat',
-                                                  message:
-                                                      'Kami belum bisa mengambil insight terbaru untuk saat ini karena koneksi internet tidak tersedia atau sedang tidak stabil.',
-                                                  onRetry: _fetchInitialData,
-                                                )
-                                              : _mlRecommendation != null
-                                                  ? Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        SizedBox(
-                                                          width:
-                                                              double.infinity,
-                                                          child: ElevatedButton
-                                                              .icon(
-                                                            style:
-                                                                ElevatedButton
-                                                                    .styleFrom(
-                                                              backgroundColor:
-                                                                  const Color(
-                                                                      0xFFE13D5A),
-                                                              foregroundColor:
-                                                                  Colors.white,
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          12),
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            12),
-                                                              ),
-                                                            ),
-                                                            onPressed:
-                                                                _checkMlReadinessAndPredict,
-                                                            icon: const Icon(
-                                                                Icons.refresh,
-                                                                size: 28),
-                                                            label: const Text(
-                                                                'Perbarui Insight',
-                                                                style: TextStyle(
-                                                                    fontSize:
-                                                                        18)),
-                                                          ),
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 12),
-                                                        Row(
-                                                          children: [
-                                                            Expanded(
-                                                              child:
-                                                                  OutlinedButton
-                                                                      .icon(
-                                                                style: OutlinedButton
-                                                                    .styleFrom(
-                                                                  foregroundColor:
-                                                                      const Color(
-                                                                          0xFFE13D5A),
-                                                                  side: const BorderSide(
-                                                                      color: Color(
-                                                                          0xFFE13D5A)),
-                                                                  padding: const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          12),
-                                                                  shape:
-                                                                      RoundedRectangleBorder(
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                            12),
-                                                                  ),
-                                                                ),
-                                                                onPressed: () =>
-                                                                    context.push(
-                                                                        '/home/patient-dashboard/ml-assessment'),
-                                                                icon: const Icon(
-                                                                    Icons
-                                                                        .edit_document,
-                                                                    size: 28),
-                                                                label: const Text(
-                                                                    'Isi Form',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            18)),
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                                width: 12),
-                                                            Expanded(
-                                                              child:
-                                                                  OutlinedButton
-                                                                      .icon(
-                                                                style: OutlinedButton
-                                                                    .styleFrom(
-                                                                  foregroundColor:
-                                                                      const Color(
-                                                                          0xFFE13D5A),
-                                                                  side: const BorderSide(
-                                                                      color: Color(
-                                                                          0xFFE13D5A)),
-                                                                  padding: const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          12),
-                                                                  shape:
-                                                                      RoundedRectangleBorder(
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(
-                                                                            12),
-                                                                  ),
-                                                                ),
-                                                                onPressed: () =>
-                                                                    context.push(
-                                                                        '/home/patient-dashboard/ml-recommendation-history'),
-                                                                icon: const Icon(
-                                                                    Icons
-                                                                        .history,
-                                                                    size: 28),
-                                                                label: const Text(
-                                                                    'Lihat Riwayat',
-                                                                    style: TextStyle(
-                                                                        fontSize:
-                                                                            18)),
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        const SizedBox(
-                                                            height: 24),
-                                                        if (_mlPredictionResult !=
-                                                            null) ...[
-                                                          SizedBox(
-                                                            width: fullWidth,
-                                                            child:
-                                                                PredictionMetricCard(
-                                                              title: 'Insight',
-                                                              icon: Icons
-                                                                  .insights_rounded,
-                                                              iconColor:
-                                                                  const Color(
-                                                                      0xFFE13D5A),
-                                                              description:
-                                                                  'Dihasilkan pada: ${_getGeneratedDateStr()}',
-                                                              score:
-                                                                  _getProbability(),
-                                                            ),
-                                                          ),
-                                                          const SizedBox(
-                                                              height: 24),
-                                                        ],
-                                                        _buildRekomendasiSection(
-                                                            _mlRecommendation),
-                                                      ],
-                                                    )
-                                                  : _missingFields.isNotEmpty
-                                                      ? _buildNotReadySection(
-                                                          fullWidth)
-                                                      : _latestRecommendationError !=
-                                                              null
-                                                          ? _buildPredictionErrorState(
-                                                              fullWidth,
-                                                            )
-                                                          : Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment
-                                                                      .start,
-                                                              children: [
-                                                                const SizedBox(
-                                                                    height: 24),
-                                                                Center(
-                                                                  child:
-                                                                      ElevatedButton
-                                                                          .icon(
-                                                                    style: ElevatedButton
-                                                                        .styleFrom(
-                                                                      backgroundColor:
-                                                                          const Color(
-                                                                              0xFFE13D5A),
-                                                                      foregroundColor:
-                                                                          Colors
-                                                                              .white,
-                                                                      padding:
-                                                                          const EdgeInsets
-                                                                              .symmetric(
-                                                                        horizontal:
-                                                                            24,
-                                                                        vertical:
-                                                                            16,
-                                                                      ),
-                                                                      shape:
-                                                                          RoundedRectangleBorder(
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(16),
-                                                                      ),
-                                                                    ),
-                                                                    onPressed:
-                                                                        _checkMlReadinessAndPredict,
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .analytics),
-                                                                    label:
-                                                                        const Text(
-                                                                      'Lihat Insight Hari Ini',
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            16,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(
-                                                                    height: 16),
-                                                                SizedBox(
-                                                                  width: double
-                                                                      .infinity,
-                                                                  child:
-                                                                      FilledButton
-                                                                          .icon(
-                                                                    onPressed: () =>
-                                                                        context.push(
-                                                                            '/home/patient-dashboard/ml-assessment'),
-                                                                    style: FilledButton
-                                                                        .styleFrom(
-                                                                      backgroundColor:
-                                                                          const Color(
-                                                                              0xFFE64060),
-                                                                      foregroundColor:
-                                                                          Colors
-                                                                              .white,
-                                                                      padding: const EdgeInsets
-                                                                          .symmetric(
-                                                                          vertical:
-                                                                              14),
-                                                                      shape:
-                                                                          RoundedRectangleBorder(
-                                                                        borderRadius:
-                                                                            BorderRadius.circular(14),
-                                                                      ),
-                                                                    ),
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .assignment_turned_in_rounded,
-                                                                        size:
-                                                                            18),
-                                                                    label:
-                                                                        const Text(
-                                                                      'Isi Form Insight',
-                                                                      style: TextStyle(
-                                                                          fontSize:
-                                                                              15,
-                                                                          fontWeight:
-                                                                              FontWeight.w700),
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
+                                  child: _buildWellnessInsightsTab(
+                                    data,
+                                    fullWidth,
+                                  ),
                                 ),
                                 // Tab 2: Dashboard charts and cards
                                 SingleChildScrollView(
@@ -1087,6 +572,302 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     );
   }
 
+  Widget _buildWellnessInsightsTab(
+    PatientDashboardData data,
+    double fullWidth,
+  ) {
+    if (_isLoadingDashboard && _dashboardData == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(40),
+          child: CircularProgressIndicator(color: Color(0xFFE13D5A)),
+        ),
+      );
+    }
+
+    if (_showMetricsOfflinePage) {
+      return NoConnectionState.card(
+        title: 'Ringkasan belum bisa dimuat',
+        message:
+            'Kami belum bisa mengambil ringkasan metrik untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+        onRetry: _loadDashboardData,
+      );
+    }
+
+    if (_dashboardError != null && _dashboardData == null) {
+      return Container(
+        width: fullWidth,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ringkasan belum tersedia',
+              style: TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _dashboardError ?? 'Gagal memuat data.',
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _loadDashboardData,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE13D5A),
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final heroSubtitle = _selectedPeriod?.label ?? 'Periode aktif';
+    final latestSummaryTime = _buildLatestSummaryTime(data);
+    final cardWidth = fullWidth >= 900 ? (fullWidth - 12) / 2 : fullWidth;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F3),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  heroSubtitle,
+                  style: const TextStyle(
+                    color: Color(0xFFE13D5A),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Ringkasan metrik terbaru',
+                style: TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                latestSummaryTime,
+                style: const TextStyle(
+                  color: Color(0xFF475569),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'PulseWise menampilkan catatan yang Anda simpan tanpa klasifikasi normal, bahaya, atau diagnosis.',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: cardWidth,
+              child: _WellnessHighlightCard(
+                title: 'Tekanan Darah Terakhir',
+                value: _latestBloodPressureText(data),
+                helper: 'Catatan terakhir yang tersedia',
+                icon: Icons.favorite_outline_rounded,
+                accentColor: const Color(0xFF2563EB),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _WellnessHighlightCard(
+                title: 'Detak Jantung Terakhir',
+                value: data.latestHeartRate == null
+                    ? '-'
+                    : '${data.latestHeartRate!.toStringAsFixed(0)} bpm',
+                helper: 'Catatan terakhir yang tersedia',
+                icon: Icons.monitor_heart_outlined,
+                accentColor: const Color(0xFFE13D5A),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _WellnessHighlightCard(
+                title: 'Berat Badan Terakhir',
+                value: data.latestWeight == null
+                    ? '-'
+                    : '${data.latestWeight!.toStringAsFixed(1)} kg',
+                helper: 'Gunakan grafik untuk melihat tren',
+                icon: Icons.monitor_weight_outlined,
+                accentColor: const Color(0xFFF59E0B),
+              ),
+            ),
+            SizedBox(
+              width: cardWidth,
+              child: _WellnessHighlightCard(
+                title: 'BMI Terakhir',
+                value: data.latestBmi == null
+                    ? '-'
+                    : data.latestBmi!.toStringAsFixed(1),
+                helper: 'Ditampilkan sebagai catatan pribadi',
+                icon: Icons.insights_outlined,
+                accentColor: const Color(0xFF0F766E),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Perbarui catatan harian',
+                      style: TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Tambahkan asupan, aktivitas, tidur, dan metrik agar grafik wellness Anda tetap terisi.',
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              FilledButton.icon(
+                onPressed: () {
+                  ref.read(dashboardNavIndexProvider.notifier).state = 2;
+                  context.go('/home');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFE13D5A),
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: const Text(
+                  'Buka Catatan',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _buildLatestSummaryTime(PatientDashboardData data) {
+    final dates = <DateTime>[
+      for (final point in data.heartRatePoints) point.timestamp,
+      for (final point in data.bloodPressurePoints) point.timestamp,
+      for (final point in data.spo2Points) point.timestamp,
+      for (final point in data.weightPoints) point.timestamp,
+      for (final point in data.bmiPoints) point.timestamp,
+    ]..sort((a, b) => b.compareTo(a));
+
+    if (dates.isEmpty) {
+      return 'Belum ada catatan metrik pada periode ini.';
+    }
+
+    final latest = dates.first;
+    final label = _selectedPeriod?.label ?? 'periode yang dipilih';
+    return 'Catatan terakhir tersedia pada ${_formatDashboardDateTime(latest)} untuk $label.';
+  }
+
+  String _latestBloodPressureText(PatientDashboardData data) {
+    final latest = data.latestBloodPressure;
+    if (latest == null) return '-';
+    return '${latest.systolic.toStringAsFixed(0)}/${latest.diastolic.toStringAsFixed(0)} mmHg';
+  }
+
+  String _formatDashboardDateTime(DateTime dateTime) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+
+    final month = months[dateTime.month - 1];
+    return '${dateTime.day} $month ${dateTime.year}, '
+        '${dateTime.hour.toString().padLeft(2, '0')}:'
+        '${dateTime.minute.toString().padLeft(2, '0')}';
+  }
+
   PatientDashboardData _emptyDashboardData(TimePeriodOption selectedPeriod) {
     return PatientDashboardData(
       patient: const PatientProfile(
@@ -1126,80 +907,6 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       weightThreshold: const WeightThreshold(
         dailyIncreaseCriticalKg: 2,
       ),
-    );
-  }
-
-  Widget _buildPredictionErrorState(double fullWidth) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: fullWidth,
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFFECACA)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Gagal memuat insight terbaru',
-                  style: TextStyle(
-                    color: Color(0xFFB91C1C),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _latestRecommendationError ??
-                      'Terjadi kendala saat memuat insight terbaru.',
-                  style: const TextStyle(
-                    color: Color(0xFF991B1B),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: _fetchInitialData,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFB91C1C),
-                    side: const BorderSide(color: Color(0xFFFCA5A5)),
-                  ),
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: const Text('Coba Lagi'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () =>
-                context.push('/home/patient-dashboard/ml-assessment'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFE64060),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            icon: const Icon(Icons.assignment_turned_in_rounded, size: 18),
-            label: const Text(
-              'Isi Form Insight',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1526,7 +1233,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                 ),
               ),
               onPressed: () {
-                context.push('/home/patient-dashboard/ml-assessment');
+                context.go('/home');
               },
               icon: const Icon(Icons.edit_document),
               label: const Text(
@@ -1852,25 +1559,15 @@ class WeightThreshold {
 class _DashboardSidebar extends StatelessWidget {
   const _DashboardSidebar({
     required this.data,
-    required this.searchController,
-    required this.searchResults,
     required this.selectedPeriod,
-    required this.onSearchChanged,
-    required this.onPatientSelected,
     required this.onPeriodChanged,
-    required this.onGenerateReport,
     required this.onLogout,
     required this.logoUrl,
   });
 
   final PatientDashboardData data;
-  final TextEditingController searchController;
-  final List<PatientSearchResult> searchResults;
   final TimePeriodOption? selectedPeriod;
-  final ValueChanged<String>? onSearchChanged;
-  final ValueChanged<PatientSearchResult>? onPatientSelected;
   final ValueChanged<TimePeriodOption?>? onPeriodChanged;
-  final VoidCallback? onGenerateReport;
   final VoidCallback? onLogout;
   final String? logoUrl;
 
@@ -1904,59 +1601,44 @@ class _DashboardSidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _SidebarLabel('Search Patient'),
+                  const _SidebarLabel('Akun Aktif'),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: searchController,
-                    onChanged: onSearchChanged,
-                    decoration: InputDecoration(
-                      hintText: 'Find patient...',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          data.patient.fullName.isEmpty
+                              ? 'Pengguna PulseWise'
+                              : data.patient.fullName,
+                          style: const TextStyle(
+                            color: Color(0xFF0F172A),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          data.patient.email?.trim().isNotEmpty == true
+                              ? data.patient.email!
+                              : 'Ringkasan wellness pribadi Anda',
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  if (searchController.text.isNotEmpty &&
-                      searchResults.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFF1F5F9)),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x14000000),
-                            blurRadius: 20,
-                            offset: Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: searchResults.length,
-                        separatorBuilder: (_, __) =>
-                            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                        itemBuilder: (context, index) {
-                          final item = searchResults[index];
-                          return ListTile(
-                            title: Text(item.name),
-                            subtitle: item.subtitle == null
-                                ? null
-                                : Text(item.subtitle!),
-                            onTap: () => onPatientSelected?.call(item),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 24),
-                  const _SidebarLabel('Time Period'),
+                  const _SidebarLabel('Rentang Waktu'),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: selectedPeriod?.id,
@@ -1984,20 +1666,6 @@ class _DashboardSidebar extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  FilledButton.icon(
-                    onPressed: onGenerateReport,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFE13D5A),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    icon: const Icon(Icons.description_rounded),
-                    label: const Text('Buat Ringkasan'),
-                  ),
-                  const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: onLogout,
                     style: OutlinedButton.styleFrom(
@@ -2489,53 +2157,30 @@ class _HeartRateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latest = data.latestHeartRate;
-    final latestColor = latest == null
-        ? const Color(0xFF1A202C)
-        : _heartRateValueColor(latest, data.heartRateThreshold);
-
     return _MetricCard(
-      title: 'Heart Rate',
+      title: 'Detak Jantung',
       icon: Icons.favorite_rounded,
       iconColor: const Color(0xFFE13D5A),
       legend: const _ChartLegend(items: [
-        ChartLegendItem(color: Color(0xFF2563EB), label: 'Normal'),
-        ChartLegendItem(color: Color(0xFFDC2626), label: 'Out of range'),
+        ChartLegendItem(color: Color(0xFFE13D5A), label: 'Catatan'),
       ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
-        label: 'Latest Reading',
+        label: 'Catatan Terakhir',
         value: latest?.toStringAsFixed(0) ?? '-',
         unit: 'bpm',
-        valueColor: latestColor,
+        valueColor: const Color(0xFF1A202C),
       ),
       chart: data.heartRatePoints.isEmpty
-          ? const _EmptyChartPlaceholder(label: 'No heart rate data')
+          ? const _EmptyChartPlaceholder(label: 'Belum ada data detak jantung')
           : _ThresholdLineChart(
               points: data.heartRatePoints,
-              minY: math
-                  .min(50.0, data.heartRateThreshold.normalMin - 15)
-                  .toDouble(),
-              maxY: math
-                  .max(120.0, data.heartRateThreshold.normalMax + 15)
-                  .toDouble(),
-              horizontalLines: [
-                data.heartRateThreshold.normalMin,
-                data.heartRateThreshold.normalMax,
-              ],
+              minY: _dynamicMin(data.heartRatePoints, fallback: 50),
+              maxY: _dynamicMax(data.heartRatePoints, fallback: 120),
               lineBars: _buildSegmentBars(
                 points: data.heartRatePoints,
-                segmentColor: (index, current, previous) {
-                  return _heartRateChartColor(
-                    current.value,
-                    data.heartRateThreshold,
-                  );
-                },
-                dotColor: (index, point) {
-                  return _heartRateChartColor(
-                    point.value,
-                    data.heartRateThreshold,
-                  );
-                },
+                segmentColor: (_, __, ___) => const Color(0xFFE13D5A),
+                dotColor: (_, __) => const Color(0xFFE13D5A),
               ),
               yTitle: 'bpm',
             ),
@@ -2551,14 +2196,6 @@ class _BloodPressureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latest = data.latestBloodPressure;
-    final latestColor = latest == null
-        ? const Color(0xFF1A202C)
-        : _bloodPressureValueColor(
-            latest.systolic,
-            latest.diastolic,
-            data.bloodPressureThreshold,
-          );
-
     final values = data.bloodPressurePoints;
     final allNumbers = [
       for (final point in values) point.systolic,
@@ -2566,25 +2203,25 @@ class _BloodPressureCard extends StatelessWidget {
     ];
 
     return _MetricCard(
-      title: 'Blood Pressure',
+      title: 'Tekanan Darah',
       icon: Icons.monitor_heart,
-      iconColor: Colors.blue,
+      iconColor: const Color(0xFF2563EB),
       legend: const _ChartLegend(items: [
-        ChartLegendItem(color: Color(0xFF2563EB), label: 'Systolic'),
-        ChartLegendItem(color: Color(0xFF10B981), label: 'Diastolic'),
+        ChartLegendItem(color: Color(0xFF2563EB), label: 'Sistolik'),
+        ChartLegendItem(color: Color(0xFF0F766E), label: 'Diastolik'),
       ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
-        label: 'Latest Reading',
+        label: 'Catatan Terakhir',
         value: latest == null
             ? '-'
             : '${latest.systolic.toStringAsFixed(0)}/${latest.diastolic.toStringAsFixed(0)}',
         unit: 'mmHg',
-        valueColor: latestColor,
+        valueColor: const Color(0xFF1A202C),
         compact: true,
       ),
       chart: values.isEmpty
-          ? const _EmptyChartPlaceholder(label: 'No blood pressure data')
+          ? const _EmptyChartPlaceholder(label: 'Belum ada data tekanan darah')
           : _ThresholdLineChart(
               points: values
                   .map((point) => ChartPoint(
@@ -2593,11 +2230,6 @@ class _BloodPressureCard extends StatelessWidget {
               minY:
                   math.max(40.0, (allNumbers.reduce(math.min) - 20)).toDouble(),
               maxY: allNumbers.reduce(math.max) + 20,
-              horizontalLines: [
-                data.bloodPressureThreshold.normalSystolicMax,
-                data.bloodPressureThreshold.stage1SystolicMin,
-                data.bloodPressureThreshold.stage2SystolicMin,
-              ],
               lineBars: [
                 ..._buildSegmentBars(
                   points: values
@@ -2608,22 +2240,8 @@ class _BloodPressureCard extends StatelessWidget {
                         ),
                       )
                       .toList(),
-                  segmentColor: (index, current, previous) {
-                    final raw = values[index];
-                    return _systolicChartColor(
-                      raw.systolic,
-                      raw.diastolic,
-                      data.bloodPressureThreshold,
-                    );
-                  },
-                  dotColor: (index, point) {
-                    final raw = values[index];
-                    return _systolicChartColor(
-                      raw.systolic,
-                      raw.diastolic,
-                      data.bloodPressureThreshold,
-                    );
-                  },
+                  segmentColor: (_, __, ___) => const Color(0xFF2563EB),
+                  dotColor: (_, __) => const Color(0xFF2563EB),
                 ),
                 ..._buildSegmentBars(
                   points: values
@@ -2634,22 +2252,8 @@ class _BloodPressureCard extends StatelessWidget {
                         ),
                       )
                       .toList(),
-                  segmentColor: (index, current, previous) {
-                    final raw = values[index];
-                    return _diastolicChartColor(
-                      raw.systolic,
-                      raw.diastolic,
-                      data.bloodPressureThreshold,
-                    );
-                  },
-                  dotColor: (index, point) {
-                    final raw = values[index];
-                    return _diastolicChartColor(
-                      raw.systolic,
-                      raw.diastolic,
-                      data.bloodPressureThreshold,
-                    );
-                  },
+                  segmentColor: (_, __, ___) => const Color(0xFF0F766E),
+                  dotColor: (_, __) => const Color(0xFF0F766E),
                 ),
               ],
               yTitle: 'mmHg',
@@ -2666,44 +2270,31 @@ class _Spo2Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latest = data.latestSpo2;
-    final latestColor = latest == null
-        ? const Color(0xFF1A202C)
-        : _spo2ValueColor(latest, data.spo2Threshold);
-
     return _MetricCard(
-      title: 'Oxygen Saturation (SpO2)',
+      title: 'Saturasi Oksigen',
       icon: Icons.bubble_chart,
-      iconColor: Colors.green[700]!,
+      iconColor: const Color(0xFF0EA5E9),
       legend: const _ChartLegend(items: [
-        ChartLegendItem(color: Color(0xFF2563EB), label: 'Normal'),
-        ChartLegendItem(color: Color(0xFFFCD34D), label: 'Caution'),
-        ChartLegendItem(color: Color(0xFFDC2626), label: 'Critical'),
+        ChartLegendItem(color: Color(0xFF0EA5E9), label: 'Catatan'),
       ]),
       chartHeight: 220,
       leadingPanel: _LatestValuePanel(
-        label: 'Latest SpO2',
+        label: 'Catatan Terakhir',
         value: latest?.toStringAsFixed(0) ?? '-',
         unit: '%',
-        valueColor: latestColor,
+        valueColor: const Color(0xFF1A202C),
       ),
       chart: data.spo2Points.isEmpty
-          ? const _EmptyChartPlaceholder(label: 'No SpO2 data')
+          ? const _EmptyChartPlaceholder(
+              label: 'Belum ada data saturasi oksigen')
           : _ThresholdLineChart(
               points: data.spo2Points,
               minY: 80,
               maxY: 100,
-              horizontalLines: [
-                data.spo2Threshold.criticalThreshold,
-                data.spo2Threshold.cautionThreshold,
-              ],
               lineBars: _buildSegmentBars(
                 points: data.spo2Points,
-                segmentColor: (index, current, previous) {
-                  return _spo2ChartColor(current.value, data.spo2Threshold);
-                },
-                dotColor: (index, point) {
-                  return _spo2ChartColor(point.value, data.spo2Threshold);
-                },
+                segmentColor: (_, __, ___) => const Color(0xFF0EA5E9),
+                dotColor: (_, __) => const Color(0xFF0EA5E9),
               ),
               yTitle: '%',
             ),
@@ -2719,25 +2310,16 @@ class _WeightAndBodyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final latestWeight = data.latestWeight;
-    final latestWeightColor = latestWeight == null
-        ? const Color(0xFF1A202C)
-        : _weightColor(
-            latestWeight,
-            data.latestWeightPrevious,
-            data.weightThreshold,
-          );
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 760;
 
         final weightCard = _MetricCard(
-          title: 'Weight',
+          title: 'Berat Badan',
           icon: Icons.monitor_weight_outlined,
-          iconColor: Colors.yellow[700]!,
+          iconColor: const Color(0xFFF59E0B),
           legend: const _ChartLegend(items: [
-            ChartLegendItem(color: Color(0xFF2563EB), label: 'Recent'),
-            ChartLegendItem(color: Color(0xFFE13D5A), label: 'Large change'),
+            ChartLegendItem(color: Color(0xFFF59E0B), label: 'Catatan'),
           ]),
           chartHeight: 190,
           verticalBody: true,
@@ -2747,8 +2329,8 @@ class _WeightAndBodyCard extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: latestWeight?.toStringAsFixed(1) ?? '-',
-                    style: TextStyle(
-                      color: latestWeightColor,
+                    style: const TextStyle(
+                      color: Color(0xFF1A202C),
                       fontSize: 42,
                       fontWeight: FontWeight.w800,
                     ),
@@ -2766,29 +2348,16 @@ class _WeightAndBodyCard extends StatelessWidget {
             ),
           ),
           chart: data.weightPoints.isEmpty
-              ? const _EmptyChartPlaceholder(label: 'No weight data')
+              ? const _EmptyChartPlaceholder(
+                  label: 'Belum ada data berat badan')
               : _ThresholdLineChart(
                   points: data.weightPoints,
                   minY: _dynamicMin(data.weightPoints, fallback: 60),
                   maxY: _dynamicMax(data.weightPoints, fallback: 100),
                   lineBars: _buildSegmentBars(
                     points: data.weightPoints,
-                    segmentColor: (index, current, previous) {
-                      return _weightColor(
-                        current.value,
-                        previous?.value,
-                        data.weightThreshold,
-                      );
-                    },
-                    dotColor: (index, point) {
-                      final previous =
-                          index > 0 ? data.weightPoints[index - 1].value : null;
-                      return _weightColor(
-                        point.value,
-                        previous,
-                        data.weightThreshold,
-                      );
-                    },
+                    segmentColor: (_, __, ___) => const Color(0xFFF59E0B),
+                    dotColor: (_, __) => const Color(0xFFF59E0B),
                   ),
                   yTitle: 'kg',
                 ),
@@ -3003,6 +2572,77 @@ class _LatestValuePanel extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _WellnessHighlightCard extends StatelessWidget {
+  const _WellnessHighlightCard({
+    required this.title,
+    required this.value,
+    required this.helper,
+    required this.icon,
+    required this.accentColor,
+  });
+
+  final String title;
+  final String value;
+  final String helper;
+  final IconData icon;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: accentColor),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            helper,
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

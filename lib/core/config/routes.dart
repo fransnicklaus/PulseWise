@@ -15,19 +15,15 @@ import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flu
 import 'package:pulsewise/features/home_dashboard/presentation/pages/wellness_disclaimer_page.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/pages/contacts_page.dart';
 import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
-import 'package:pulsewise/features/ml_assessment/presentation/pages/patient_ml_assessment_page.dart';
-import 'package:pulsewise/features/ml_recommendation/presentation/pages/ml_recommendation_history_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/add_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/manage_pengingat_page.dart';
-import 'package:pulsewise/features/ml_questionnaire/presentation/pages/ml_questionnaire_route_resolver_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/date_time_picker_demo_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/delete_account_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/about_app_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
-import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
   return GoRouter(
@@ -186,22 +182,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             builder: (context, state) => const DateTimePickerDemoPage(),
           ),
           GoRoute(
-            path: 'ml-questionnaire',
-            builder: (context, state) {
-              final extra = state.extra;
-              if (extra is Map<String, dynamic>) {
-                return MlQuestionnaireRouteResolverPage(
-                  tokenOverride:
-                      (extra[AppSessionStore.tokenPrefsKey] ?? '').toString(),
-                  patientIdOverride:
-                      (extra[AppSessionStore.userIdPrefsKey] ?? '').toString(),
-                );
-              }
-
-              return const MlQuestionnaireRouteResolverPage();
-            },
-          ),
-          GoRoute(
             path: 'delete-account',
             builder: (context, state) => const DeleteAccountPage(),
           ),
@@ -251,21 +231,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             path: 'patient-dashboard',
             builder: (context, state) =>
                 const patient_ui.PatientDashboardPage(),
-            routes: [
-              GoRoute(
-                path: 'ml-assessment',
-                builder: (context, state) => const PatientMlAssessmentPage(),
-              ),
-              GoRoute(
-                path: 'ml-recommendation-history',
-                builder: (context, state) =>
-                    const MlRecommendationHistoryPage(),
-              ),
-              GoRoute(
-                path: 'print',
-                builder: (context, state) => const PrintPage(),
-              ),
-            ],
           ),
         ],
       ),

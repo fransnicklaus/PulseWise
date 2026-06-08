@@ -15,8 +15,6 @@ import 'package:pulsewise/features/medication/presentation/providers/medication_
 import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/medication/presentation/utils/medication_status_ui.dart';
 import 'package:pulsewise/features/medication/presentation/widgets/medication_status_bottom_sheet.dart';
-import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
-import 'package:pulsewise/features/ml_recommendation/presentation/providers/ml_recommendation_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 class BerandaTab extends ConsumerStatefulWidget {
@@ -28,7 +26,7 @@ class BerandaTab extends ConsumerStatefulWidget {
 
 class _BerandaTabState extends ConsumerState<BerandaTab>
     with AutomaticKeepAliveClientMixin {
-  static const double _healthStatusContentHeight = 248;
+  static const double _healthStatusContentHeight = 280;
 
   @override
   bool get wantKeepAlive => true;
@@ -99,7 +97,6 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
   }
 
   void _retryHealthStatusSection() {
-    ref.invalidate(latestMlRecommendationProvider);
     ref.invalidate(quickDashboardProvider);
   }
 
@@ -113,9 +110,6 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     await Future.wait([
       _refreshProviderSilently(
         () => ref.refresh(authMeProvider.future),
-      ),
-      _refreshProviderSilently(
-        () => ref.refresh(latestMlRecommendationProvider.future),
       ),
       _refreshProviderSilently(
         () => ref.refresh(quickDashboardProvider.future),
@@ -203,33 +197,24 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
   // }
 
   Widget _buildHealthStatusContent({
-    required AsyncValue<MlRecommendationResponse?> latestRecommendation,
     required AsyncValue<QuickDashboardResponse?> quickDashboard,
   }) {
     if (_healthStatusIndex == 0) {
-      return _buildLatestRecommendationTab(
-          latestRecommendation, quickDashboard);
+      return _buildWellnessOverviewTab(quickDashboard);
     }
     return _buildLatestVitalsTab(quickDashboard);
   }
 
   bool _shouldShowHealthRefreshNoConnectionNotice({
-    required AsyncValue<MlRecommendationResponse?> latestRecommendation,
     required AsyncValue<QuickDashboardResponse?> quickDashboard,
   }) {
-    if (_healthStatusIndex == 0) {
-      return _hasNoConnectionErrorWithValue(latestRecommendation) ||
-          _hasNoConnectionErrorWithValue(quickDashboard);
-    }
-
     return _hasNoConnectionErrorWithValue(quickDashboard);
   }
 
-  Widget _buildLatestRecommendationTab(
-    AsyncValue<MlRecommendationResponse?> latestRecommendation,
+  Widget _buildWellnessOverviewTab(
     AsyncValue<QuickDashboardResponse?> quickDashboard,
   ) {
-    if (_isInitialSectionLoading(latestRecommendation)) {
+    if (_isInitialSectionLoading(quickDashboard)) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 18),
@@ -238,125 +223,96 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
       );
     }
 
-    if (_isNoConnectionAsyncError(latestRecommendation)) {
+    if (_isNoConnectionAsyncError(quickDashboard)) {
       return NoConnectionState.card(
         title: 'Insight belum bisa dimuat',
         message:
-            'Kami belum bisa mengambil ringkasan insight terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            'Kami belum bisa mengambil ringkasan catatan terbaru karena koneksi internet tidak tersedia atau sedang tidak stabil.',
         onRetry: _retryHealthStatusSection,
       );
     }
 
-    if (_hasNonNetworkErrorWithoutValue(latestRecommendation)) {
+    if (_hasNonNetworkErrorWithoutValue(quickDashboard)) {
       return const _HealthStatusEmptyState(
-        title: 'Gagal memuat insight',
+        title: 'Gagal memuat ringkasan',
         subtitle: 'Tarik ke bawah untuk memuat ulang.',
       );
     }
 
-    final recommendation = latestRecommendation.valueOrNull;
-    final rawRisk =
-        recommendation?.data?.upstream?.body?.recommendationResult.currentRisk;
-    final hasRisk = rawRisk != null;
-    final risk = hasRisk ? rawRisk.toDouble().clamp(0, 100).toDouble() : 0.0;
-    final progress = hasRisk ? (risk / 100).clamp(0.0, 1.0) : 0.0;
-    final riskText = hasRisk ? '${risk.toStringAsFixed(1)}%' : '';
-    final riskStyle = hasRisk
-        ? _riskStyleForScore(risk)
-        : const _RiskStyle(
-            accentColor: Color(0xFFE64060),
-            backgroundColor: Color(0xFFFFF7F8),
-            borderColor: Color(0xFFFFD6DD),
-          );
     final quickDashboardData = quickDashboard.valueOrNull?.data;
+    final latestMeasuredAt = _latestDashboardMeasuredAt(quickDashboardData);
+    final trackedMetricsCount = _trackedMetricCount(quickDashboardData);
 
     final topCard = SizedBox(
-      height: 96,
+      height: 128,
       child: Container(
         padding:
             const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 16),
         decoration: BoxDecoration(
-          color: hasRisk ? riskStyle.backgroundColor : const Color(0xFFF8FAFC),
+          color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: hasRisk ? riskStyle.borderColor : const Color(0xFFE2E8F0),
+            color: const Color(0xFFE2E8F0),
           ),
         ),
-        child: hasRisk
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Skor Insight',
-                          style: TextStyle(
-                            color: Color(0xFF525252),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        riskText,
-                        style: TextStyle(
-                          color: riskStyle.accentColor,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      minHeight: 11,
-                      value: progress,
-                      backgroundColor: const Color(0xFFF3F4F6),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        riskStyle.accentColor,
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : const SizedBox.expand(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Belum ada insight terbaru',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF334155),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Perbarui insight untuk melihat ringkasan pola terbaru Anda.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Ringkasan Catatan Terbaru',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$trackedMetricsCount metrik',
+                    style: const TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              latestMeasuredAt == null
+                  ? 'Belum ada catatan metrik terbaru yang tersimpan.'
+                  : 'Terakhir diperbarui pada ${_formatMeasuredTime(latestMeasuredAt)}.',
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
               ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'PulseWise menampilkan catatan terakhir Anda secara netral tanpa interpretasi medis.',
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -368,6 +324,22 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
         _buildRecommendationVitalsRow(quickDashboardData),
       ],
     );
+  }
+
+  int _trackedMetricCount(QuickDashboardData? dashboardData) {
+    const fields = [
+      'systolicBp',
+      'diastolicBp',
+      'heartRate',
+      'oxygenSaturation',
+      'weight',
+      'height',
+      'bmi',
+    ];
+
+    return fields
+        .where((field) => _fieldValue(dashboardData, field) != null)
+        .length;
   }
 
   Widget _buildRecommendationVitalsRow(QuickDashboardData? dashboardData) {
@@ -763,11 +735,9 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
     final calendarQuery = _upcomingMedicationQuery();
     final upcomingMedicationAsync =
         ref.watch(medicationCalendarRangeProvider(calendarQuery));
-    final latestRecommendationAsync = ref.watch(latestMlRecommendationProvider);
     final quickDashboardAsync = ref.watch(quickDashboardProvider);
     final showHealthRefreshNoConnectionNotice =
         _shouldShowHealthRefreshNoConnectionNotice(
-      latestRecommendation: latestRecommendationAsync,
       quickDashboard: quickDashboardAsync,
     );
     double topPadding = MediaQuery.of(context).padding.top;
@@ -1059,7 +1029,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                           CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'Status Kesehatan',
+                                          'Ringkasan Wellness',
                                           style: TextStyle(
                                             color: Color(0xFF525252),
                                             fontSize: 22,
@@ -1067,7 +1037,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                           ),
                                         ),
                                         Text(
-                                          'Status kesehatan terbaru',
+                                          'Catatan terbaru Anda',
                                           style: const TextStyle(
                                             color: Color(0xFF62748E),
                                             fontSize: 14,
@@ -1121,7 +1091,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                           NoConnectionState.compact(
                             title: 'Koneksi terputus',
                             message:
-                                'Menampilkan data kesehatan terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui data terbaru.',
+                                'Menampilkan catatan terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui data terbaru.',
                             onRetry: _retryHealthStatusSection,
                           ),
                           const SizedBox(height: 16),
@@ -1161,7 +1131,6 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                             width: double.infinity,
                             height: _healthStatusContentHeight,
                             child: _buildHealthStatusContent(
-                              latestRecommendation: latestRecommendationAsync,
                               quickDashboard: quickDashboardAsync,
                             ),
                           ),
@@ -1777,42 +1746,6 @@ class _HomeMedicationTile extends StatelessWidget {
   String _doseText(num dose) {
     return dose % 1 == 0 ? dose.toInt().toString() : dose.toString();
   }
-}
-
-_RiskStyle _riskStyleForScore(double score) {
-  if (score < 60) {
-    return const _RiskStyle(
-      accentColor: Color(0xFF15803D),
-      backgroundColor: Color(0xFFF0FDF4),
-      borderColor: Color(0xFFBBF7D0),
-    );
-  }
-
-  if (score < 80) {
-    return const _RiskStyle(
-      accentColor: Color(0xFFF97316),
-      backgroundColor: Color(0xFFFFF7ED),
-      borderColor: Color(0xFFFED7AA),
-    );
-  }
-
-  return const _RiskStyle(
-    accentColor: Color(0xFFDC2626),
-    backgroundColor: Color(0xFFFEF2F2),
-    borderColor: Color(0xFFFECACA),
-  );
-}
-
-class _RiskStyle {
-  const _RiskStyle({
-    required this.accentColor,
-    required this.backgroundColor,
-    required this.borderColor,
-  });
-
-  final Color accentColor;
-  final Color backgroundColor;
-  final Color borderColor;
 }
 
 Color _resolveColor(String raw) {

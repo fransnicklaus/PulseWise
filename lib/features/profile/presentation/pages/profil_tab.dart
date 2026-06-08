@@ -456,30 +456,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     AppToast.success(context, 'Token disalin dan dicetak ke debugger.');
   }
 
-  Future<void> _goToMlQuestionnaire() async {
-    final session = await AppSessionStore.readSession(allowEnvFallback: false);
-    final token = session.token ?? '';
-    final userId = session.userId ?? '';
-
-    if (!mounted) return;
-
-    if (token.isEmpty || userId.isEmpty) {
-      AppToast.warning(
-        context,
-        'Sesi login tidak ditemukan. Silakan login ulang.',
-      );
-      return;
-    }
-
-    context.push(
-      '/home/ml-questionnaire',
-      extra: {
-        AppSessionStore.tokenPrefsKey: token,
-        AppSessionStore.userIdPrefsKey: userId,
-      },
-    );
-  }
-
   Future<void> _openPrivacyPolicy() async {
     if (await canLaunchUrl(_privacyPolicyUri)) {
       await launchUrl(_privacyPolicyUri, mode: LaunchMode.externalApplication);
@@ -992,10 +968,6 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           _ActionRow(
                             label: 'Edit Profil',
                             onTap: () => context.push('/home/update-profile'),
-                          ),
-                          _ActionRow(
-                            label: 'Isi Kuesioner Insight',
-                            onTap: _goToMlQuestionnaire,
                           ),
                           _ActionRow(
                             label: 'Hapus Akun Permanen',

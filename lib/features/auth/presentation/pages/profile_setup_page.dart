@@ -297,100 +297,10 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       if (!mounted) return;
 
       AppToast.success(context, 'Profil berhasil dilengkapi');
-      final wantsMlQuestionnaire = await showModalBottomSheet<bool>(
-        context: context,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (sheetContext) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Kuesioner Insight Harian',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Apakah Anda ingin mengisi kuesioner untuk membantu menyusun insight dan ringkasan pribadi Anda?',
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF475569),
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE64060),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Ya, Isi Kuesioner',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(false),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF334155),
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Tidak, Lanjut ke Beranda',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
-
-      if (!mounted) return;
-
-      if (wantsMlQuestionnaire == true) {
-        _goSafely(
-          '/home/ml-questionnaire',
-          extra: {
-            AppSessionStore.tokenPrefsKey: widget.token,
-            AppSessionStore.userIdPrefsKey: widget.patientId,
-          },
-        );
-      } else {
-        ref.read(previousNavIndexProvider.notifier).state = 0;
-        ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-        _goSafely('/home');
-      }
+      ref.read(previousNavIndexProvider.notifier).state = 0;
+      ref.read(dashboardNavIndexProvider.notifier).state = 0;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+      _goSafely('/home');
     } catch (e) {
       if (!mounted) return;
       AppToast.error(context, _extractApiError(e));
