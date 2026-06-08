@@ -14,7 +14,6 @@ import 'package:pulsewise/features/home_dashboard/presentation/pages/patient_flu
     as patient_ui;
 import 'package:pulsewise/features/home_dashboard/presentation/pages/wellness_disclaimer_page.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/pages/contacts_page.dart';
-import 'package:pulsewise/features/health_connect/presentation/pages/health_connect_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/add_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/detail_pengingat_page.dart';
 import 'package:pulsewise/features/medication/presentation/pages/edit_pengingat_page.dart';
@@ -164,10 +163,6 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           GoRoute(
             path: 'add-diary',
             builder: (context, state) => const AddDiaryPage(),
-          ),
-          GoRoute(
-            path: 'health-connect',
-            builder: (context, state) => const HealthConnectPage(),
           ),
           GoRoute(
             path: 'wellness-disclaimer',

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
@@ -108,7 +109,8 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
       } else {
         ref.read(previousNavIndexProvider.notifier).state = 0;
         ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+        ref.read(healthConnectLoginPromptArmedProvider.notifier).state =
+            isHealthConnectEnabledForRelease;
       }
       AppToast.success(context, 'Email berhasil diverifikasi');
       context.go(

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -299,7 +300,8 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       AppToast.success(context, 'Profil berhasil dilengkapi');
       ref.read(previousNavIndexProvider.notifier).state = 0;
       ref.read(dashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state =
+          isHealthConnectEnabledForRelease;
       _goSafely('/home');
     } catch (e) {
       if (!mounted) return;

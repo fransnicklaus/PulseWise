@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="health_permissions">
-        <item>android.permission.health.READ_STEPS</item>
-        <item>android.permission.health.READ_EXERCISE</item>
-        <item>android.permission.health.READ_HEART_RATE</item>
-        <item>android.permission.health.READ_SLEEP</item>
-    </string-array>
+    <!-- Health Connect disabled for Play Store release. -->
+    <string-array name="health_permissions"></string-array>
 </resources>

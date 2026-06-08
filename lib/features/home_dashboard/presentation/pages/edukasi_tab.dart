@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/education/data/models/education_models.dart';
@@ -286,14 +287,14 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: _WearableConnectionCard(
-              initiallyExpanded: false,
-            ),
-          ),
+          // const Padding(
+          //   padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
+          //   child: _WearableConnectionCard(
+          //     initiallyExpanded: false,
+          //   ),
+          // ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 0),
             child: SizedBox(
               height: 48,
               child: TextField(
@@ -305,12 +306,13 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
                   hintText: 'Cari Artikel',
                   hintStyle: const TextStyle(
                     color: Color(0xFF94A3B8),
-                    fontSize: 16,
+                    fontSize: 19,
                     fontWeight: FontWeight.w600,
                   ),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: Color(0xFF94A3B8),
+                    size: 22,
                   ),
                   suffixIcon: _searchController.text.trim().isEmpty
                       ? null
@@ -599,6 +601,9 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
 
   @override
   Widget build(BuildContext context) {
+    if (!isHealthConnectEnabledForRelease) {
+      return const SizedBox.shrink();
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),

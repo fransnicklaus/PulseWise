@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/storage/wellness_disclaimer_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
@@ -49,7 +50,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleReminderNotification();
       _ensureWellnessDisclaimerAcknowledged();
-      _triggerHealthConnectSync();
+      if (isHealthConnectEnabledForRelease) {
+        _triggerHealthConnectSync();
+      }
     });
   }
 
@@ -63,13 +66,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (isHealthConnectEnabledForRelease &&
+        state == AppLifecycleState.resumed) {
       debugPrint('[DashboardPage] App resumed — triggering HC sync');
       _triggerHealthConnectSync();
     }
   }
 
   Future<void> _triggerHealthConnectSync() async {
+    if (!isHealthConnectEnabledForRelease) {
+      debugPrint('[DashboardPage] HC sync disabled for release.');
+      return;
+    }
     try {
       final profile = await _resolvePatientProfileForHealthConnect();
       if (profile == null) {
@@ -133,6 +141,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Future<void> _maybeHandleHealthConnectPrompt(
     PatientProfile profile,
   ) async {
+    if (!isHealthConnectEnabledForRelease) {
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      return;
+    }
     if (_isHandlingHealthConnectPrompt) return;
 
     final promptArmed = ref.read(healthConnectLoginPromptArmedProvider);
@@ -490,7 +502,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   @override
   Widget build(BuildContext context) {
     final navIndex = ref.watch(dashboardNavIndexProvider);
-    final promptArmed = ref.watch(healthConnectLoginPromptArmedProvider);
+    final promptArmed = isHealthConnectEnabledForRelease
+        ? ref.watch(healthConnectLoginPromptArmedProvider)
+        : false;
     final profileAsync = ref.watch(patientProfileProvider);
     final canShowFollowUpPrompts =
         _didResolveWellnessDisclaimer && _hasAcknowledgedWellnessDisclaimer;

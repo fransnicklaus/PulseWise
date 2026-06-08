@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/auth/presentation/widgets/google_sign_in_entry_button.dart';
@@ -63,7 +64,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.read(previousNavIndexProvider.notifier).state = 0;
     ref.read(dashboardNavIndexProvider.notifier).state = 0;
-    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+    ref.read(healthConnectLoginPromptArmedProvider.notifier).state =
+        isHealthConnectEnabledForRelease;
     ref.invalidate(authMeProvider);
     ref.invalidate(patientProfileProvider);
     context.go(targetRoute);

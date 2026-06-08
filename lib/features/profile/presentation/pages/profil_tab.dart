@@ -9,6 +9,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
@@ -979,7 +980,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                         ],
                       ),
-                      if (isAdminViewer) ...[
+                      if (isAdminViewer &&
+                          isHealthConnectEnabledForRelease) ...[
                         const SizedBox(height: 14),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),

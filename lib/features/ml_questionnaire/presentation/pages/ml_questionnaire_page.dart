@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/constants/release_feature_flags.dart';
 import 'package:pulsewise/core/data/ml_mapping.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
@@ -112,7 +113,8 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
           );
 
       if (!mounted) return;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state =
+          isHealthConnectEnabledForRelease;
       _goHomeSafely();
     } catch (e) {
       if (!mounted) return;
