@@ -228,7 +228,7 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             builder: (context, state) => const ManagePengingatPage(),
           ),
           GoRoute(
-            path: 'patient-dashboard',
+            path: 'wellness-dashboard',
             builder: (context, state) =>
                 const patient_ui.PatientDashboardPage(),
           ),

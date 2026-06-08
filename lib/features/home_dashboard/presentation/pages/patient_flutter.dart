@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:pulsewise/core/data/ml_readiness_mapping.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
@@ -15,7 +14,6 @@ import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboa
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
-import 'package:pulsewise/features/reports/presentation/pages/report_generator_flutter.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
 
 class PatientDashboardPage extends ConsumerStatefulWidget {
@@ -28,8 +26,6 @@ class PatientDashboardPage extends ConsumerStatefulWidget {
     this.onPatientSelected,
     this.onTimePeriodChanged,
     this.onLogout,
-    this.reportRepository,
-    this.onPrintReport,
   });
 
   final PatientDashboardData? data;
@@ -39,8 +35,6 @@ class PatientDashboardPage extends ConsumerStatefulWidget {
   final ValueChanged<PatientSearchResult>? onPatientSelected;
   final ValueChanged<TimePeriodOption?>? onTimePeriodChanged;
   final VoidCallback? onLogout;
-  final PatientReportRepository? reportRepository;
-  final VoidCallback? onPrintReport;
 
   @override
   ConsumerState<PatientDashboardPage> createState() =>
@@ -63,9 +57,6 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     TimePeriodOption(id: 'last_6_months', label: '6 Bulan Kebelakang'),
     TimePeriodOption(id: 'all', label: 'Semua Data'),
   ];
-
-  final List<String> _missingFields = [];
-
   @override
   void initState() {
     super.initState();
@@ -212,18 +203,6 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  List<MlReadinessGroup> get _readinessGroups => const [];
-
-  Future<void> _handleReadinessGroupAction(MlReadinessGroup group) async {}
-
-  IconData _readinessGroupIcon(MlReadinessGroupType type) {
-    return Icons.info_outline_rounded;
-  }
-
-  Color _readinessGroupAccent(MlReadinessGroupType type) {
-    return const Color(0xFF64748B);
   }
 
   @override
@@ -1049,7 +1028,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Ditampilkan sebagai perbandingan catatan terakhir tanpa penilaian medis.',
+            'Ditampilkan sebagai perbandingan catatan terakhir tanpa penilaian tambahan.',
             style: TextStyle(
               color: Color(0xFF64748B),
               fontSize: 14,
@@ -1228,288 +1207,6 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       if (value != null) return value;
     }
     return null;
-  }
-
-  Widget _buildNotReadySection(double fullWidth) {
-    final readinessGroups = _readinessGroups;
-
-    return Container(
-      width: fullWidth,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.warning_amber_rounded,
-              size: 64, color: Color(0xFFE13D5A)),
-          const SizedBox(height: 16),
-          const Text(
-            'Data Belum Lengkap',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A202C),
-            ),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Beberapa data profil dan catatan harian Anda belum lengkap untuk menyusun insight. Silakan lengkapi kuesioner atau catatan harian terlebih dahulu.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 15,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (readinessGroups.isNotEmpty) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Area yang perlu dilengkapi (${readinessGroups.length})',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF1A202C),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            ...readinessGroups.map((group) {
-              final accent = _readinessGroupAccent(group.type);
-              final previewLabels = group.fieldLabels.take(3).toList();
-              final remainingCount =
-                  group.fieldLabels.length - previewLabels.length;
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: accent.withOpacity(0.10),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              _readinessGroupIcon(group.type),
-                              color: accent,
-                              size: 22,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  group.title,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF1A202C),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  group.description,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF64748B),
-                                    height: 1.45,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (previewLabels.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        const Text(
-                          'Contoh data yang masih kosong:',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF334155),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ...previewLabels.map(
-                              (label) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: accent.withOpacity(0.20),
-                                  ),
-                                ),
-                                child: Text(
-                                  label,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF475569),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            if (remainingCount > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: accent.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  '+$remainingCount lainnya',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: accent,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                      if (group.hasAction) ...[
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: accent,
-                              side: BorderSide(color: accent),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            onPressed: () => _handleReadinessGroupAction(group),
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            label: Text(
-                              group.buttonLabel!,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-          if (readinessGroups.isEmpty && _missingFields.isNotEmpty) ...[
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Data yang kurang:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A202C),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            ..._missingFields
-                .map((f) => Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '• $f',
-                          style: const TextStyle(
-                            color: Color(0xFFE13D5A),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ))
-                .take(5),
-            if (_missingFields.length > 5)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '• ...dan ${_missingFields.length - 5} lainnya',
-                    style: const TextStyle(
-                      color: Color(0xFFE13D5A),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-          if (readinessGroups.isEmpty) ...[
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE13D5A),
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: () {
-                context.go('/home');
-              },
-              icon: const Icon(Icons.edit_document),
-              label: const Text(
-                'Lengkapi Form',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  double _getProbability() {
-    return 0.0;
-  }
-
-  String _getGeneratedDateStr() {
-    return 'Hari Ini';
-  }
-
-  Widget _buildRekomendasiSection() {
-    return const SizedBox.shrink();
   }
 }
 
@@ -2999,7 +2696,6 @@ class _ThresholdLineChart extends StatelessWidget {
     required this.yTitle,
     this.minY,
     this.maxY,
-    this.horizontalLines = const [],
   });
 
   final List<ChartPoint> points;
@@ -3007,7 +2703,6 @@ class _ThresholdLineChart extends StatelessWidget {
   final String yTitle;
   final double? minY;
   final double? maxY;
-  final List<double> horizontalLines;
 
   @override
   Widget build(BuildContext context) {
@@ -3028,18 +2723,6 @@ class _ThresholdLineChart extends StatelessWidget {
           ),
         ),
         borderData: FlBorderData(show: false),
-        extraLinesData: ExtraLinesData(
-          horizontalLines: horizontalLines
-              .map(
-                (value) => HorizontalLine(
-                  y: value,
-                  color: const Color(0xFFE2E8F0),
-                  strokeWidth: 1,
-                  dashArray: const [6, 6],
-                ),
-              )
-              .toList(),
-        ),
         titlesData: FlTitlesData(
           topTitles: const AxisTitles(
             sideTitles: SideTitles(showTitles: false),
@@ -3287,124 +2970,6 @@ String _shortDate(DateTime value) {
     'Dec',
   ];
   return '${value.day} ${months[value.month - 1]}';
-}
-
-Color _heartRateValueColor(double value, HeartRateThreshold threshold) {
-  if (value < threshold.normalMin || value > threshold.normalMax) {
-    return const Color(0xFFE13D5A);
-  }
-  return const Color(0xFF1A202C);
-}
-
-Color _heartRateChartColor(double value, HeartRateThreshold threshold) {
-  if (value < threshold.normalMin || value > threshold.normalMax) {
-    return const Color(0xFFDC2626);
-  }
-  return const Color(0xFF2563EB);
-}
-
-Color _bloodPressureValueColor(
-  double systolic,
-  double diastolic,
-  BloodPressureThreshold threshold,
-) {
-  if (systolic >= threshold.stage2SystolicMin ||
-      diastolic >= threshold.stage2DiastolicMin) {
-    return const Color(0xFFE13D5A);
-  }
-  if ((systolic >= threshold.stage1SystolicMin &&
-          systolic <= threshold.stage1SystolicMax) ||
-      (diastolic >= threshold.stage1DiastolicMin &&
-          diastolic <= threshold.stage1DiastolicMax)) {
-    return const Color(0xFFF97316);
-  }
-  if (systolic >= threshold.elevatedSystolicMin &&
-      systolic <= threshold.elevatedSystolicMax &&
-      diastolic < threshold.elevatedDiastolicMax) {
-    return const Color(0xFFFACC15);
-  }
-  return const Color(0xFF1A202C);
-}
-
-Color _systolicChartColor(
-  double systolic,
-  double diastolic,
-  BloodPressureThreshold threshold,
-) {
-  if (systolic >= threshold.stage2SystolicMin ||
-      diastolic >= threshold.stage2DiastolicMin) {
-    return const Color(0xFFDC2626);
-  }
-  if ((systolic >= threshold.stage1SystolicMin &&
-          systolic <= threshold.stage1SystolicMax) ||
-      (diastolic >= threshold.stage1DiastolicMin &&
-          diastolic <= threshold.stage1DiastolicMax)) {
-    return const Color(0xFFF97316);
-  }
-  if (systolic >= threshold.elevatedSystolicMin &&
-      systolic <= threshold.elevatedSystolicMax &&
-      diastolic < threshold.elevatedDiastolicMax) {
-    return const Color(0xFFFCD34D);
-  }
-  return const Color(0xFF2563EB);
-}
-
-Color _diastolicChartColor(
-  double systolic,
-  double diastolic,
-  BloodPressureThreshold threshold,
-) {
-  if (systolic >= threshold.stage2SystolicMin ||
-      diastolic >= threshold.stage2DiastolicMin) {
-    return const Color(0xFFE13D5A);
-  }
-  if ((systolic >= threshold.stage1SystolicMin &&
-          systolic <= threshold.stage1SystolicMax) ||
-      (diastolic >= threshold.stage1DiastolicMin &&
-          diastolic <= threshold.stage1DiastolicMax)) {
-    return const Color(0xFFF97316);
-  }
-  if (systolic >= threshold.elevatedSystolicMin &&
-      systolic <= threshold.elevatedSystolicMax &&
-      diastolic <= threshold.elevatedDiastolicMax) {
-    return const Color(0xFFFACC15);
-  }
-  return const Color(0xFF10B981);
-}
-
-Color _spo2ValueColor(double value, Spo2Threshold threshold) {
-  if (value < threshold.criticalThreshold) {
-    return const Color(0xFFE13D5A);
-  }
-  if (value < threshold.cautionThreshold) {
-    return const Color(0xFFFACC15);
-  }
-  return const Color(0xFF1A202C);
-}
-
-Color _spo2ChartColor(double value, Spo2Threshold threshold) {
-  if (value < threshold.criticalThreshold) {
-    return const Color(0xFFDC2626);
-  }
-  if (value < threshold.cautionThreshold) {
-    return const Color(0xFFFCD34D);
-  }
-  return const Color(0xFF2563EB);
-}
-
-Color _weightColor(
-  double currentWeight,
-  double? previousWeight,
-  WeightThreshold threshold,
-) {
-  if (previousWeight == null) {
-    return const Color(0xFF2563EB);
-  }
-  final change = (currentWeight - previousWeight).abs();
-  if (change > threshold.dailyIncreaseCriticalKg) {
-    return const Color(0xFFE13D5A);
-  }
-  return const Color(0xFF2563EB);
 }
 
 extension<T> on Iterable<T> {

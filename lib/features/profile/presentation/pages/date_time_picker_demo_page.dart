@@ -403,7 +403,7 @@ class _DateTimePickerDemoPageState extends State<DateTimePickerDemoPage> {
             const _IntroCard(
               title: 'Opsi yang worth dicoba',
               description:
-                  'Aku pasang beberapa gaya picker di halaman ini supaya kamu bisa ngerasain mana yang paling enak dipakai pasien, terutama untuk teks besar, tap target yang jelas, dan flow yang gampang dipahami.',
+                  'Aku pasang beberapa gaya picker di halaman ini supaya kamu bisa ngerasain mana yang paling enak dipakai pengguna, terutama untuk teks besar, tap target yang jelas, dan flow yang gampang dipahami.',
               bullets: [
                 'Material bawaan Flutter',
                 'Calendar Date Picker 2',

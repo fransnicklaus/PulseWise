@@ -303,7 +303,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
             ),
             const SizedBox(height: 6),
             const Text(
-              'PulseWise menampilkan catatan terakhir Anda secara netral tanpa interpretasi medis.',
+              'PulseWise menampilkan catatan terakhir Anda secara netral tanpa interpretasi tambahan.',
               style: TextStyle(
                 color: Color(0xFF94A3B8),
                 fontSize: 12,
@@ -911,7 +911,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 //   padding: const EdgeInsets.symmetric(horizontal: 24),
                 //   child: GestureDetector(
                 //     onTap: () {
-                //       context.push('/home/patient-dashboard');
+                //       context.push('/home/wellness-dashboard');
                 //     },
                 //     child: Container(
                 //       padding: const EdgeInsets.all(20),
@@ -1053,7 +1053,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                               children: [
                                 GestureDetector(
                                   onTap: () {
-                                    context.push('/home/patient-dashboard');
+                                    context.push('/home/wellness-dashboard');
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(

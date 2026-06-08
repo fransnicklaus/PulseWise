@@ -125,7 +125,7 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
         );
 
     if (newPrimary == null) {
-      throw Exception('Kontak darurat yang dipilih tidak ditemukan.');
+      throw Exception('Kontak dukungan yang dipilih tidak ditemukan.');
     }
 
     final currentPrimary = state.items

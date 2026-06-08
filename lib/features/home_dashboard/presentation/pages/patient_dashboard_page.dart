@@ -93,7 +93,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
         onBackPressed: () => context.pop(),
         action: IconButton(
           icon: const Icon(Icons.print, color: Colors.white),
-          onPressed: () => context.push('/home/patient-dashboard/print'),
+          onPressed: () => context.push('/home/wellness-dashboard/print'),
         ),
       ),
       body: SingleChildScrollView(

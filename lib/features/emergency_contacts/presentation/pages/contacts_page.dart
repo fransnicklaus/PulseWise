@@ -673,7 +673,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
     phoneController.dispose();
 
     if (result == true) {
-      AppToast.success(context, 'Kontak darurat berhasil diperbarui');
+      AppToast.success(context, 'Kontak dukungan berhasil diperbarui');
       if (!mounted) return;
       await ref.read(emergencyContactsProvider.notifier).fetchInitial();
     }
@@ -807,7 +807,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
     if (confirm != true) return;
 
     try {
-      AppToast.success(context, 'Kontak darurat berhasil dihapus');
+      AppToast.success(context, 'Kontak dukungan berhasil dihapus');
       if (!mounted) return;
       await ref.read(emergencyContactsProvider.notifier).fetchInitial();
     } catch (e) {
