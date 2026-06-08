@@ -5,7 +5,7 @@
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
-		<string>Pulsewise</string>
+		<string>PulseWise</string>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>pulsewise</string>
+		<string>PulseWise</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -46,9 +46,9 @@
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>Camera is used to scan QR codes and take food photos for macro analysis.</string>
+		<string>Kamera digunakan untuk mengambil foto makanan agar pencatatan asupan harian lebih cepat.</string>
 		<key>NSContactsUsageDescription</key>
-		<string>Kontak digunakan untuk memilih nomor darurat dengan lebih cepat.</string>
+		<string>Kontak digunakan agar Anda bisa memilih kontak dukungan dari daftar kontak perangkat dengan lebih cepat.</string>
 		<key>CFBundleURLTypes</key>
 		<array>
 			<dict>

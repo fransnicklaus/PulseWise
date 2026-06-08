@@ -57,9 +57,9 @@ class AppFcmService {
   static const String notificationPromptedPrefsKey =
       'notification_permission_prompted';
   static const String androidChannelId = 'pulsewise_reminders';
-  static const String androidChannelName = 'PulseWise Reminders';
+  static const String androidChannelName = 'Pengingat PulseWise';
   static const String androidChannelDescription =
-      'Reminder and health notifications from PulseWise';
+      'Pengingat rutinitas dan pembaruan aplikasi dari PulseWise';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();

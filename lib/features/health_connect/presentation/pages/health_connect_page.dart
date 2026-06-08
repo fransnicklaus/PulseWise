@@ -833,7 +833,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                   steps: [
                     'Buka aplikasi wearable yang Anda gunakan, misalnya Samsung Health, Mi Fitness, Garmin Connect, atau aplikasi jam tangan lainnya yang tersedia dalam Google Play Store.',
                     'Masuk ke menu pengaturan, integrasi, atau izin sinkronisasi di aplikasi tersebut.',
-                    'Cari opsi yang berkaitan dengan Health Connect, sinkronisasi kesehatan, atau berbagi data kesehatan.',
+                    'Cari opsi yang berkaitan dengan Health Connect, sinkronisasi wearable, atau berbagi data aktivitas dan tidur.',
                     'Pastikan kategori seperti langkah, detak jantung, tidur, dan aktivitas diizinkan untuk dikirim ke Health Connect.',
                     'Setelah selesai, kembali ke PulseWise lalu lanjutkan ke langkah berikutnya.',
                   ],
