@@ -77,7 +77,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
     final result = await context.push('/home/reminder/add');
     if (!context.mounted) return;
     if (result == true) {
-      AppToast.success(context, 'Pengingat obat berhasil ditambahkan');
+      AppToast.success(context, 'Rutinitas berhasil ditambahkan');
       await ref.read(medicationHistoryProvider.notifier).refreshMedications();
     }
   }
@@ -97,7 +97,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
     final result = await context.push('/home/reminder/detail/$medicationId');
     if (!mounted) return;
     if (result == true) {
-      AppToast.success(context, 'Pengingat berhasil dihapus');
+      AppToast.success(context, 'Rutinitas berhasil dihapus');
       ref.read(medicationHistoryProvider.notifier).refreshMedications();
     }
   }
@@ -121,8 +121,8 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-          title: 'Pengingat',
-          subtitle: 'Kelola pengingat obat Anda',
+          title: 'Rutinitas',
+          subtitle: 'Kelola rutinitas harian Anda',
           showBackButton: true,
           onBackPressed: () => context.pop(),
           action: GestureDetector(
@@ -180,9 +180,9 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
                   child: showInitialNoConnection
                       ? NoConnectionState.page(
-                          title: 'Daftar pengingat belum bisa dimuat',
+                          title: 'Daftar rutinitas belum bisa dimuat',
                           message:
-                              'Kami belum bisa mengambil daftar pengingat obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                              'Kami belum bisa mengambil daftar rutinitas karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                           onRetry: () {
                             _retryLoad();
                           },
@@ -201,7 +201,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                   child: NoConnectionState.compact(
                     title: 'Koneksi terputus',
                     message:
-                        'Menampilkan daftar pengingat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                        'Menampilkan daftar rutinitas terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
                     onRetry: () {
                       _retryLoad();
                     },
@@ -214,7 +214,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                   padding: EdgeInsets.fromLTRB(16, 20, 16, 0),
                   child: _StateCard(
                     message:
-                        'Belum ada pengingat obat. Tekan tombol + untuk menambah.',
+                        'Belum ada rutinitas. Tekan tombol + untuk menambah.',
                   ),
                 );
               }

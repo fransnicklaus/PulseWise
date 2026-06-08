@@ -41,7 +41,7 @@ class EmergencyContactsApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal menambah kontak darurat').toString(),
+        (body?['message'] ?? 'Gagal menambah kontak dukungan').toString(),
       );
     }
   }
@@ -70,7 +70,7 @@ class EmergencyContactsApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal memperbarui kontak darurat').toString(),
+        (body?['message'] ?? 'Gagal memperbarui kontak dukungan').toString(),
       );
     }
   }
@@ -116,7 +116,7 @@ class EmergencyContactsApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal menghapus kontak darurat').toString(),
+        (body?['message'] ?? 'Gagal menghapus kontak dukungan').toString(),
       );
     }
   }
@@ -173,7 +173,7 @@ class EmergencyContactsApi {
         }
       }
 
-      throw Exception('Gagal mengambil kontak darurat.');
+      throw Exception('Gagal mengambil kontak dukungan.');
     }
   }
 }

@@ -12,8 +12,8 @@ import '../../../../core/widgets/expandable_text.dart';
 class RiwayatDiariPage extends ConsumerStatefulWidget {
   const RiwayatDiariPage({
     super.key,
-    this.title = 'Riwayat Diari',
-    this.subtitle = 'Semua catatan kesehatan Anda',
+    this.title = 'Riwayat Catatan',
+    this.subtitle = 'Semua catatan harian Anda',
   });
 
   final String title;
@@ -342,7 +342,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                       if (showOfflineBanner) ...[
                         const SizedBox(height: 12),
                         NoConnectionState.compact(
-                          title: 'Riwayat diari belum tersinkron',
+                          title: 'Riwayat catatan belum tersinkron',
                           message:
                               'Data terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
                           onRetry: _refreshHistory,
@@ -365,9 +365,9 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 24),
                     child: NoConnectionState.card(
-                      title: 'Riwayat diari belum bisa dimuat',
+                      title: 'Riwayat catatan belum bisa dimuat',
                       message:
-                          'Kami belum bisa mengambil riwayat diari untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
+                          'Kami belum bisa mengambil riwayat catatan untuk periode ini. Cek koneksi internet Anda lalu coba lagi.',
                       onRetry: _refreshHistory,
                     ),
                   )
@@ -376,7 +376,7 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 40),
                     child: Center(
                       child: Text(
-                        'Belum ada riwayat diari pada periode ini',
+                        'Belum ada riwayat catatan pada periode ini',
                         style: TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 16,
@@ -589,7 +589,7 @@ class _ExpandedArea extends StatelessWidget {
     if (error != null) {
       if (errorCause != null && isNetworkRequestError(errorCause!)) {
         return NoConnectionState.card(
-          title: 'Detail diari belum bisa dimuat',
+          title: 'Detail catatan belum bisa dimuat',
           message:
               'Koneksi internet sedang bermasalah. Sambungkan lagi lalu coba muat detail ini.',
           onRetry: onRetry,
@@ -679,7 +679,7 @@ class _ExpandedDiaryContent extends StatelessWidget {
         return 'Minuman';
       case 'medication':
       case 'obat':
-        return 'Obat';
+        return 'Suplemen';
       default:
         return type.isEmpty ? '-' : type;
     }
@@ -825,9 +825,9 @@ class _ExpandedDiaryContent extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _SimpleSection(
-            title: 'Konsumsi',
+            title: 'Asupan',
             isEmpty: consumptions.isEmpty,
-            emptyLabel: 'Tidak ada konsumsi',
+            emptyLabel: 'Tidak ada asupan',
             children: consumptions
                 .map(
                   (item) => _SimpleRow(
@@ -881,7 +881,7 @@ class _SimpleSection extends StatelessWidget {
         return Icons.health_and_safety_outlined;
       case 'Aktivitas':
         return Icons.directions_walk_rounded;
-      case 'Konsumsi':
+      case 'Asupan':
         return Icons.restaurant_outlined;
       case 'Tidur':
         return Icons.bedtime_outlined;
@@ -896,7 +896,7 @@ class _SimpleSection extends StatelessWidget {
         return const Color(0xFFE64060);
       case 'Aktivitas':
         return const Color(0xFF2563EB);
-      case 'Konsumsi':
+      case 'Asupan':
         return const Color(0xFFCA8A04);
       case 'Tidur':
         return const Color(0xFF3B82F6);

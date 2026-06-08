@@ -111,8 +111,8 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-        title: 'Tambah Pengingat',
-        // subtitle: 'Tambahkan kontak darurat baru',
+        title: 'Tambah Rutinitas',
+        // subtitle: 'Tambahkan kontak dukungan baru',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -124,7 +124,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       //     icon: const Icon(Icons.arrow_back, color: Color(0xFF4F5F7B)),
       //   ),
       //   title: const Text(
-      //     'Tambah Pengingat',
+      //     'Tambah Rutinitas',
       //     style: TextStyle(
       //       color: Color(0xFF4F5F7B),
       //       fontSize: 20,
@@ -155,9 +155,9 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   Widget _buildStepIndicator() {
     const labels = [
       'Nama, Bentuk, Warna',
-      'Dosis',
-      'Frekuensi',
-      'Jumlah Minum',
+      'Takaran',
+      'Jadwal',
+      'Waktu Pengingat',
     ];
 
     return Container(
@@ -221,11 +221,11 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionCard(
-          title: 'Nama Obat',
+          title: 'Nama Rutinitas',
           child: TextField(
             controller: _nameController,
             enabled: !_isSubmitting,
-            decoration: _inputDecoration('Contoh: Obat Jantung'),
+            decoration: _inputDecoration('Contoh: vitamin pagi'),
           ),
         ),
         const SizedBox(height: 14),
@@ -309,7 +309,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
         ),
         const SizedBox(height: 14),
         _sectionCard(
-          title: 'Warna Obat',
+          title: 'Warna Item',
           child: SizedBox(
             height: 46,
             child: ListView.separated(
@@ -363,7 +363,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionCard(
-          title: 'Besar Dosis',
+          title: 'Takaran',
           child: Row(
             children: [
               Expanded(
@@ -411,7 +411,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
             controller: _notesController,
             enabled: !_isSubmitting,
             maxLines: 3,
-            decoration: _inputDecoration('Contoh: diminum setelah makan'),
+            decoration: _inputDecoration('Contoh: setelah sarapan'),
           ),
         ),
       ],
@@ -423,7 +423,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionCard(
-          title: 'Seberapa sering obat diminum',
+          title: 'Seberapa sering dilakukan',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -590,7 +590,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionCard(
-          title: 'Sehari berapa banyak minumnya',
+          title: 'Sehari berapa kali',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -644,7 +644,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
               ),
               const SizedBox(height: 12),
               ...List.generate(_intakeCount, (index) {
-                final label = '${_ordinalIntake(index + 1)} intake';
+                final label = 'Waktu ke-${index + 1}';
                 final selectedTime = _intakeTimes[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -798,7 +798,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                       ),
                     )
                   : Text(
-                      isLast ? 'Simpan Pengingat' : 'Lanjut',
+                      isLast ? 'Simpan Rutinitas' : 'Lanjut',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                     ),
@@ -924,11 +924,11 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
     if (_currentStep == 1) {
       final doseValue = _doseController.text.trim();
       if (doseValue.isEmpty) {
-        _showError('Isi besar dosis terlebih dahulu.');
+        _showError('Isi takaran terlebih dahulu.');
         return;
       }
       if (num.tryParse(doseValue) == null) {
-        _showError('Besar dosis hanya boleh angka.');
+        _showError('Takaran hanya boleh angka.');
         return;
       }
     }
@@ -950,20 +950,20 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
 
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      _showError('Nama obat wajib diisi.');
+      _showError('Nama rutinitas wajib diisi.');
       return;
     }
 
     final selectedForm = _selectedForm?.trim();
     if (selectedForm == null || selectedForm.isEmpty) {
-      _showError('Bentuk obat wajib dipilih.');
+      _showError('Bentuk item wajib dipilih.');
       return;
     }
 
     final doseValue = _doseController.text.trim();
     final parsedDose = num.tryParse(doseValue);
     if (parsedDose == null || parsedDose <= 0) {
-      _showError('Besar dosis harus berupa angka lebih dari 0.');
+      _showError('Takaran harus berupa angka lebih dari 0.');
       return;
     }
 
@@ -973,14 +973,14 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
     }
 
     if (_intakeTimes.isEmpty || _intakeTimes.length != _intakeCount) {
-      _showError('Waktu minum belum lengkap.');
+      _showError('Waktu pengingat belum lengkap.');
       return;
     }
 
     final formattedIntakeTimes = _intakeTimes.map(_formatTime).toList();
     final uniqueIntakeTimes = formattedIntakeTimes.toSet();
     if (uniqueIntakeTimes.length != formattedIntakeTimes.length) {
-      _showError('Waktu minum tidak boleh sama.');
+      _showError('Waktu pengingat tidak boleh sama.');
       return;
     }
 
@@ -1038,13 +1038,6 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   String _hexColor(Color color) {
     final rgb = color.value & 0x00FFFFFF;
     return '#${rgb.toRadixString(16).padLeft(6, '0')}';
-  }
-
-  String _ordinalIntake(int number) {
-    if (number == 1) return '1st';
-    if (number == 2) return '2nd';
-    if (number == 3) return '3rd';
-    return '${number}th';
   }
 
   TimeOfDay _defaultIntakeTime(int index) {

@@ -88,7 +88,7 @@ class MedicationApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal menambah pengingat obat').toString(),
+        (body?['message'] ?? 'Gagal menambah rutinitas').toString(),
       );
     }
   }
@@ -116,19 +116,19 @@ class MedicationApi {
 
       final body = response.data;
       if (body == null) {
-        throw Exception('Respons daftar medication tidak valid dari server');
+        throw Exception('Respons daftar rutinitas tidak valid dari server');
       }
 
       if (body['success'] != true) {
         throw Exception(
-          (body['message'] ?? 'Gagal mengambil daftar medication').toString(),
+          (body['message'] ?? 'Gagal mengambil daftar rutinitas').toString(),
         );
       }
 
       final data = (body['data'] as Map<String, dynamic>?) ?? const {};
       return MedicationListResponse.fromJson(data);
     } on DioException catch (error) {
-      throw _requestError(error, 'Gagal mengambil daftar medication.');
+      throw _requestError(error, 'Gagal mengambil daftar rutinitas.');
     }
   }
 
@@ -148,19 +148,19 @@ class MedicationApi {
 
       final body = response.data;
       if (body == null) {
-        throw Exception('Respons detail medication tidak valid dari server');
+        throw Exception('Respons detail rutinitas tidak valid dari server');
       }
 
       if (body['success'] != true) {
         throw Exception(
-          (body['message'] ?? 'Gagal mengambil detail medication').toString(),
+          (body['message'] ?? 'Gagal mengambil detail rutinitas').toString(),
         );
       }
 
       final data = (body['data'] as Map<String, dynamic>?) ?? const {};
       return MedicationItem.fromJson(data);
     } on DioException catch (error) {
-      throw _requestError(error, 'Gagal mengambil detail medication.');
+      throw _requestError(error, 'Gagal mengambil detail rutinitas.');
     }
   }
 
@@ -211,7 +211,7 @@ class MedicationApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal memperbarui medication').toString(),
+        (body?['message'] ?? 'Gagal memperbarui rutinitas').toString(),
       );
     }
   }
@@ -232,7 +232,7 @@ class MedicationApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal menghapus medication').toString(),
+        (body?['message'] ?? 'Gagal menghapus rutinitas').toString(),
       );
     }
   }
@@ -269,7 +269,7 @@ class MedicationApi {
     final body = response.data;
     if (body == null || body['success'] != true) {
       throw Exception(
-        (body?['message'] ?? 'Gagal menandai medication sebagai sudah diminum')
+        (body?['message'] ?? 'Gagal menandai rutinitas sebagai selesai')
             .toString(),
       );
     }
@@ -311,19 +311,19 @@ class MedicationApi {
 
       final body = response.data;
       if (body == null) {
-        throw Exception('Respons medication logs tidak valid dari server');
+        throw Exception('Respons log rutinitas tidak valid dari server');
       }
 
       if (body['success'] != true) {
         throw Exception(
-          (body['message'] ?? 'Gagal mengambil medication logs').toString(),
+          (body['message'] ?? 'Gagal mengambil log rutinitas').toString(),
         );
       }
 
       final data = (body['data'] as Map<String, dynamic>?) ?? const {};
       return MedicationLogResponse.fromJson(data);
     } on DioException catch (error) {
-      throw _requestError(error, 'Gagal mengambil medication logs.');
+      throw _requestError(error, 'Gagal mengambil log rutinitas.');
     }
   }
 
@@ -350,19 +350,19 @@ class MedicationApi {
 
       final body = response.data;
       if (body == null) {
-        throw Exception('Respons kalender medication tidak valid dari server');
+        throw Exception('Respons kalender rutinitas tidak valid dari server');
       }
 
       if (body['success'] != true) {
         throw Exception(
-          (body['message'] ?? 'Gagal mengambil kalender medication').toString(),
+          (body['message'] ?? 'Gagal mengambil kalender rutinitas').toString(),
         );
       }
 
       final data = (body['data'] as Map<String, dynamic>?) ?? const {};
       return MedicationCalendarResponse.fromJson(data);
     } on DioException catch (error) {
-      throw _requestError(error, 'Gagal mengambil kalender medication.');
+      throw _requestError(error, 'Gagal mengambil kalender rutinitas.');
     }
   }
 }

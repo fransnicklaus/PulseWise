@@ -37,7 +37,7 @@ class _DiaryQrPageState extends State<DiaryQrPage> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
         title: 'QR User ID',
-        // subtitle: 'Tambahkan kontak darurat baru',
+        // subtitle: 'Tambahkan kontak dukungan baru',
         showBackButton: true,
         onBackPressed: () => context.pop(),
         // action: IconButton(

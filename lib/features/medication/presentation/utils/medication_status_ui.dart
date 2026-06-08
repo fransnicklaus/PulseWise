@@ -1,7 +1,7 @@
 String medicationStatusUiLabel(String? status) {
   switch ((status ?? 'open').toLowerCase()) {
     case 'taken':
-      return 'Diminum';
+      return 'Selesai';
     case 'missed':
       return 'Terlewat';
     case 'skipped':

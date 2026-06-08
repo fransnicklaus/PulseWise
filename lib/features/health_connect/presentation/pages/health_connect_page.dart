@@ -96,7 +96,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   String _lastAction = 'Belum ada aksi';
   String _rawData = '-';
   String _statusNote =
-      'Ikuti panduan ini agar PulseWise bisa membaca data kesehatan dari wearable Anda.';
+      'Ikuti panduan ini agar PulseWise bisa menyinkronkan data aktivitas dan kebiasaan dari wearable Anda.';
   Map<String, dynamic>? _prettyData;
   bool _isSyncingBackendHealthConnectState = false;
   bool _didPersistConnectedStatusThisVisit = false;
@@ -161,8 +161,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         final nextStatusNote = supported
             ? installed == true
                 ? granted == true
-                    ? 'Health Connect sudah siap digunakan di PulseWise.'
-                    : 'Health Connect sudah terpasang, tetapi izin data belum diberikan.'
+                    ? 'Sinkronisasi wearable lewat Health Connect sudah siap digunakan di PulseWise.'
+                    : 'Health Connect sudah terpasang, tetapi izin sinkronisasi data belum diberikan.'
                 : 'Perangkat mendukung, tetapi aplikasi Health Connect belum terpasang.'
             : 'Perangkat ini belum mendukung Health Connect.';
 
@@ -214,7 +214,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         setState(() {
           _isApiSupported = supported;
           _statusNote = supported
-              ? 'Perangkat mendukung Health Connect.'
+              ? 'Perangkat mendukung sinkronisasi lewat Health Connect.'
               : 'Perangkat belum mendukung Health Connect.';
         });
         _setResult(
@@ -299,7 +299,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         if (!mounted) return;
         setState(() {
           _statusNote =
-              'Pengaturan Health Connect sedang dibuka. Silakan aktifkan izin yang diperlukan.';
+              'Pengaturan Health Connect sedang dibuka. Silakan aktifkan izin sinkronisasi yang diperlukan.';
         });
         _setResult(
           action: 'Buka Pengaturan Health Connect',
@@ -331,8 +331,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         setState(() {
           _hasPermissions = granted;
           _statusNote = granted
-              ? 'Izin data sudah diberikan.'
-              : 'Izin data belum diberikan.';
+              ? 'Izin sinkronisasi data sudah diberikan.'
+              : 'Izin sinkronisasi data belum diberikan.';
         });
         _setResult(
           action: 'Periksa Izin Data',
@@ -364,8 +364,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         setState(() {
           _hasPermissions = granted;
           _statusNote = granted
-              ? 'Izin data berhasil diberikan.'
-              : 'Izin data belum diberikan. Silakan coba lagi.';
+              ? 'Izin sinkronisasi data berhasil diberikan.'
+              : 'Izin sinkronisasi data belum diberikan. Silakan coba lagi.';
         });
         _setResult(
           action: 'Minta Izin Data',
@@ -374,9 +374,12 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         await _persistConnectedStatusIfNeeded();
         if (!mounted) return;
         if (granted) {
-          AppToast.success(context, 'Izin Health Connect berhasil diberikan');
+          AppToast.success(
+            context,
+            'Izin sinkronisasi Health Connect berhasil diberikan',
+          );
         } else {
-          AppToast.info(context, 'Izin belum diberikan');
+          AppToast.info(context, 'Izin sinkronisasi belum diberikan');
         }
       } catch (e) {
         if (!mounted) return;
@@ -733,8 +736,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-        title: 'Koneksi Wearable',
-        subtitle: 'Hubungkan PulseWise dengan smartwatch Anda',
+        title: 'Sinkronisasi Wearable',
+        subtitle: 'Hubungkan PulseWise dengan perangkat wearable Anda',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -755,7 +758,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                 number: '1',
                 title: 'Periksa apakah perangkat mendukung',
                 description:
-                    'Mulai dengan memastikan ponsel Anda mendukung Health Connect.',
+                    'Mulai dengan memastikan ponsel Anda mendukung sinkronisasi melalui Health Connect.',
                 statusLabel: _statusLabel(
                   _isApiSupported,
                   'Didukung',
@@ -802,7 +805,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                 number: '3',
                 title: 'Buka pengaturan Health Connect',
                 description:
-                    'Masuk ke pengaturan Health Connect untuk melihat izin yang tersedia untuk PulseWise.',
+                    'Masuk ke pengaturan Health Connect untuk melihat izin sinkronisasi yang tersedia untuk PulseWise.',
                 actions: [
                   _GuideActionButton(
                     label: 'Buka Pengaturan',
@@ -841,7 +844,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                 number: '5',
                 title: 'Berikan izin akses data',
                 description:
-                    'Izinkan PulseWise membaca langkah, detak jantung, tidur, dan aktivitas agar sinkronisasi berjalan.',
+                    'Izinkan PulseWise membaca langkah, detak jantung, tidur, dan aktivitas agar sinkronisasi wearable berjalan.',
                 statusLabel: _statusLabel(
                   _hasPermissions,
                   'Sudah diizinkan',
@@ -862,7 +865,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                 ],
                 expandableDetails: const _GuideExpandableDetailsContent(
                   hint:
-                      'Ikuti urutan izin di bawah ini agar PulseWise bisa membaca data dari Health Connect.',
+                      'Ikuti urutan izin di bawah ini agar PulseWise bisa membaca data wearable dari Health Connect.',
                   steps: [
                     'Masuk ke halaman izin aplikasi di Health Connect, lalu pilih PulseWise dari daftar aplikasi.',
                     'Buka bagian pengaturan akses data untuk PulseWise agar kategori data yang dibaca bisa diatur.',
@@ -889,7 +892,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
                 number: '6',
                 title: 'Kembali ke PulseWise',
                 description:
-                    'Jika semua status sudah hijau, PulseWise siap membaca data dari wearable Anda melalui Health Connect.',
+                    'Jika semua status sudah hijau, PulseWise siap menyinkronkan data dari wearable Anda melalui Health Connect.',
                 statusLabel: _statusLabel(
                   _readyStatus(),
                   'Siap digunakan',
@@ -966,7 +969,7 @@ class _GuideOverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Koneksi Wearable',
+                      'Sinkronisasi Wearable',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -976,7 +979,7 @@ class _GuideOverviewCard extends StatelessWidget {
                     ),
                     SizedBox(height: 6),
                     Text(
-                      'Hubungkan PulseWise dengan smartwatch Anda',
+                      'Hubungkan PulseWise dengan perangkat wearable Anda',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -1527,7 +1530,7 @@ class _DataViewerCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Cek Data yang Sudah Tersambung',
+            'Cek Data Wearable yang Sudah Tersambung',
             style: TextStyle(
               color: Color(0xFF334155),
               fontSize: 19,

@@ -348,6 +348,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
 
   String get _normalizedSectionTitle => widget.title.trim().toLowerCase();
 
+  bool get _isConsumptionSection =>
+      _normalizedSectionTitle.contains('konsumsi') ||
+      _normalizedSectionTitle.contains('asupan');
+
   @override
   void initState() {
     super.initState();
@@ -974,12 +978,11 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     if (_normalizedSectionTitle == 'metriks kesehatan' ||
         _normalizedSectionTitle == 'kondisi' ||
         _normalizedSectionTitle == 'gejala' ||
-        _normalizedSectionTitle.contains('konsumsi')) {
+        _isConsumptionSection) {
       _startLiveClock();
     }
 
-    if (_normalizedSectionTitle.contains('konsumsi') &&
-        _selectedConsumptionTypeLabel == null) {
+    if (_isConsumptionSection && _selectedConsumptionTypeLabel == null) {
       _selectedConsumptionTypeLabel = _consumptionTypeLabels.first;
     }
 
@@ -1001,11 +1004,13 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
         return _buildAktivitasContent();
       case 'konsumsi':
       case 'konsumsi harian':
+      case 'asupan':
+      case 'asupan harian':
         return _buildKonsumsiContent();
       case 'tidur':
         return _buildTidurSection();
       default:
-        if (_normalizedSectionTitle.contains('konsumsi')) {
+        if (_isConsumptionSection) {
           return _buildKonsumsiContent();
         }
         return const SizedBox(height: 8);
@@ -2924,7 +2929,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Waktu Konsumsi',
+          'Waktu Asupan',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -3087,7 +3092,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Kategori Konsumsi',
+          'Kategori Asupan',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -3202,7 +3207,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Nama Konsumsi',
+            'Nama Asupan',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -3388,7 +3393,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                       ),
                     )
                   : const Text(
-                      'Simpan Konsumsi',
+                      'Simpan Asupan',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,

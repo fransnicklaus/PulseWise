@@ -41,7 +41,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           onPressed: () => context.pop(),
         ),
         title: const Text(
-          'Tambah Diari',
+          'Tambah Catatan',
           style: TextStyle(
             color: Colors.black,
             fontSize: 20,
@@ -57,7 +57,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
           children: [
             // Diari Malam Section
             _ExpandableSection(
-              title: 'Diari Malam',
+              title: 'Catatan Malam',
               subtitle: '19.00 PM',
               isExpanded: _expandedDiariMalam,
               onTap: () {
@@ -147,9 +147,9 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
             ),
             const SizedBox(height: 16),
 
-            // Konsumsi Harian Section
+            // Asupan Harian Section
             _ExpandableSection(
-              title: 'Konsumsi Harian',
+              title: 'Asupan Harian',
               subtitle: 'Makanan & Minuman',
               isExpanded: _expandedKonsumsi,
               onTap: () {
@@ -284,7 +284,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
                 ),
                 onPressed: () {
                   // TODO: Implement save logic
-                  AppToast.success(context, 'Diari disimpan');
+                  AppToast.success(context, 'Catatan disimpan');
                   context.pop();
                 },
                 child: const Text(

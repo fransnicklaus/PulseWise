@@ -196,9 +196,9 @@ class _MedicationConsumptionTrackingCardState
       );
     } else if (showInitialNoConnection) {
       trackingBody = NoConnectionState.card(
-        title: 'Riwayat konsumsi belum bisa dimuat',
+        title: 'Riwayat rutinitas belum bisa dimuat',
         message:
-            'Kami belum bisa mengambil log konsumsi obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+            'Kami belum bisa mengambil log rutinitas karena koneksi internet tidak tersedia atau sedang tidak stabil.',
         onRetry: () {
           _loadLogs(reset: true);
         },
@@ -222,7 +222,7 @@ class _MedicationConsumptionTrackingCardState
                   SizedBox(height: 80),
                   Center(
                     child: Text(
-                      'Belum ada log konsumsi pada periode ini.',
+                      'Belum ada log rutinitas pada periode ini.',
                       style: TextStyle(
                         color: Color(0xFF64748B),
                         fontSize: 14,
@@ -274,7 +274,7 @@ class _MedicationConsumptionTrackingCardState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Tracking Konsumsi',
+            'Riwayat Rutinitas',
             style: TextStyle(
               color: Color(0xFF4F5F7B),
               fontSize: 20,
@@ -337,7 +337,7 @@ class _MedicationConsumptionTrackingCardState
             children: [
               Expanded(
                 child: _SummaryStatCard(
-                  label: 'Diminum',
+                  label: 'Selesai',
                   value: takenCount,
                   color: const Color(0xFF15803D),
                   compact: false,
@@ -376,7 +376,7 @@ class _MedicationConsumptionTrackingCardState
             NoConnectionState.compact(
               title: 'Koneksi terputus',
               message:
-                  'Menampilkan log konsumsi terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui riwayat terbaru.',
+                  'Menampilkan log rutinitas terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui riwayat terbaru.',
               onRetry: () {
                 _refresh();
               },
@@ -394,7 +394,7 @@ class _MedicationConsumptionTrackingCardState
                 children: [
                   const Expanded(
                     child: Text(
-                      'Gagal memuat log konsumsi.',
+                      'Gagal memuat log rutinitas.',
                       style: TextStyle(
                         color: Color(0xFFB91C1C),
                         fontSize: 13,

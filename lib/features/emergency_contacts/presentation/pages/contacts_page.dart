@@ -110,8 +110,8 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: 'Kontak Darurat',
-        subtitle: 'Hubungi segera jika diperlukan',
+        title: 'Kontak Dukungan',
+        subtitle: 'Hubungi kontak tepercaya jika diperlukan',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -137,7 +137,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Daftar Kontak Darurat',
+                        'Daftar Kontak Dukungan',
                         style: TextStyle(
                           color: Color(0xFF525252),
                           fontSize: 20,
@@ -156,7 +156,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                           if (!context.mounted) return;
                           AppToast.success(
                             context,
-                            'Kontak darurat berhasil ditambahkan',
+                            'Kontak dukungan berhasil ditambahkan',
                           );
                         }
                       },
@@ -201,9 +201,9 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: showInitialNoConnection
                     ? NoConnectionState.card(
-                        title: 'Kontak darurat belum bisa dimuat',
+                        title: 'Kontak dukungan belum bisa dimuat',
                         message:
-                            'Kami belum bisa mengambil daftar kontak darurat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                            'Kami belum bisa mengambil daftar kontak dukungan karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                         onRetry: () {
                           ref
                               .read(emergencyContactsProvider.notifier)
@@ -260,7 +260,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                 child: NoConnectionState.compact(
                   title: 'Koneksi terputus',
                   message:
-                      'Menampilkan kontak darurat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                      'Menampilkan kontak dukungan terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
                   onRetry: () {
                     ref.read(emergencyContactsProvider.notifier).fetchInitial();
                   },
@@ -288,7 +288,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                     ? const CircularProgressIndicator()
                     : contactsState.items.isEmpty
                         ? const Text(
-                            'Belum ada kontak darurat',
+                            'Belum ada kontak dukungan',
                             style: TextStyle(
                                 color: Color(0xFF64748B), fontSize: 18),
                           )
@@ -336,7 +336,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Ambulans Darurat',
+                      'Bantuan Cepat 112',
                       style: TextStyle(
                         color: Color(0xFFFFF4B8),
                         fontSize: 24,
@@ -344,7 +344,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                       ),
                     ),
                     Text(
-                      'Layanan 24 Jam',
+                      'Layanan publik 24 jam',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -387,7 +387,6 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
     const textPrimary = Color(0xFF334155);
     const textMuted = Color(0xFF64748B);
     const borderSoft = Color(0xFFE2E8F0);
-    const surfaceSoft = Color(0xFFFFF5F7);
 
     final nameController = TextEditingController(text: contact.contactLabel);
     final phoneController = TextEditingController(text: contact.contactNumber);
@@ -438,7 +437,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                             Icon(Icons.edit, color: brand, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              'Edit Kontak Darurat',
+                              'Edit Kontak Dukungan',
                               style: TextStyle(
                                 color: textPrimary,
                                 fontSize: 22,
@@ -560,7 +559,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                                 });
                               },
                         title: const Text(
-                          'Jadikan Kontak Utama',
+                          'Jadikan Kontak Prioritas',
                           style: TextStyle(
                             color: textPrimary,
                             fontSize: 17,
@@ -902,7 +901,7 @@ class _EmergencyContactCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: const Text(
-                      'Kontak Utama',
+                      'Kontak Prioritas',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -1049,8 +1048,8 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: 'Tambah Kontak',
-        subtitle: 'Tambahkan kontak darurat baru',
+        title: 'Tambah Kontak Dukungan',
+        subtitle: 'Tambahkan kontak tepercaya baru',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -1147,7 +1146,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Jadikan Kontak Utama',
+                          'Jadikan Kontak Prioritas',
                           style: TextStyle(
                             color: Color(0xFF525252),
                             fontSize: 20,
@@ -1156,7 +1155,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Kontak utama akan ditampilkan di bagian paling atas dan mudah diakses',
+                          'Kontak prioritas akan ditampilkan di bagian paling atas dan mudah diakses',
                           style: TextStyle(
                             color: Color(0xFF62748E),
                             fontSize: 16,
@@ -1198,7 +1197,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          'Pastikan nomor telepon yang Anda masukkan benar dan dapat dihubungi sewaktu-waktu untuk keadaan darurat.',
+                          'Pastikan nomor telepon yang Anda masukkan benar dan dapat dihubungi sewaktu-waktu saat Anda membutuhkan bantuan.',
                           style: TextStyle(
                             color: Color(0xFF285DBE),
                             fontSize: 16,
@@ -1237,7 +1236,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
                           Icon(Icons.person_add, color: Colors.white, size: 22),
                           SizedBox(width: 10),
                           Text(
-                            'Simpan Kontak',
+                            'Simpan Kontak Dukungan',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -1326,7 +1325,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
       if (!mounted) return;
       // context.pop(true);
       context.pop();
-      AppToast.success(context, 'Kontak darurat berhasil ditambahkan');
+      AppToast.success(context, 'Kontak dukungan berhasil ditambahkan');
       await ref.read(emergencyContactsProvider.notifier).fetchInitial();
     } catch (e) {
       if (!mounted) return;

@@ -206,8 +206,8 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
     if (missingName || missingPortion) {
       setState(() {
         _formError = null;
-        _nameError = missingName ? 'Mohon isi nama konsumsi.' : null;
-        _portionError = missingPortion ? 'Mohon isi porsi konsumsi.' : null;
+        _nameError = missingName ? 'Mohon isi nama asupan.' : null;
+        _portionError = missingPortion ? 'Mohon isi porsi asupan.' : null;
       });
       return;
     }
@@ -261,7 +261,7 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: const CustomAppBar(
         title: 'Input Nutrisi Lengkap',
-        subtitle: 'Isi konsumsi beserta data nutrisinya',
+        subtitle: 'Isi asupan beserta data nutrisinya',
       ),
       body: SafeArea(
         top: false,
@@ -276,7 +276,7 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
               ),
               const SizedBox(height: 16),
               _ManualMacroSection(
-                title: 'Kategori Konsumsi',
+                title: 'Kategori Asupan',
                 subtitle:
                     'Pilih kategori makan atau minum yang paling sesuai sebelum menyimpan.',
                 child: Wrap(
@@ -318,12 +318,12 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
               const SizedBox(height: 16),
               _ManualMacroSection(
                 title: 'Informasi Dasar',
-                subtitle: 'Isi data utama konsumsi terlebih dahulu.',
+                subtitle: 'Isi data utama asupan terlebih dahulu.',
                 child: Column(
                   children: [
                     _ManualMacroTextField(
                       controller: _mealNameController,
-                      label: 'Nama Konsumsi',
+                      label: 'Nama Asupan',
                       hintText: 'Contoh: nasi padang, teh hangat, biskuit',
                       errorText: _nameError,
                     ),
@@ -481,7 +481,7 @@ class _ManualFoodMacroEntryPageState extends State<ManualFoodMacroEntryPage> {
                           ),
                         )
                       : const Text(
-                          'Simpan Konsumsi Lengkap',
+                          'Simpan Asupan Lengkap',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,

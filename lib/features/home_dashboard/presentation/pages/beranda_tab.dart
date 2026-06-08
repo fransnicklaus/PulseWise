@@ -909,7 +909,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Kontak Darurat',
+                                'Kontak Dukungan',
                                 style: TextStyle(
                                   color: Color(0xFFFFF4B8),
                                   fontSize: 25,
@@ -917,7 +917,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                 ),
                               ),
                               Text(
-                                'Tekan untuk menghubungi',
+                                'Tekan untuk menghubungi cepat',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -1266,7 +1266,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                   ),
                 ),
 
-                // Diari Kesehatan Full Width Button
+                // Catatan Harian Full Width Button
                 GestureDetector(
                   onTap: () {
                     // context.push('/home/diary');
@@ -1301,7 +1301,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'DIARI KESEHATAN',
+                                'CATATAN HARIAN',
                                 style: TextStyle(
                                   color: Color(0xFF525252),
                                   fontSize: 19,
@@ -1309,7 +1309,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                 ),
                               ),
                               Text(
-                                'Catat semua kondisi harian Anda',
+                                'Catat aktivitas, asupan, dan metrik Anda',
                                 style: TextStyle(
                                   color: Color(0xFFCD3754),
                                   fontSize: 16,
@@ -1415,14 +1415,14 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                 ),
                                 const SizedBox(height: 20),
                                 const Text(
-                                  'Pengingat',
+                                  'Rutinitas',
                                   style: TextStyle(
                                     color: Color(0xFF525252),
                                     fontSize: 18,
                                   ),
                                 ),
                                 const Text(
-                                  'Obat & Jadwal',
+                                  'Jadwal harian',
                                   style: TextStyle(
                                     color: Color(0xFF62748E),
                                     fontSize: 16,
@@ -1466,7 +1466,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Pengingat Obat',
+              'Rutinitas Mendatang',
               style: TextStyle(
                 color: Color(0xFF334155),
                 fontSize: 22,
@@ -1475,7 +1475,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
             ),
             const SizedBox(height: 4),
             const Text(
-              'Obat terdekat dalam 3 hari ke depan',
+              'Jadwal terdekat dalam 3 hari ke depan',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 16,
@@ -1488,7 +1488,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
               NoConnectionState.compact(
                 title: 'Koneksi terputus',
                 message:
-                    'Menampilkan jadwal obat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+                    'Menampilkan jadwal rutinitas terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
                 onRetry: () => _retryUpcomingMedicationSection(query),
               ),
               const SizedBox(height: 12),
@@ -1504,9 +1504,9 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
               )
             else if (_isNoConnectionAsyncError(asyncValue))
               NoConnectionState.card(
-                title: 'Jadwal obat belum bisa dimuat',
+                title: 'Jadwal rutinitas belum bisa dimuat',
                 message:
-                    'Kami belum bisa mengambil jadwal obat 3 hari ke depan karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                    'Kami belum bisa mengambil jadwal rutinitas 3 hari ke depan karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                 onRetry: () => _retryUpcomingMedicationSection(query),
               )
             else if (_hasNonNetworkErrorWithoutValue(asyncValue) &&
@@ -1543,7 +1543,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                     return const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Text(
-                        'Belum ada jadwal obat untuk 3 hari ke depan.',
+                        'Belum ada jadwal rutinitas untuk 3 hari ke depan.',
                         style: TextStyle(
                           color: Color(0xFF64748B),
                           fontSize: 16,
@@ -1589,7 +1589,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
       onSave: (status, currentItem) {
         final scheduledDate = currentItem.scheduledDate;
         if (scheduledDate == null) {
-          throw Exception('Tanggal jadwal obat tidak tersedia.');
+          throw Exception('Tanggal jadwal rutinitas tidak tersedia.');
         }
 
         return ref.read(medicationApiProvider).takeMedication(
@@ -1610,14 +1610,15 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
       try {
         await ref.read(medicationCalendarRangeProvider(query).future);
         if (mounted) {
-          AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+          AppToast.success(
+              this.context, 'Status rutinitas berhasil diperbarui.');
         }
       } catch (e) {
         if (!mounted) return;
         if (isNetworkRequestError(e)) {
           AppToast.info(
             this.context,
-            'Status obat berhasil diperbarui, tetapi daftar terbaru belum bisa dimuat.',
+            'Status rutinitas berhasil diperbarui, tetapi daftar terbaru belum bisa dimuat.',
           );
           return;
         }

@@ -190,7 +190,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               ),
             ),
             content: const Text(
-              'Profil pasien Anda belum disiapkan. Lengkapi profil terlebih dahulu agar akun dapat digunakan dengan normal.',
+              'Profil Anda belum disiapkan. Lengkapi profil terlebih dahulu agar akun dapat digunakan dengan normal.',
               style: TextStyle(
                 fontSize: 16,
                 height: 1.5,
@@ -313,7 +313,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         case _HealthConnectPromptChoice.connectNow:
           AppToast.info(
             context,
-            'Membuka panduan Health Connect untuk melanjutkan setup.',
+            'Membuka panduan sinkronisasi wearable untuk melanjutkan setup.',
           );
           context.push('/home/health-connect');
           break;
@@ -326,7 +326,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         case _HealthConnectPromptChoice.noDevice:
           AppToast.info(
             context,
-            'Baik, popup Health Connect tidak akan ditampilkan lagi.',
+            'Baik, popup sinkronisasi wearable tidak akan ditampilkan lagi.',
           );
           break;
       }
@@ -346,10 +346,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
         profile.healthConnectStatus != 'connected';
 
     final title = isResumePrompt
-        ? 'Lanjutkan Setup Health Connect?'
-        : 'Hubungkan Smartwatch Anda?';
+        ? 'Lanjutkan Sinkronisasi Wearable?'
+        : 'Hubungkan Wearable Anda?';
     final description = isResumePrompt
-        ? 'Anda sebelumnya sudah memilih untuk menghubungkan wearable, tetapi setup Health Connect belum selesai.'
+        ? 'Anda sebelumnya sudah memilih untuk menghubungkan wearable, tetapi setup sinkronisasinya belum selesai.'
         : 'PulseWise dapat membaca langkah, detak jantung, tidur, dan aktivitas dari smartwatch atau wearable Anda lewat Health Connect.';
 
     return showModalBottomSheet<_HealthConnectPromptChoice>(
@@ -582,12 +582,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
                   BottomNavigationBarItem(
                     icon: Icon(Icons.favorite_border),
                     activeIcon: Icon(Icons.favorite),
-                    label: 'Diari',
+                    label: 'Catatan',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(FluentIcons.alert_24_regular),
                     activeIcon: Icon(FluentIcons.alert_24_filled),
-                    label: 'Pengingat',
+                    label: 'Rutinitas',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(FluentIcons.person_24_regular),

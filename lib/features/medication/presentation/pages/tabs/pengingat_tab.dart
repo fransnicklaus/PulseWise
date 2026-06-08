@@ -229,7 +229,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
                 child: NoConnectionState.compact(
                   title: 'Koneksi terputus',
                   message:
-                      'Menampilkan kalender obat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui jadwal terbaru.',
+                      'Menampilkan kalender rutinitas terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui jadwal terbaru.',
                   onRetry: () => _retryCalendarSection(query),
                 ),
               ),
@@ -244,9 +244,9 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: NoConnectionState.card(
-                  title: 'Kalender obat belum bisa dimuat',
+                  title: 'Kalender rutinitas belum bisa dimuat',
                   message:
-                      'Kami belum bisa mengambil kalender obat bulan ini karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                      'Kami belum bisa mengambil kalender rutinitas bulan ini karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                   onRetry: () => _retryCalendarSection(query),
                 ),
               )
@@ -302,7 +302,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Pengingat',
+                  'Rutinitas',
                   style: TextStyle(
                     color: Color(0xFF525252),
                     fontSize: 36,
@@ -311,7 +311,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Kalender Obat',
+                  'Kalender Rutinitas',
                   style: TextStyle(
                     color: Color(0xFF525252),
                     fontSize: 18,
@@ -347,7 +347,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
       onSave: (status, currentItem) {
         final scheduledDate = currentItem.scheduledDate;
         if (scheduledDate == null) {
-          throw Exception('Tanggal jadwal obat tidak tersedia.');
+          throw Exception('Tanggal jadwal rutinitas tidak tersedia.');
         }
 
         return ref.read(medicationApiProvider).takeMedication(
@@ -373,14 +373,15 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
       try {
         await ref.read(medicationCalendarRangeProvider(query).future);
         if (mounted) {
-          AppToast.success(this.context, 'Status obat berhasil diperbarui.');
+          AppToast.success(
+              this.context, 'Status rutinitas berhasil diperbarui.');
         }
       } catch (e) {
         if (!mounted) return;
         if (isNetworkRequestError(e)) {
           AppToast.info(
             this.context,
-            'Status obat berhasil diperbarui, tetapi kalender terbaru belum bisa dimuat.',
+            'Status rutinitas berhasil diperbarui, tetapi kalender terbaru belum bisa dimuat.',
           );
           return;
         }
@@ -823,7 +824,7 @@ class _LoadingDayCard extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Memuat jadwal obat untuk bulan ini...',
+              'Memuat jadwal rutinitas untuk bulan ini...',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 16,
@@ -851,7 +852,7 @@ class _EmptyDayCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: const Text(
-        'Tidak ada jadwal obat pada tanggal ini.',
+        'Tidak ada jadwal rutinitas pada tanggal ini.',
         style: TextStyle(
           color: Color(0xFF64748B),
           fontSize: 16,

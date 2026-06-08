@@ -114,7 +114,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-          title: 'Edit Pengingat',
+          title: 'Edit Rutinitas',
           showBackButton: true,
           onBackPressed: () {
             context.pop();
@@ -132,9 +132,9 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
             final error = snapshot.error;
             if (error != null && isNetworkRequestError(error)) {
               return NoConnectionState.page(
-                title: 'Form edit belum bisa dimuat',
+                title: 'Form rutinitas belum bisa dimuat',
                 message:
-                    'Kami belum bisa mengambil detail pengingat untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                    'Kami belum bisa mengambil detail rutinitas untuk diedit karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                 onRetry: _retry,
               );
             }
@@ -148,7 +148,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
           final item = snapshot.data;
           if (item == null) {
             return _ErrorState(
-              message: 'Detail medication tidak ditemukan',
+              message: 'Detail rutinitas tidak ditemukan',
               onRetry: _retry,
             );
           }
@@ -165,7 +165,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _sectionCard(
-                    title: 'Bentuk Obat',
+                    title: 'Bentuk Item',
                     child: DropdownButtonFormField<String>(
                       value: _selectedForm,
                       style: const TextStyle(
@@ -173,7 +173,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
-                      decoration: _inputDecoration('Pilih bentuk obat'),
+                      decoration: _inputDecoration('Pilih bentuk item'),
                       dropdownColor: Colors.white,
                       items: _forms
                           .map(
@@ -191,7 +191,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                   ),
                   const SizedBox(height: 12),
                   _sectionCard(
-                    title: 'Warna Obat',
+                    title: 'Warna Item',
                     child: SizedBox(
                       height: 46,
                       child: ListView.separated(
@@ -244,7 +244,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                   ),
                   const SizedBox(height: 12),
                   _sectionCard(
-                    title: 'Dosis',
+                    title: 'Takaran',
                     child: Row(
                       children: [
                         Expanded(
@@ -257,7 +257,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
-                            decoration: _inputDecoration('Jumlah dosis'),
+                            decoration: _inputDecoration('Jumlah takaran'),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -315,7 +315,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                   ),
                   const SizedBox(height: 12),
                   _sectionCard(
-                    title: 'Frekuensi Minum',
+                    title: 'Frekuensi Rutinitas',
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -431,7 +431,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                   ),
                   const SizedBox(height: 12),
                   _sectionCard(
-                    title: 'Jam Minum',
+                    title: 'Waktu Pengingat',
                     child: Column(
                       children: [
                         ...List.generate(_intakeTimes.length, (index) {
@@ -495,7 +495,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
                             },
                             icon: const Icon(Icons.add, size: 22),
                             label: const Text(
-                              'Tambah Jam Minum',
+                              'Tambah Waktu',
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
@@ -621,7 +621,7 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
   Future<void> _submit() async {
     final dose = num.tryParse(_doseController.text.trim());
     if (dose == null || dose <= 0) {
-      AppToast.warning(context, 'Dosis harus angka dan lebih dari 0.');
+      AppToast.warning(context, 'Takaran harus angka dan lebih dari 0.');
       return;
     }
 
@@ -637,13 +637,13 @@ class _EditPengingatPageState extends ConsumerState<EditPengingatPage> {
     }
 
     if (_intakeTimes.isEmpty) {
-      AppToast.warning(context, 'Tambahkan minimal satu jam minum.');
+      AppToast.warning(context, 'Tambahkan minimal satu waktu pengingat.');
       return;
     }
 
     final intakeTimes = _intakeTimes.map(_formatTime).toList();
     if (intakeTimes.toSet().length != intakeTimes.length) {
-      AppToast.warning(context, 'Jam minum tidak boleh sama.');
+      AppToast.warning(context, 'Waktu pengingat tidak boleh sama.');
       return;
     }
 

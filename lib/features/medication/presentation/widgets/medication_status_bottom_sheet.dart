@@ -53,7 +53,7 @@ class _MedicationStatusBottomSheetState
   static const List<_MedicationStatusOption> _statusOptions = [
     _MedicationStatusOption(
       value: 'Taken',
-      label: 'Diminum',
+      label: 'Selesai',
       icon: Icons.check_circle_outline_sharp,
     ),
     _MedicationStatusOption(
@@ -84,7 +84,7 @@ class _MedicationStatusBottomSheetState
     final scheduledDate = widget.item.scheduledDate;
     if (scheduledDate == null) {
       setState(() {
-        _errorMessage = 'Tanggal jadwal obat tidak tersedia.';
+        _errorMessage = 'Tanggal jadwal rutinitas tidak tersedia.';
       });
       return;
     }
@@ -339,7 +339,7 @@ class _MedicationStatusBottomSheetState
                   onPressed: _isSaving ? null : _handleManage,
                   icon: const Icon(Icons.settings),
                   label: const Text(
-                    'Kelola Obat',
+                    'Kelola Rutinitas',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,

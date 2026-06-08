@@ -642,7 +642,7 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Koneksi Wearable',
+                          'Sinkronisasi Wearable',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
@@ -652,7 +652,7 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Hubungkan PulseWise dengan smartwatch Anda',
+                          'Hubungkan PulseWise dengan perangkat wearable Anda',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
@@ -686,7 +686,7 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
             ),
             const SizedBox(height: 10),
             const Text(
-              'Buka bagian ini untuk melihat panduan integrasi Health Connect dan data apa saja yang bisa disinkronkan.',
+              'Buka bagian ini untuk melihat panduan sinkronisasi wearable dan data apa saja yang bisa dibaca melalui Health Connect.',
               style: TextStyle(
                 fontSize: 15,
                 color: Color(0xFF64748B),
@@ -730,7 +730,7 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
                   ),
                   icon: const Icon(Icons.arrow_forward_rounded),
                   label: const Text(
-                    'Lihat Panduan Health Connect',
+                    'Lihat Panduan Sinkronisasi',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,

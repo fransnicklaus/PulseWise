@@ -22,6 +22,12 @@ class _DiariTabState extends ConsumerState<DiariTab> {
   bool _isHandlingPendingSection = false;
   bool _isHandlingPendingToast = false;
 
+  bool _isConsumptionSection(String section) {
+    final normalizedSection = section.trim().toLowerCase();
+    return normalizedSection.contains('konsumsi') ||
+        normalizedSection.contains('asupan');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +55,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                   .read(currentDiaryProvider.notifier)
                   .addSymptomsFromModal(payload)
               : null,
-          onSubmitKonsumsi: normalizedSection.contains('konsumsi')
+          onSubmitKonsumsi: _isConsumptionSection(normalizedSection)
               ? (payload) => ref
                   .read(currentDiaryProvider.notifier)
                   .addConsumptionsFromModal(payload)
@@ -90,18 +96,18 @@ class _DiariTabState extends ConsumerState<DiariTab> {
           if (!mounted) return;
           AppToast.success(context, 'Gejala berhasil disimpan');
         }
-      } else if (section.contains('konsumsi')) {
+      } else if (_isConsumptionSection(section)) {
         if (result['saved'] == true) {
           await _refreshDiaryData();
           if (!mounted) return;
-          AppToast.success(context, 'Konsumsi harian berhasil disimpan');
+          AppToast.success(context, 'Asupan harian berhasil disimpan');
         } else if ((result['name'] ?? '').toString().trim().isNotEmpty) {
           await ref
               .read(currentDiaryProvider.notifier)
               .addConsumptionsFromModal(result);
           await _refreshDiaryData();
           if (!mounted) return;
-          AppToast.success(context, 'Konsumsi harian berhasil disimpan');
+          AppToast.success(context, 'Asupan harian berhasil disimpan');
         }
       } else if (section.contains('aktivitas')) {
         if (result['saved'] == true) {
@@ -240,7 +246,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
         return 'Minuman';
       case 'medication':
       case 'obat':
-        return 'Obat';
+        return 'Suplemen';
       default:
         return type.isEmpty ? '-' : type;
     }
@@ -353,9 +359,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                       SizedBox(
                         height: MediaQuery.of(context).size.height * 0.72,
                         child: NoConnectionState.page(
-                          title: 'Diari belum bisa dimuat',
+                          title: 'Catatan harian belum bisa dimuat',
                           message:
-                              'Kami belum bisa mengambil catatan diari hari ini. Cek koneksi internet Anda lalu coba lagi.',
+                              'Kami belum bisa mengambil catatan harian hari ini. Cek koneksi internet Anda lalu coba lagi.',
                           onRetry: () => ref
                               .read(currentDiaryProvider.notifier)
                               .loadCurrentDiaryForToday(),
@@ -434,7 +440,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         const Text(
-                                          'Diari Kesehatan',
+                                          'Catatan Harian',
                                           style: TextStyle(
                                             fontSize: 25,
                                             fontWeight: FontWeight.bold,
@@ -485,7 +491,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   child: NoConnectionState.compact(
                                     title: 'Koneksi terputus',
                                     message:
-                                        'Data diari terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
+                                        'Data catatan terakhir tetap ditampilkan. Sambungkan internet lalu tarik untuk memuat ulang.',
                                     onRetry: () => ref
                                         .read(currentDiaryProvider.notifier)
                                         .loadCurrentDiaryForToday(
@@ -1048,7 +1054,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                               ),
                               const SizedBox(height: 20),
 
-                              // Konsumsi Harian Section
+                              // Asupan Harian Section
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 24.0),
@@ -1066,7 +1072,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                               size: 24),
                                           const SizedBox(width: 8),
                                           const Text(
-                                            'Konsumsi Harian',
+                                            'Asupan Harian',
                                             style: TextStyle(
                                               fontSize: 19,
                                               fontWeight: FontWeight.w600,
@@ -1077,7 +1083,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                             const Spacer(),
                                             _SectionAddButton(
                                               onTap: () => _openSectionModal(
-                                                  'Konsumsi Harian'),
+                                                  'Asupan Harian'),
                                             ),
                                           ],
                                         ],
@@ -1085,7 +1091,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                       const SizedBox(height: 12),
                                       if (consumptions.isEmpty && !isSkeleton)
                                         const Text(
-                                          'Belum ada konsumsi hari ini',
+                                          'Belum ada asupan hari ini',
                                           style: TextStyle(
                                             fontSize: 15,
                                             color: Color(0xFF62748E),

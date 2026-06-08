@@ -45,7 +45,7 @@ class DetailDiariPage extends StatelessWidget {
           },
         ],
         'catatan':
-            'Kondisi tubuh terasa baik hari ini. Sudah minum obat teratur sesuai jadwal. Jalan pagi selama 20 menit di taman. Tidur nyenyak semalam.',
+            'Kondisi tubuh terasa baik hari ini. Sudah menjalankan rutinitas pagi sesuai jadwal. Jalan pagi selama 20 menit di taman. Tidur nyenyak semalam.',
       };
 
   @override
@@ -55,7 +55,7 @@ class DetailDiariPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: CustomAppBar(
-        title: 'Detail Diari',
+        title: 'Detail Catatan',
         subtitle: entry['date'],
         showBackButton: true,
         onBackPressed: () => context.pop(),
@@ -362,11 +362,11 @@ class DetailDiariPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Konsumsi Harian Section
+            // Asupan Harian Section
             _buildSection(
               icon: Icons.restaurant,
               iconColor: const Color(0xFF16A34A),
-              title: 'Konsumsi Harian',
+              title: 'Asupan Harian',
               child: Column(
                 children: (entry['konsumsi'] as List<Map<String, dynamic>>)
                     .map((item) => Padding(

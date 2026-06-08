@@ -961,11 +961,11 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                       ),
                       const SizedBox(height: 14),
                       _SectionCard(
-                        title: 'Kontak Darurat Utama',
+                        title: 'Kontak Dukungan Utama',
                         children: isSkeleton
                             ? const [
                                 _InfoRow(
-                                    label: 'Nama', value: 'Kontak Darurat'),
+                                    label: 'Nama', value: 'Kontak Dukungan'),
                                 _InfoRow(
                                     label: 'Nomor Telepon',
                                     value: '0812-3456-7890'),
@@ -1168,7 +1168,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                               icon: const Icon(Icons.monitor_heart_outlined,
                                   size: 22),
                               label: const Text(
-                                'Panduan Health Connect',
+                                'Panduan Sinkronisasi Wearable',
                                 style: TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.w700),
                               ),
@@ -1204,9 +1204,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       return hasNetworkError
           ? [
               NoConnectionState.card(
-                title: 'Kontak darurat belum bisa dimuat',
+                title: 'Kontak dukungan belum bisa dimuat',
                 message:
-                    'Kami belum bisa mengambil kontak darurat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                    'Kami belum bisa mengambil kontak dukungan karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                 onRetry: _retryEmergencyContactsData,
               ),
             ]
@@ -1244,7 +1244,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
         NoConnectionState.compact(
           title: 'Koneksi terputus',
           message:
-              'Menampilkan kontak darurat terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
+              'Menampilkan kontak dukungan terakhir yang berhasil dimuat. Sambungkan internet untuk memperbarui daftar terbaru.',
           onRetry: _retryEmergencyContactsData,
         ),
         const SizedBox(height: 14),
@@ -1280,7 +1280,8 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
       ),
       _InfoRow(
         label: 'Status',
-        value: mainContact.isPrioritas == true ? 'Prioritas' : 'Kontak Darurat',
+        value:
+            mainContact.isPrioritas == true ? 'Prioritas' : 'Kontak Dukungan',
       ),
     ];
   }

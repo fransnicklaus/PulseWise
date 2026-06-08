@@ -33,9 +33,9 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
       barrierDismissible: !_isDeleting,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Hapus Pengingat?'),
+          title: const Text('Hapus Rutinitas?'),
           content: const Text(
-            'Apakah Anda yakin ingin menghapus pengingat obat ini?',
+            'Apakah Anda yakin ingin menghapus rutinitas ini?',
           ),
           actions: [
             TextButton(
@@ -91,8 +91,8 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: CustomAppBar(
-        title: 'Detail Pengingat',
-        // subtitle: 'Tambahkan kontak darurat baru',
+        title: 'Detail Rutinitas',
+        // subtitle: 'Tambahkan kontak dukungan baru',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
@@ -103,9 +103,9 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
           ),
           error: (error, _) => isNetworkRequestError(error)
               ? NoConnectionState.page(
-                  title: 'Detail pengingat belum bisa dimuat',
+                  title: 'Detail rutinitas belum bisa dimuat',
                   message:
-                      'Kami belum bisa mengambil detail pengingat obat karena koneksi internet tidak tersedia atau sedang tidak stabil.',
+                      'Kami belum bisa mengambil detail rutinitas karena koneksi internet tidak tersedia atau sedang tidak stabil.',
                   onRetry: () {
                     ref.invalidate(
                         medicationDetailProvider(widget.medicationId));
@@ -146,7 +146,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                               );
                               AppToast.success(
                                 context,
-                                'Pengingat berhasil diperbarui',
+                                'Rutinitas berhasil diperbarui',
                               );
                             }
                           },
@@ -379,7 +379,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                   // const SizedBox(height: 18),
                   if (hasWeeklyDays) ...[
                     const Text(
-                      'Hari Konsumsi',
+                      'Hari Rutin',
                       style: TextStyle(
                         color: Color(0xFF334155),
                         fontSize: 16,
@@ -403,7 +403,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                     const SizedBox(height: 16),
                   ],
                   const Text(
-                    'Waktu Minum',
+                    'Waktu Pengingat',
                     style: TextStyle(
                       color: Color(0xFF334155),
                       fontSize: 18,
