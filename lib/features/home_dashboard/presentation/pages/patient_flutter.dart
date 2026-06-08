@@ -9,8 +9,11 @@ import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
+import 'package:pulsewise/features/diary/data/models/diary_models.dart';
+import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
-import 'package:pulsewise/features/ml_recommendation/data/models/ml_recommendation_models.dart';
+import 'package:pulsewise/features/medication/data/models/medication_models.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:pulsewise/features/reports/presentation/pages/report_generator_flutter.dart';
 import 'package:syncfusion_flutter_gauges/gauges.dart';
@@ -61,8 +64,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     TimePeriodOption(id: 'all', label: 'Semua Data'),
   ];
 
-  List<String> _missingFields = [];
-  MlRecommendationResponse? _mlPredictionResult;
+  final List<String> _missingFields = [];
 
   @override
   void initState() {
@@ -77,6 +79,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDashboardData();
+      ref.read(currentDiaryProvider.notifier).ensureCurrentDiaryLoaded();
     });
   }
 
@@ -225,6 +228,10 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final currentDiaryState = ref.watch(currentDiaryProvider);
+    final routineInsightsQuery = _routineInsightsQuery();
+    final routineAdherenceAsync =
+        ref.watch(medicationCalendarRangeProvider(routineInsightsQuery));
     final data = _dashboardData ??
         _emptyDashboardData(_selectedPeriod ?? _periodOptions[1]);
     final isDesktop = MediaQuery.of(context).size.width >= 1024;
@@ -311,6 +318,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                   child: _buildWellnessInsightsTab(
                                     data,
                                     fullWidth,
+                                    currentDiaryState,
+                                    routineAdherenceAsync,
                                   ),
                                 ),
                                 // Tab 2: Dashboard charts and cards
@@ -575,6 +584,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   Widget _buildWellnessInsightsTab(
     PatientDashboardData data,
     double fullWidth,
+    CurrentDiaryState currentDiaryState,
+    AsyncValue<MedicationCalendarResponse> routineAdherenceAsync,
   ) {
     if (_isLoadingDashboard && _dashboardData == null) {
       return const Center(
@@ -639,9 +650,12 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       );
     }
 
+    final diary = currentDiaryState.diary;
     final heroSubtitle = _selectedPeriod?.label ?? 'Periode aktif';
     final latestSummaryTime = _buildLatestSummaryTime(data);
     final cardWidth = fullWidth >= 900 ? (fullWidth - 12) / 2 : fullWidth;
+    final routineInsight = _routineInsight(routineAdherenceAsync);
+    final completionCount = _completedDiarySections(diary);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,7 +689,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Ringkasan metrik terbaru',
+                'Ringkasan wellness harian',
                 style: TextStyle(
                   color: Color(0xFF0F172A),
                   fontSize: 28,
@@ -693,14 +707,17 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'PulseWise menampilkan catatan yang Anda simpan tanpa klasifikasi normal, bahaya, atau diagnosis.',
-                style: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  height: 1.45,
-                ),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _InsightChip(
+                    label: 'Catatan hari ini ${completionCount.clamp(0, 4)}/4',
+                  ),
+                  _InsightChip(
+                    label: routineInsight.chipLabel,
+                  ),
+                ],
               ),
             ],
           ),
@@ -713,51 +730,47 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
             SizedBox(
               width: cardWidth,
               child: _WellnessHighlightCard(
-                title: 'Tekanan Darah Terakhir',
-                value: _latestBloodPressureText(data),
-                helper: 'Catatan terakhir yang tersedia',
-                icon: Icons.favorite_outline_rounded,
-                accentColor: const Color(0xFF2563EB),
+                title: 'Aktivitas Hari Ini',
+                value: _activityInsightValue(currentDiaryState),
+                helper: _activityInsightHelper(currentDiaryState),
+                icon: Icons.directions_walk_rounded,
+                accentColor: const Color(0xFF0284C7),
               ),
             ),
             SizedBox(
               width: cardWidth,
               child: _WellnessHighlightCard(
-                title: 'Detak Jantung Terakhir',
-                value: data.latestHeartRate == null
-                    ? '-'
-                    : '${data.latestHeartRate!.toStringAsFixed(0)} bpm',
-                helper: 'Catatan terakhir yang tersedia',
-                icon: Icons.monitor_heart_outlined,
-                accentColor: const Color(0xFFE13D5A),
+                title: 'Tidur Terakhir',
+                value: _sleepInsightValue(currentDiaryState),
+                helper: _sleepInsightHelper(currentDiaryState),
+                icon: Icons.bedtime_rounded,
+                accentColor: const Color(0xFF4F46E5),
               ),
             ),
             SizedBox(
               width: cardWidth,
               child: _WellnessHighlightCard(
-                title: 'Berat Badan Terakhir',
-                value: data.latestWeight == null
-                    ? '-'
-                    : '${data.latestWeight!.toStringAsFixed(1)} kg',
-                helper: 'Gunakan grafik untuk melihat tren',
-                icon: Icons.monitor_weight_outlined,
+                title: 'Rutinitas 7 Hari',
+                value: routineInsight.value,
+                helper: routineInsight.helper,
+                icon: Icons.event_note_rounded,
                 accentColor: const Color(0xFFF59E0B),
               ),
             ),
             SizedBox(
               width: cardWidth,
               child: _WellnessHighlightCard(
-                title: 'BMI Terakhir',
-                value: data.latestBmi == null
-                    ? '-'
-                    : data.latestBmi!.toStringAsFixed(1),
-                helper: 'Ditampilkan sebagai catatan pribadi',
-                icon: Icons.insights_outlined,
+                title: 'Kelengkapan Catatan',
+                value: '$completionCount/4 area',
+                helper: _diaryCompletionHelper(diary),
+                icon: Icons.checklist_rounded,
                 accentColor: const Color(0xFF0F766E),
               ),
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        _buildBodyTrendSummary(data),
         const SizedBox(height: 16),
         Container(
           width: double.infinity,
@@ -767,35 +780,10 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: Row(
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Perbarui catatan harian',
-                      style: TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Tambahkan asupan, aktivitas, tidur, dan metrik agar grafik wellness Anda tetap terisi.',
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              FilledButton.icon(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stack = constraints.maxWidth < 520;
+              final button = FilledButton.icon(
                 onPressed: () {
                   ref.read(dashboardNavIndexProvider.notifier).state = 2;
                   context.go('/home');
@@ -814,8 +802,51 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                   'Buka Catatan',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-              ),
-            ],
+              );
+
+              const textSection = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Perbarui catatan harian',
+                    style: TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Tambahkan asupan, aktivitas, tidur, dan metrik agar grafik wellness Anda tetap terisi.',
+                    style: TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              );
+
+              if (stack) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    textSection,
+                    const SizedBox(height: 16),
+                    SizedBox(width: double.infinity, child: button),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  const Expanded(child: textSection),
+                  const SizedBox(width: 16),
+                  button,
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -840,10 +871,232 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
     return 'Catatan terakhir tersedia pada ${_formatDashboardDateTime(latest)} untuk $label.';
   }
 
-  String _latestBloodPressureText(PatientDashboardData data) {
-    final latest = data.latestBloodPressure;
-    if (latest == null) return '-';
-    return '${latest.systolic.toStringAsFixed(0)}/${latest.diastolic.toStringAsFixed(0)} mmHg';
+  MedicationCalendarRangeQuery _routineInsightsQuery() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return MedicationCalendarRangeQuery(
+      from: today.subtract(const Duration(days: 6)),
+      to: today,
+    );
+  }
+
+  String _activityInsightValue(CurrentDiaryState state) {
+    if (state.isLoading && state.diary == null) {
+      return 'Memuat...';
+    }
+
+    final totalMinutes = _activityTotalMinutes(state.diary);
+    if (totalMinutes <= 0) {
+      return 'Belum ada';
+    }
+
+    return '$totalMinutes menit';
+  }
+
+  String _activityInsightHelper(CurrentDiaryState state) {
+    if (state.isLoading && state.diary == null) {
+      return 'Sedang memuat catatan aktivitas hari ini.';
+    }
+
+    final sessions = state.diary?.activities.length ?? 0;
+    if (sessions == 0) {
+      return 'Tambahkan aktivitas dari Catatan untuk melihat total harian.';
+    }
+
+    return '$sessions sesi tercatat hari ini.';
+  }
+
+  int _activityTotalMinutes(DiaryDetail? diary) {
+    return (diary?.activities ?? const <DiaryActivity>[]).fold<int>(
+      0,
+      (total, item) => total + (item.duration?.round() ?? 0),
+    );
+  }
+
+  String _sleepInsightValue(CurrentDiaryState state) {
+    if (state.isLoading && state.diary == null) {
+      return 'Memuat...';
+    }
+
+    final latestSleep = _latestSleepEntry(state.diary);
+    final duration = latestSleep?.sleepDurationHours?.toDouble();
+    if (latestSleep == null || duration == null || duration <= 0) {
+      return 'Belum ada';
+    }
+
+    return '${duration.toStringAsFixed(1)} jam';
+  }
+
+  String _sleepInsightHelper(CurrentDiaryState state) {
+    if (state.isLoading && state.diary == null) {
+      return 'Sedang memuat catatan tidur terakhir.';
+    }
+
+    final latestSleep = _latestSleepEntry(state.diary);
+    if (latestSleep == null) {
+      return 'Tambahkan jam tidur untuk melihat pola istirahat terbaru.';
+    }
+
+    final sleepTime =
+        latestSleep.sleepTime.isEmpty ? '--:--' : latestSleep.sleepTime;
+    final wakeTime =
+        latestSleep.wakeTime.isEmpty ? '--:--' : latestSleep.wakeTime;
+    return 'Tidur $sleepTime - bangun $wakeTime.';
+  }
+
+  DiarySleep? _latestSleepEntry(DiaryDetail? diary) {
+    final sleeps = diary?.sleeps ?? const <DiarySleep>[];
+    if (sleeps.isEmpty) return null;
+    return sleeps.last;
+  }
+
+  int _completedDiarySections(DiaryDetail? diary) {
+    var completed = 0;
+    if ((diary?.bodyMetrics ?? const <DiaryBodyMetric>[]).isNotEmpty) {
+      completed++;
+    }
+    if ((diary?.activities ?? const <DiaryActivity>[]).isNotEmpty) {
+      completed++;
+    }
+    if ((diary?.consumptions ?? const <DiaryConsumption>[]).isNotEmpty) {
+      completed++;
+    }
+    if ((diary?.sleeps ?? const <DiarySleep>[]).isNotEmpty) {
+      completed++;
+    }
+    return completed;
+  }
+
+  String _diaryCompletionHelper(DiaryDetail? diary) {
+    final completed = _completedDiarySections(diary);
+    if (completed == 0) {
+      return 'Belum ada area catatan yang terisi hari ini.';
+    }
+    if (completed == 4) {
+      return 'Semua area utama sudah terisi untuk hari ini.';
+    }
+    return 'Masih ada ${4 - completed} area yang bisa Anda lengkapi hari ini.';
+  }
+
+  _RoutineInsight _routineInsight(
+    AsyncValue<MedicationCalendarResponse> asyncValue,
+  ) {
+    if (asyncValue.isLoading && !asyncValue.hasValue) {
+      return const _RoutineInsight(
+        value: 'Memuat...',
+        helper: 'Sedang mengambil jadwal rutinitas 7 hari terakhir.',
+        chipLabel: 'Rutinitas dimuat',
+      );
+    }
+
+    final response = asyncValue.valueOrNull;
+    if (response == null) {
+      return const _RoutineInsight(
+        value: 'Belum ada',
+        helper: 'Belum ada jadwal rutinitas yang bisa diringkas.',
+        chipLabel: 'Rutinitas belum ada',
+      );
+    }
+
+    final items = response.items;
+    if (items.isEmpty) {
+      return const _RoutineInsight(
+        value: 'Tidak ada jadwal',
+        helper: 'Tidak ada rutinitas terjadwal dalam 7 hari terakhir.',
+        chipLabel: '0 jadwal rutinitas',
+      );
+    }
+
+    final takenCount = items.where((item) {
+      final status = (item.status ?? '').trim().toLowerCase();
+      return status == 'taken';
+    }).length;
+    final loggedCount = items.where((item) {
+      final status = (item.status ?? '').trim().toLowerCase();
+      return status == 'taken' || status == 'missed' || status == 'skipped';
+    }).length;
+
+    return _RoutineInsight(
+      value: '$takenCount/${items.length} selesai',
+      helper: '$loggedCount dari ${items.length} jadwal sudah diberi status.',
+      chipLabel: '${items.length} jadwal rutinitas',
+    );
+  }
+
+  Widget _buildBodyTrendSummary(PatientDashboardData data) {
+    final weightTrend = _weightTrendText(data);
+    final bmiValue =
+        data.latestBmi == null ? '-' : data.latestBmi!.toStringAsFixed(1);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Tren Tubuh Sederhana',
+            style: TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Ditampilkan sebagai perbandingan catatan terakhir tanpa penilaian medis.',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _BodyTrendTile(
+                  label: 'Berat Badan',
+                  value: data.latestWeight == null
+                      ? '-'
+                      : '${data.latestWeight!.toStringAsFixed(1)} kg',
+                  helper: weightTrend,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BodyTrendTile(
+                  label: 'BMI Terakhir',
+                  value: bmiValue,
+                  helper: '${data.bmiPoints.length} catatan pada periode ini.',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _weightTrendText(PatientDashboardData data) {
+    final latest = data.latestWeight;
+    final previous = data.latestWeightPrevious;
+    if (latest == null) {
+      return 'Belum ada catatan berat badan terbaru.';
+    }
+    if (previous == null) {
+      return 'Belum ada pembanding dari catatan sebelumnya.';
+    }
+
+    final delta = latest - previous;
+    final sign = delta > 0 ? '+' : '';
+    return 'Perubahan dari catatan sebelumnya: $sign${delta.toStringAsFixed(1)} kg.';
   }
 
   String _formatDashboardDateTime(DateTime dateTime) {
@@ -1248,114 +1501,15 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
   }
 
   double _getProbability() {
-    if (_mlPredictionResult == null) return 0.0;
-    try {
-      final recResult =
-          _mlPredictionResult?.data?.upstream?.body?.recommendationResult;
-      if (recResult != null) {
-        if (recResult.currentRisk > 0) {
-          final val = recResult.currentRisk;
-          return val.clamp(0.0, 100.0);
-        }
-      }
-    } catch (_) {}
     return 0.0;
   }
 
   String _getGeneratedDateStr() {
-    if (_mlPredictionResult == null) return 'Hari Ini';
-    final genAt = _mlPredictionResult?.data?.generatedAt;
-    if (genAt != null && genAt.isNotEmpty) {
-      try {
-        final date = DateTime.parse(genAt).toLocal();
-        final day = date.day.toString().padLeft(2, '0');
-        final month = date.month.toString().padLeft(2, '0');
-        final year = date.year;
-        final hour = date.hour.toString().padLeft(2, '0');
-        final minute = date.minute.toString().padLeft(2, '0');
-        return '$day/$month/$year $hour:$minute WIB';
-      } catch (_) {}
-    }
     return 'Hari Ini';
   }
 
-  Widget _buildRekomendasiSection(MlRecommendationResponse? mlRec) {
-    final lifestyle =
-        mlRec?.data?.upstream?.body?.recommendationResult.lifestyle ?? [];
-    final recommendationIncrease = lifestyle
-        .where((r) => r.comparison.toLowerCase().contains('tingkat'))
-        .toList();
-    final recommendationDecrease = lifestyle
-        .where((r) => r.comparison.toLowerCase().contains('kurang'))
-        .toList();
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF0F2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.recommend, color: Color(0xFFE13D5A)),
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'Saran Kebiasaan',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A202C),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (lifestyle.isEmpty)
-            const Text(
-              'Belum ada saran kebiasaan khusus saat ini.',
-              style: TextStyle(color: Color(0xFF4A5568)),
-            ),
-          ...recommendationIncrease.map((item) {
-            final title =
-                item.comparison.isNotEmpty ? item.comparison : item.description;
-            // final rec = item.recommendedValueInterval;
-            // final changeStatus = item.changeStatus;
-            // String action = '';
-
-            return RecommendationItem(
-              title: title,
-              // description: item.description,
-              action: 'increase',
-            );
-          }),
-          ...recommendationDecrease.map((item) {
-            final title =
-                item.comparison.isNotEmpty ? item.comparison : item.description;
-            // final rec = item.recommendedValueInterval;
-            // final changeStatus = item.changeStatus;
-            // String action = '';
-
-            return RecommendationItem(
-              title: title,
-              // description: item.description,
-              action: 'decrease',
-            );
-          }),
-        ],
-      ),
-    );
+  Widget _buildRekomendasiSection() {
+    return const SizedBox.shrink();
   }
 }
 
@@ -2574,6 +2728,99 @@ class _LatestValuePanel extends StatelessWidget {
       ],
     );
   }
+}
+
+class _InsightChip extends StatelessWidget {
+  const _InsightChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF475569),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _BodyTrendTile extends StatelessWidget {
+  const _BodyTrendTile({
+    required this.label,
+    required this.value,
+    required this.helper,
+  });
+
+  final String label;
+  final String value;
+  final String helper;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            helper,
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoutineInsight {
+  const _RoutineInsight({
+    required this.value,
+    required this.helper,
+    required this.chipLabel,
+  });
+
+  final String value;
+  final String helper;
+  final String chipLabel;
 }
 
 class _WellnessHighlightCard extends StatelessWidget {
