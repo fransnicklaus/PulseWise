@@ -1,10 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/config/app_env.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -31,21 +31,10 @@ String _firstNonEmptyValue(
 }
 
 String resolveGoogleWebClientId() {
-  if (kIsWeb && kReleaseMode) {
-    return _firstNonEmptyValue(
-      [
-        dotenv.env['GOOGLE_WEB_CLIENT_ID_PLAY_STORE'],
-        dotenv.env['GOOGLE_WEB_CLIENT_ID'],
-        dotenv.env['GOOGLE_CLIENT_ID'],
-      ],
-      fallback: _fallbackGoogleClientId,
-    );
-  }
-
   return _firstNonEmptyValue(
     [
-      dotenv.env['GOOGLE_WEB_CLIENT_ID'],
-      dotenv.env['GOOGLE_CLIENT_ID'],
+      AppEnv.googleWebClientId,
+      AppEnv.googleClientId,
     ],
     fallback: _fallbackGoogleClientId,
   );
@@ -54,9 +43,9 @@ String resolveGoogleWebClientId() {
 String resolveGoogleServerClientId() {
   return _firstNonEmptyValue(
     [
-      dotenv.env['GOOGLE_SERVER_CLIENT_ID'],
-      dotenv.env['GOOGLE_CLIENT_ID'],
-      dotenv.env['GOOGLE_WEB_CLIENT_ID'],
+      AppEnv.googleServerClientId,
+      AppEnv.googleClientId,
+      AppEnv.googleWebClientId,
     ],
     fallback: _fallbackGoogleClientId,
   );

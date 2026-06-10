@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -16,9 +15,6 @@ void main() async {
 
   // Initialize Local Storage
   await Hive.initFlutter();
-
-  // Initialize environment variables (uncomment when .env exists)
-  await dotenv.load(fileName: '.env');
 
   // Initialize DI / Services
   await di.init();

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pulsewise/core/config/app_env.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
@@ -45,7 +45,7 @@ class DoctorProfileApi {
     required MultipartFile file,
   }) async {
     final signature = await _fetchAvatarUploadSignature(
-      folder: dotenv.env['CLOUDINARY_FOLDER'] ?? 'pulsewise/avatars',
+      folder: AppEnv.cloudinaryFolder,
     );
 
     final uploadResult = await _uploadAvatarToCloudinary(

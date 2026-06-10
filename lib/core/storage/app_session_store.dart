@@ -1,5 +1,5 @@
 import 'package:pulsewise/core/constants/app_roles.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pulsewise/core/config/app_env.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppSession {
@@ -38,33 +38,33 @@ class AppSessionStore {
       prefs.getString(tokenPrefsKey),
       fallback: allowEnvFallback
           ? _firstNonEmpty(
-              dotenv.env['AUTH_TOKEN'],
-              dotenv.env['BEARER_TOKEN'],
+              AppEnv.authToken,
+              AppEnv.bearerToken,
             )
           : null,
     );
     final userId = _normalizeValue(
       prefs.getString(userIdPrefsKey),
-      fallback: allowEnvFallback ? dotenv.env['PATIENT_ID'] : null,
+      fallback: allowEnvFallback ? AppEnv.patientId : null,
     );
     final role = normalizeAppRole(
       _normalizeValue(
         prefs.getString(rolePrefsKey),
         fallback: allowEnvFallback
             ? _firstNonEmpty(
-                dotenv.env['AUTH_ROLE'],
-                dotenv.env['USER_ROLE'],
+                AppEnv.authRole,
+                AppEnv.userRole,
               )
             : null,
       ),
     );
     final nextStep = _normalizeValue(
       prefs.getString(nextStepPrefsKey),
-      fallback: allowEnvFallback ? dotenv.env['AUTH_NEXT_STEP'] : null,
+      fallback: allowEnvFallback ? AppEnv.authNextStep : null,
     );
     final accountStatus = _normalizeValue(
       prefs.getString(accountStatusPrefsKey),
-      fallback: allowEnvFallback ? dotenv.env['AUTH_ACCOUNT_STATUS'] : null,
+      fallback: allowEnvFallback ? AppEnv.authAccountStatus : null,
     );
 
     return AppSession(

@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pulsewise/core/config/app_env.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/profile/data/models/profile_models.dart';
@@ -26,7 +26,7 @@ class PatientProfileApi {
     required MultipartFile file,
   }) async {
     final signature = await fetchAvatarUploadSignature(
-      folder: dotenv.env['CLOUDINARY_FOLDER'] ?? 'pulsewise/avatars',
+      folder: AppEnv.cloudinaryFolder,
     );
 
     final uploadResult = await _uploadAvatarToCloudinary(
@@ -153,8 +153,7 @@ class PatientProfileApi {
 
   Future<PatientProfile> fetchProfile() async {
     final token = await AppSessionStore.requireToken(
-      missingMessage:
-          'Bearer token tidak ditemukan. Isi AUTH_TOKEN di file .env',
+      missingMessage: 'Bearer token tidak ditemukan. Silakan login ulang.',
     );
     final patientId = await AppSessionStore.requireUserId(
       missingMessage:

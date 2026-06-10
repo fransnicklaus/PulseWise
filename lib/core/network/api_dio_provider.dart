@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pulsewise/core/config/app_env.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
 
 const defaultApiBaseUrl = 'https://pulsewise-backend.vercel.app/api/v1';
 
 String resolveApiBaseUrl() {
-  final configuredBaseUrl = dotenv.env['API_BASE_URL']?.trim() ?? '';
+  final configuredBaseUrl = AppEnv.apiBaseUrl.trim();
   return configuredBaseUrl.isEmpty ? defaultApiBaseUrl : configuredBaseUrl;
 }
 
