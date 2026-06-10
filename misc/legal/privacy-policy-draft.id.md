@@ -15,7 +15,9 @@ Kebijakan Privasi PulseWise
 
 Tanggal Berlaku: `[TANGGAL BERLAKU]`
 
-PulseWise disediakan oleh `[NAMA ENTITAS HUKUM]` ("kami", "kita", atau "milik kami"). Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, membagikan, dan melindungi data pribadi serta data pribadi sensitif saat Anda menggunakan aplikasi wellness PulseWise, layanan terkait, dan saluran dukungan.
+PulseWise disediakan oleh `[NAMA ENTITAS HUKUM]` ("kami", "kita", atau "milik kami"). Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, membagikan, menyimpan, dan melindungi data pribadi serta informasi terkait wellness saat Anda menggunakan aplikasi PulseWise, layanan terkait, dan saluran dukungan.
+
+PulseWise adalah aplikasi wellness untuk konsumen. Aplikasi ini dirancang untuk membantu pengguna membuat catatan harian, mengelola rutinitas, menyimpan kontak dukungan, melihat ringkasan wellness, dan mengakses konten edukasi. PulseWise bukan alat kesehatan dan tidak menyediakan diagnosis, pengobatan, respons darurat, atau nasihat medis profesional.
 
 Dengan menggunakan PulseWise, Anda memahami bahwa informasi Anda akan diproses sebagaimana dijelaskan dalam Kebijakan Privasi ini.
 
@@ -25,108 +27,115 @@ Kami dapat mengumpulkan kategori informasi berikut:
 
 Informasi akun dan identitas
 
-- Nama, username, alamat email, kata sandi, data verifikasi one-time password (OTP), identifier akun internal, dan status akun.
-- Jika Anda masuk menggunakan Google, kami dapat menerima informasi akun Google tertentu seperti nama, alamat email, foto profil, dan token autentikasi yang diperlukan untuk menyelesaikan proses masuk.
+- Nama, alamat email, kata sandi, data verifikasi one-time password (OTP), identifier akun internal, status akun, dan catatan autentikasi terkait.
+- Jika Anda masuk dengan Google, kami dapat menerima detail akun Google tertentu yang diperlukan untuk menyelesaikan proses masuk, seperti nama, alamat email, foto profil, dan token autentikasi.
 
 Informasi profil dan preferensi
 
-- Ini dapat mencakup tanggal lahir, jenis kelamin, alamat, tinggi badan, golongan darah, kebiasaan tertentu yang Anda pilih untuk isi, foto/avatar profil, serta preferensi profil terkait.
+- Informasi yang Anda pilih untuk ditambahkan ke profil, seperti tanggal lahir, jenis kelamin, alamat, tinggi badan, golongan darah, detail kebiasaan tertentu yang dipilih, foto atau avatar profil, dan preferensi terkait.
 
-Catatan harian dan data wellness
+Catatan harian dan entri wellness
 
-- Catatan harian yang Anda buat di dalam aplikasi, termasuk tidur, aktivitas, asupan, informasi nutrisi, metrik tubuh, rutinitas, status penyelesaian rutinitas, dan catatan terkait lainnya.
-- Nilai metrik tubuh seperti berat badan, BMI, tinggi badan, detak jantung, tekanan darah, saturasi oksigen, dan data serupa yang Anda masukkan sendiri atau yang tersedia melalui sinkronisasi wearable.
-- Informasi kontak dukungan yang Anda pilih untuk simpan, seperti nama/label kontak, nomor telepon, dan status prioritas.
+- Informasi harian yang Anda buat di dalam aplikasi, termasuk catatan tidur, aktivitas, asupan, detail nutrisi, metrik tubuh, jadwal rutinitas, status penyelesaian rutinitas, dan catatan pribadi.
+- Nilai metrik tubuh yang Anda pilih untuk isi, seperti tinggi badan, berat badan, BMI, detak jantung, tekanan darah, saturasi oksigen, dan nilai pelacakan wellness serupa.
+- Informasi kontak dukungan yang Anda pilih untuk simpan, seperti nama atau label kontak, nomor telepon, dan status prioritas.
 
-Data Health Connect
+Informasi edukasi dan interaksi di dalam aplikasi
 
-- Jika Anda memilih untuk menghubungkan Health Connect di Android, kami dapat mengakses data wearable yang Anda izinkan, seperti data langkah, sesi aktivitas/olahraga, data detak jantung, dan data tidur.
-- Akses ini bersifat opsional dan bergantung pada izin yang Anda berikan melalui Android dan Health Connect.
+- Informasi terkait cara Anda menggunakan konten edukasi di dalam aplikasi, seperti like, komentar, balasan, dan interaksi konten lain yang Anda pilih untuk kirimkan.
 
 Foto dan file
 
 - Gambar avatar profil yang Anda unggah.
-- Foto makanan yang Anda ambil atau unggah untuk fitur analisis makanan atau estimasi nutrisi.
+- Foto makanan atau gambar lain yang Anda ambil atau unggah saat menggunakan fitur estimasi nutrisi atau fitur pencatatan wellness terkait.
 
 Informasi perangkat, aplikasi, dan teknis
 
-- Informasi terkait perangkat seperti nama/model perangkat, platform, versi aplikasi, nomor build, locale, dan zona waktu.
-- Pengenal notifikasi push seperti token Firebase Cloud Messaging (FCM), ID instalasi aplikasi, dan metadata terkait pengiriman notifikasi.
-- Pengenal sesi dan data teknis yang secara wajar diperlukan untuk mengautentikasi pengguna, menjaga sesi login, menyediakan fungsi aplikasi, melakukan troubleshooting, dan melindungi layanan.
+- Detail perangkat dan aplikasi seperti model perangkat, platform, versi aplikasi, nomor build, locale, dan zona waktu.
+- Identifier notifikasi push seperti token Firebase Cloud Messaging (FCM) dan metadata teknis terkait yang diperlukan untuk mengirim pengingat dan notifikasi layanan.
+- Data sesi dan data teknis yang secara wajar diperlukan untuk mengautentikasi pengguna, menjaga status login, melakukan troubleshooting, mengamankan layanan, dan menjaga aplikasi tetap berfungsi.
 
-Data yang disimpan secara lokal di perangkat Anda
+Informasi yang disimpan secara lokal di perangkat Anda
 
-- PulseWise dapat menyimpan data tertentu secara lokal di perangkat Anda, seperti token sesi, user ID, preferensi notifikasi, status persetujuan disclaimer, timestamp sinkronisasi Health Connect, dan pengaturan lain yang diperlukan agar aplikasi dapat berfungsi dengan baik.
+- PulseWise dapat menyimpan informasi terbatas secara lokal di perangkat Anda, seperti token sesi, user ID, preferensi notifikasi, status persetujuan disclaimer, dan pengaturan lain yang diperlukan untuk fungsi aplikasi.
+
+Dukungan dan komunikasi
+
+- Informasi yang Anda berikan ketika menghubungi kami untuk dukungan, meminta penghapusan akun, melaporkan masalah, atau berkomunikasi dengan kami.
 
 2. Cara Kami Menggunakan Informasi
 
 Kami dapat menggunakan informasi Anda untuk:
 
 - Membuat, memverifikasi, mengamankan, dan mengelola akun Anda.
-- Mengautentikasi pengguna dan mendukung metode login seperti email/kata sandi, verifikasi OTP, dan Google Sign-In.
-- Menyediakan fitur PulseWise untuk catatan harian, rutinitas, kontak dukungan, sinkronisasi wearable, dan ringkasan wellness pribadi.
-- Mencatat, menampilkan, menganalisis, dan mengelola informasi tidur, aktivitas, asupan, nutrisi, rutinitas, dan metrik tubuh.
-- Menyinkronkan data wearable dari Health Connect jika Anda memilih untuk mengaktifkan integrasi tersebut.
-- Mengirim pengingat rutinitas, pembaruan layanan, dan notifikasi terkait akun.
-- Mengunggah dan menyimpan avatar profil serta memproses foto makanan untuk fitur estimasi nutrisi.
-- Meningkatkan keandalan layanan, melakukan debugging, menanggapi permintaan dukungan, mencegah penyalahgunaan, dan memenuhi kewajiban hukum atau regulasi.
+- Mengautentikasi pengguna melalui email/kata sandi, verifikasi OTP, dan Google Sign-In opsional.
+- Menyediakan fitur PulseWise untuk catatan harian, rutinitas, kontak dukungan, estimasi nutrisi, ringkasan wellness, dan konten edukasi.
+- Mencatat, menampilkan, mengatur, dan merangkum informasi yang Anda pilih untuk dicatat di dalam aplikasi.
+- Mengirim pengingat rutinitas, notifikasi layanan, pemberitahuan keamanan, dan pesan terkait akun.
+- Menyimpan dan menampilkan avatar profil serta memproses foto makanan untuk estimasi nutrisi dan fitur wellness terkait.
+- Meningkatkan keandalan layanan, mendiagnosis masalah teknis, mencegah penyalahgunaan, menanggapi permintaan dukungan, dan memenuhi kewajiban hukum.
 
 Kami tidak menjual data pribadi Anda. Kami tidak menggunakan data pribadi Anda untuk iklan yang dipersonalisasi.
 
 3. Izin Perangkat dan Fitur Opsional
 
-PulseWise dapat meminta akses ke izin perangkat tertentu untuk menyediakan fitur tertentu:
+PulseWise dapat meminta akses ke fitur atau izin perangkat tertentu untuk mendukung fungsi opsional tertentu:
 
-- Kamera: digunakan untuk mengambil foto makanan saat Anda memilih fitur tersebut.
-- Kontak: digunakan hanya jika Anda memilih mengambil kontak dukungan dari kontak perangkat Anda alih-alih mengisinya secara manual.
-- Notifikasi: digunakan untuk mengirim pengingat rutinitas dan pembaruan layanan.
-- Izin Health Connect: digunakan hanya jika Anda memilih menghubungkan Health Connect dan memberikan akses ke tipe data wearable yang diizinkan.
-- Akses file atau media: digunakan saat Anda memilih mengunggah gambar avatar atau memilih gambar/file dari perangkat Anda.
+- Kamera: digunakan jika Anda memilih mengambil foto makanan atau gambar lain di dalam aplikasi.
+- Foto, file, atau media: digunakan jika Anda memilih mengunggah avatar atau memilih gambar atau file dari perangkat Anda.
+- Kontak: digunakan hanya jika Anda memilih mengimpor kontak dukungan dari kontak perangkat, bukan mengisinya secara manual.
+- Notifikasi: digunakan untuk mengirim pengingat rutinitas, notifikasi akun, dan pembaruan layanan.
 
-Anda dapat menolak atau mencabut izin ini kapan saja melalui pengaturan perangkat Anda, tetapi beberapa fitur mungkin tidak lagi berfungsi dengan baik.
+Anda dapat menolak atau mencabut izin ini melalui pengaturan perangkat Anda, tetapi beberapa fitur opsional mungkin tidak lagi berfungsi sebagaimana mestinya.
+
+Rilis Play Store PulseWise saat ini tidak meminta izin Health Connect dan tidak mengakses Health Connect, Google Fit, Apple Health, atau penyimpanan data kesehatan tingkat platform yang serupa.
 
 4. Cara Kami Membagikan Informasi
 
 Kami dapat membagikan informasi dalam keadaan berikut:
 
-Dengan penyedia layanan dan mitra infrastruktur kami
+Dengan penyedia layanan dan mitra infrastruktur
 
-- Dengan sistem backend dan penyedia layanan yang membantu kami meng-host, mengamankan, dan mengoperasikan PulseWise.
-- Dengan layanan Google yang digunakan untuk login dan notifikasi push, termasuk Google Sign-In dan Firebase Cloud Messaging.
-- Dengan Cloudinary atau penyedia penyimpanan media serupa saat Anda mengunggah avatar profil.
+- Dengan penyedia backend, hosting, penyimpanan, notifikasi, analitik, keamanan, dan infrastruktur yang membantu kami mengoperasikan PulseWise.
+- Dengan layanan Google yang digunakan untuk autentikasi dan notifikasi, termasuk Google Sign-In dan Firebase Cloud Messaging.
+- Dengan Cloudinary atau penyedia penyimpanan media serupa saat Anda mengunggah avatar profil atau media lain yang didukung.
+- Dengan penyedia layanan yang mendukung alur penanganan gambar atau estimasi nutrisi atas nama kami, jika relevan dengan fitur yang Anda gunakan.
 
 Dengan personel internal yang berwenang
 
-- Informasi tertentu dapat diakses oleh personel internal yang berwenang jika diperlukan untuk operasional layanan, dukungan pengguna, keamanan, atau kepatuhan.
+- Informasi tertentu dapat diakses oleh personel berwenang yang membutuhkannya untuk operasional layanan, dukungan, keamanan, moderasi, atau kepatuhan.
 
-Untuk alasan hukum dan keamanan
+Untuk alasan hukum, keamanan, dan perlindungan bisnis
 
 - Jika diwajibkan oleh hukum, proses hukum, regulasi, atau permintaan pemerintah yang sah.
-- Untuk melindungi hak, keselamatan, keamanan, atau integritas pengguna, PulseWise, atau publik.
+- Untuk melindungi hak, keselamatan, keamanan, pengguna, PulseWise, atau publik.
+- Untuk mendeteksi, menyelidiki, atau menangani fraud, penyalahgunaan, insiden keamanan, atau masalah teknis.
 
-5. Pengungkapan Terkait Health Connect
+Kami tidak membagikan data pribadi Anda kepada pihak ketiga untuk tujuan iklan yang dipersonalisasi milik mereka sendiri.
 
-Jika Anda menghubungkan Health Connect, PulseWise dapat membaca tipe data yang diizinkan dari Health Connect di perangkat Android Anda setelah Anda memberikan izin. Tergantung fitur yang Anda gunakan, ini dapat mencakup langkah, tidur, detak jantung, dan data aktivitas/olahraga.
+5. Pemberitahuan Tentang Scope Wellness
 
-PulseWise menggunakan informasi ini untuk mendukung sinkronisasi wearable, pengisian catatan harian, dan ringkasan wellness non-diagnostik di dalam aplikasi. Anda dapat memutuskan koneksi Health Connect atau mencabut akses kapan saja melalui pengaturan Android atau Health Connect.
+PulseWise ditujukan untuk wellness umum, self-tracking, pengingat, dan dukungan edukatif. Kami dapat menghasilkan ringkasan wellness pribadi, tampilan progres rutinitas, dan estimasi terkait nutrisi berdasarkan informasi yang Anda berikan, tetapi hasil tersebut bukan diagnosis medis, rekomendasi pengobatan, atau keputusan klinis.
+
+Jika versi PulseWise di masa depan menambahkan integrasi data atau izin opsional baru, kami akan memperbarui Kebijakan Privasi ini dan pengungkapan platform yang diwajibkan sebelum perubahan tersebut berlaku.
 
 6. Penyimpanan Data
 
-Kami menyimpan data pribadi selama diperlukan secara wajar untuk menyediakan PulseWise, menjaga akun Anda, mematuhi kewajiban hukum, menyelesaikan sengketa, menegakkan perjanjian, dan melindungi keamanan serta integritas layanan.
+Kami menyimpan data pribadi selama diperlukan secara wajar untuk menyediakan PulseWise, menjaga akun Anda, memenuhi kewajiban hukum, menyelesaikan sengketa, menegakkan perjanjian, dan melindungi layanan serta pengguna kami.
 
-Jika Anda meminta penghapusan akun atau data, kami akan memproses permintaan tersebut sesuai hukum yang berlaku dan kewajiban operasional, keamanan, serta regulasi kami. Dalam beberapa kasus, kami dapat menyimpan informasi terbatas jika diwajibkan untuk tujuan yang sah seperti pencegahan fraud, keamanan, penyelesaian sengketa, atau kepatuhan hukum.
+Jika Anda meminta penghapusan akun atau data, kami akan memproses permintaan tersebut sesuai hukum yang berlaku serta kewajiban operasional, keamanan, dan hukum kami. Dalam beberapa kasus, kami dapat menyimpan informasi terbatas untuk alasan yang sah seperti pencegahan fraud, keamanan, penyelesaian sengketa, atau kepatuhan hukum.
 
-Data yang disimpan secara lokal di perangkat Anda dapat tetap ada sampai Anda logout, menghapus penyimpanan aplikasi, mencabut izin, atau menghapus instalasi aplikasi.
+Informasi yang disimpan secara lokal di perangkat Anda dapat tetap ada sampai Anda logout, menghapus penyimpanan aplikasi, mencabut izin, atau menghapus instalasi aplikasi.
 
 7. Penghapusan Akun dan Data
 
-Anda dapat meminta penghapusan akun PulseWise dan data terkait dengan menghubungi kami di `[EMAIL KONTAK]` atau menggunakan halaman permintaan penghapusan berikut: `[URL PERMINTAAN PENGHAPUSAN AKUN ATAU FORM DUKUNGAN]`.
+PulseWise menyediakan alur penghapusan akun di dalam aplikasi. Anda juga dapat meminta penghapusan akun PulseWise dan data terkait dengan menghubungi kami di `[EMAIL KONTAK]` atau menggunakan halaman permintaan penghapusan berikut: `[URL PERMINTAAN PENGHAPUSAN AKUN ATAU FORM DUKUNGAN]`.
 
-Jika Anda perlu menyelesaikan langkah verifikasi tambahan sebelum penghapusan demi alasan keamanan atau hukum, kami akan memberitahukan hal tersebut selama proses penghapusan.
+Jika diperlukan verifikasi tambahan sebelum penghapusan demi alasan keamanan atau hukum, kami akan memberi tahu Anda selama proses penghapusan.
 
 8. Keamanan
 
-Kami menggunakan langkah administratif, teknis, dan organisasional yang wajar untuk melindungi data pribadi dan data sensitif. Sebagai contoh, aplikasi dirancang untuk mengirimkan data melalui koneksi jaringan yang aman jika didukung, dan akses ke area yang dilindungi akun memerlukan autentikasi.
+Kami menggunakan langkah administratif, teknis, dan organisasional yang wajar untuk melindungi data pribadi dan informasi terkait wellness. Sebagai contoh, akses ke area yang dilindungi akun memerlukan autentikasi, dan aplikasi dirancang untuk menggunakan koneksi jaringan yang aman jika didukung.
 
 Namun, tidak ada metode transmisi atau penyimpanan yang sepenuhnya aman, dan kami tidak dapat menjamin keamanan absolut.
 
@@ -134,16 +143,16 @@ Namun, tidak ada metode transmisi atau penyimpanan yang sepenuhnya aman, dan kam
 
 Tergantung lokasi Anda dan hukum yang berlaku, Anda mungkin memiliki hak untuk:
 
-- Mengakses, memperbarui, atau memperbaiki informasi akun Anda.
-- Mengelola izin kamera, kontak, notifikasi, dan Health Connect melalui pengaturan perangkat Anda.
+- Mengakses, memperbarui, atau memperbaiki informasi akun atau profil Anda.
+- Mengelola izin kamera, kontak, notifikasi, dan akses media melalui pengaturan perangkat Anda.
 - Meminta penghapusan akun Anda atau data pribadi tertentu.
-- Menghubungi kami untuk pertanyaan atau permintaan terkait privasi.
+- Menghubungi kami untuk pertanyaan, permintaan, atau keluhan terkait privasi.
 
-Anda juga dapat memilih untuk tidak menggunakan fitur opsional seperti Google Sign-In, Health Connect, unggah avatar, analisis foto makanan, atau impor kontak.
+Anda juga dapat memilih untuk tidak menggunakan fitur opsional seperti Google Sign-In, unggah avatar, impor kontak, atau estimasi nutrisi berbasis foto makanan.
 
 10. Privasi Anak
 
-PulseWise tidak ditujukan untuk anak di bawah usia 13 tahun kecuali secara tegas dinyatakan lain oleh `[NAMA ENTITAS HUKUM]` dan didukung oleh persetujuan serta perlindungan hukum yang sesuai. Jika Anda yakin seorang anak telah memberikan data pribadi yang melanggar hukum yang berlaku, silakan hubungi kami di `[EMAIL KONTAK]`.
+PulseWise tidak ditujukan untuk anak di bawah usia 13 tahun kecuali secara tegas dinyatakan lain oleh `[NAMA ENTITAS HUKUM]` dan didukung oleh perlindungan hukum serta persetujuan yang sesuai. Jika Anda yakin seorang anak telah memberikan data pribadi yang melanggar hukum yang berlaku, silakan hubungi kami di `[EMAIL KONTAK]`.
 
 11. Pemrosesan Internasional
 
@@ -165,6 +174,7 @@ Jika berlaku, Kebijakan Privasi ini diatur oleh hukum `[NEGARA/YURISDIKSI - OPSI
 
 ## Catatan Penting Sebelum Publikasi
 
-- Aplikasi ini tampaknya mendukung pembuatan akun di dalam aplikasi, jadi Google Play juga mewajibkan jalur penghapusan akun di dalam aplikasi dan tautan penghapusan akun berbasis web di Play Console.
 - Ganti semua placeholder sebelum dipublikasikan.
-- Pastikan halaman Notion publik, view-only, dapat diakses tanpa login, dan diberi judul yang jelas seperti "Kebijakan Privasi".
+- Pastikan halaman kebijakan privasi publik dapat diakses tanpa login dan diberi judul yang jelas seperti "Kebijakan Privasi".
+- Pastikan versi publik kebijakan ini sesuai dengan build Play Store saat ini dan pengungkapan yang Anda isi di Play Console.
+- Rilis Play Store saat ini tidak menggunakan izin Health Connect. Jika itu berubah di rilis mendatang, perbarui kebijakan ini dan formulir Play Console terkait sebelum mengirim build baru.

@@ -15,7 +15,9 @@ Privacy Policy for PulseWise
 
 Effective Date: `[EFFECTIVE DATE]`
 
-PulseWise is provided by `[LEGAL ENTITY NAME]` ("we", "us", or "our"). This Privacy Policy explains how we collect, use, disclose, and protect personal data and sensitive personal data when you use the PulseWise wellness application, related services, and support channels.
+PulseWise is provided by `[LEGAL ENTITY NAME]` ("we", "us", or "our"). This Privacy Policy explains how we collect, use, disclose, store, and protect personal data and wellness-related information when you use the PulseWise application, related services, and support channels.
+
+PulseWise is a consumer wellness app. It is designed to help users keep daily logs, manage routines, save support contacts, view wellness summaries, and access educational content. PulseWise is not a medical device and does not provide diagnosis, treatment, emergency response, or professional medical advice.
 
 By using PulseWise, you acknowledge that your information will be handled as described in this Privacy Policy.
 
@@ -25,108 +27,115 @@ We may collect the following categories of information:
 
 Account and identity information
 
-- Name, username, email address, password, one-time password (OTP) verification data, internal account identifiers, and account status.
-- If you sign in with Google, we may receive certain Google account information such as your name, email address, profile photo, and authentication token needed to complete sign-in.
+- Name, email address, password, one-time password (OTP) verification data, internal account identifiers, account status, and related authentication records.
+- If you sign in with Google, we may receive certain Google account details needed to complete sign-in, such as your name, email address, profile photo, and authentication token.
 
 Profile information and preferences
 
-- This may include date of birth, sex/gender, address, height, blood type, certain habit-related details that you choose to provide, profile photo/avatar, and related profile preferences.
+- Information you choose to add to your profile, such as date of birth, sex/gender, address, height, blood type, selected habit-related details, profile photo or avatar, and related preferences.
 
-Daily logs and wellness data
+Daily logs and wellness entries
 
-- Daily entries you create in the app, including sleep, activity, food intake, nutrition information, body metrics, routines, routine completion status, and related notes.
-- Body metric values such as weight, BMI, height, heart rate, blood pressure, oxygen saturation, and similar values that you enter yourself or that become available through wearable sync.
-- Support contact information that you choose to save, such as contact name/label, phone number, and priority status.
+- Daily information you create in the app, including sleep entries, activity entries, food intake entries, nutrition details, body metrics, routine schedules, routine completion status, and personal notes.
+- Body metric values that you choose to enter, such as height, weight, BMI, heart rate, blood pressure, oxygen saturation, and similar wellness tracking values.
+- Support contact information that you choose to save, such as contact name or label, phone number, and priority status.
 
-Health Connect data
+Education and in-app interaction information
 
-- If you choose to connect Health Connect on Android, we may access wearable data that you permit, such as step data, exercise sessions, heart rate data, and sleep data.
-- This access is optional and depends on the permissions you grant through Android and Health Connect.
+- Information related to how you use educational content in the app, such as likes, comments, replies, and other content interactions you choose to submit.
 
 Photos and files
 
 - Profile avatar images you upload.
-- Food images you capture or upload for food or nutrition analysis features.
+- Food photos or other images you capture or upload when using nutrition estimation or related wellness logging features.
 
 Device, app, and technical information
 
-- Device-related information such as device name/model, platform, app version, build number, locale, and time zone.
-- Push notification identifiers such as Firebase Cloud Messaging (FCM) token, app installation ID, and related notification delivery metadata.
-- Session-related identifiers and technical data reasonably necessary to authenticate users, keep them signed in, deliver app functionality, troubleshoot issues, and protect the service.
+- Device and app details such as device model, platform, app version, build number, locale, and time zone.
+- Push notification identifiers such as Firebase Cloud Messaging (FCM) token and related technical metadata needed to deliver reminders and service notifications.
+- Session and technical data reasonably necessary to authenticate users, maintain sign-in state, troubleshoot issues, secure the service, and keep the app functioning.
 
-Data stored locally on your device
+Information stored locally on your device
 
-- PulseWise may store certain data locally on your device, such as session tokens, user ID, notification preferences, disclaimer acknowledgment status, Health Connect sync timestamps, and other settings needed to keep the app functioning properly.
+- PulseWise may store limited information locally on your device, such as session token, user ID, notification preferences, disclaimer acknowledgment status, and other settings required for app functionality.
+
+Support and communications
+
+- Information you provide when you contact us for support, request account deletion, report a problem, or otherwise communicate with us.
 
 2. How We Use Information
 
 We may use your information to:
 
 - Create, verify, secure, and manage your account.
-- Authenticate users and support login methods such as email/password, OTP verification, and Google Sign-In.
-- Provide PulseWise features for daily logs, routines, support contacts, wearable sync, and personal wellness summaries.
-- Record, display, analyze, and manage sleep, activity, food, nutrition, routine, and body metric information.
-- Sync wearable data from Health Connect if you choose to enable that integration.
-- Send routine reminders, service updates, and account-related notifications.
-- Upload and store profile avatars and process food images for nutrition estimation features.
-- Improve service reliability, debug issues, respond to support requests, prevent misuse, and comply with legal or regulatory obligations.
+- Authenticate users through email/password, OTP verification, and optional Google Sign-In.
+- Provide PulseWise features for daily logs, routines, support contacts, nutrition estimation, wellness summaries, and educational content.
+- Record, display, organize, and summarize information you choose to log in the app.
+- Send routine reminders, service notifications, security notices, and account-related messages.
+- Store and display profile avatars and process food images for nutrition estimation and related wellness features.
+- Improve service reliability, diagnose technical problems, prevent misuse, respond to support requests, and comply with legal obligations.
 
 We do not sell your personal data. We do not use your personal data for personalized advertising.
 
 3. Permissions and Optional Features
 
-PulseWise may request access to certain device permissions in order to provide specific features:
+PulseWise may request access to certain device features or permissions to support specific optional functionality:
 
-- Camera: used to capture food photos when you choose that feature.
-- Contacts: used only if you choose to pick a support contact from your device contacts instead of entering it manually.
-- Notifications: used to send routine reminders and service notifications.
-- Health Connect permissions: used only if you choose to connect Health Connect and grant access to permitted wearable data types.
-- File or media access: used when you choose to upload an avatar image or select an image/file from your device.
+- Camera: used if you choose to capture a food photo or other image inside the app.
+- Photos, files, or media access: used if you choose to upload an avatar image or select an image or file from your device.
+- Contacts: used only if you choose to import a support contact from your device contacts instead of entering it manually.
+- Notifications: used to deliver routine reminders, account notifications, and service updates.
 
-You can deny or revoke these permissions at any time through your device settings, but some features may no longer function properly.
+You may deny or revoke these permissions through your device settings, but some optional features may no longer work as intended.
+
+The current Play Store release of PulseWise does not request Health Connect permissions and does not access Health Connect, Google Fit, Apple Health, or a similar platform-level health data store.
 
 4. How We Share Information
 
 We may share information in the following circumstances:
 
-With our service providers and infrastructure partners
+With service providers and infrastructure partners
 
-- With our backend systems and service providers that help us host, secure, and operate PulseWise.
-- With Google services used for sign-in and push notifications, including Google Sign-In and Firebase Cloud Messaging.
-- With Cloudinary or similar media storage providers when you upload a profile avatar.
+- With backend, hosting, storage, notification, analytics, security, and infrastructure providers that help us operate PulseWise.
+- With Google services used for authentication and notifications, including Google Sign-In and Firebase Cloud Messaging.
+- With Cloudinary or similar media storage providers when you upload a profile avatar or other supported media.
+- With service providers that support image handling or nutrition estimation workflows on our behalf, where applicable to the features you use.
 
 With authorized internal personnel
 
-- Certain information may be accessible to authorized internal personnel when needed for service operations, user support, security, or compliance.
+- Certain information may be accessible to authorized personnel who need it for service operations, support, security, moderation, or compliance.
 
-For legal and safety reasons
+For legal, safety, and business protection reasons
 
 - If required by law, legal process, regulation, or a valid governmental request.
-- To protect the rights, safety, security, or integrity of users, PulseWise, or the public.
+- To protect the rights, safety, security, users, PulseWise, or the public.
+- To detect, investigate, or address fraud, abuse, security incidents, or technical issues.
 
-5. Health Connect Disclosure
+We do not share your personal data with third parties for their own personalized advertising purposes.
 
-If you connect Health Connect, PulseWise may read approved data types from the Health Connect store on your Android device after you grant permission. Depending on the features you use, this may include steps, sleep, heart rate, and activity/exercise data.
+5. Wellness Scope Notice
 
-PulseWise uses this information to support wearable sync, daily log population, and non-diagnostic wellness summaries within the app. You can disconnect Health Connect or revoke access at any time through Android or Health Connect settings.
+PulseWise is intended for general wellness, self-tracking, reminders, and educational support. We may generate personal wellness summaries, routine progress views, and nutrition-related estimates based on information you provide, but these outputs are not medical diagnoses, treatment recommendations, or clinical decisions.
+
+If future versions of PulseWise introduce additional optional data integrations or permissions, we will update this Privacy Policy and any required platform disclosures before those changes apply.
 
 6. Data Retention
 
-We retain personal data for as long as reasonably necessary to provide PulseWise, maintain your account, comply with legal obligations, resolve disputes, enforce agreements, and protect the security and integrity of the service.
+We retain personal data for as long as reasonably necessary to provide PulseWise, maintain your account, comply with legal obligations, resolve disputes, enforce agreements, and protect the service and our users.
 
-If you request account or data deletion, we will process your request in accordance with applicable law and our operational, security, and regulatory obligations. In some cases, we may retain limited information where required for lawful purposes such as fraud prevention, security, dispute resolution, or legal compliance.
+If you request account or data deletion, we will process the request in accordance with applicable law and our operational, security, and legal obligations. In some cases, we may retain limited information for lawful reasons such as fraud prevention, security, dispute resolution, or legal compliance.
 
-Data stored locally on your device may remain until you log out, clear app storage, revoke permissions, or uninstall the app.
+Information stored locally on your device may remain until you log out, clear app storage, revoke permissions, or uninstall the app.
 
 7. Account and Data Deletion
 
-You can request deletion of your PulseWise account and associated data by contacting us at `[CONTACT EMAIL]` or by using this deletion request page: `[DELETE REQUEST URL OR SUPPORT FORM URL]`.
+PulseWise includes an in-app account deletion flow. You may also request deletion of your account and associated data by contacting us at `[CONTACT EMAIL]` or by using this deletion request page: `[DELETE REQUEST URL OR SUPPORT FORM URL]`.
 
-If you are required to complete additional verification steps before deletion for security or legal reasons, we will inform you during the deletion process.
+If additional verification is needed before deletion for security or legal reasons, we will let you know during the deletion process.
 
 8. Security
 
-We use reasonable administrative, technical, and organizational measures designed to protect personal and sensitive data. For example, the app is designed to transmit data over secure network connections where supported, and access to account-protected areas requires authentication.
+We use reasonable administrative, technical, and organizational measures designed to protect personal data and wellness-related information. For example, access to account-protected areas requires authentication, and the app is designed to use secure network connections where supported.
 
 However, no method of transmission or storage is completely secure, and we cannot guarantee absolute security.
 
@@ -134,16 +143,16 @@ However, no method of transmission or storage is completely secure, and we canno
 
 Depending on your location and applicable law, you may have the right to:
 
-- Access, update, or correct your account information.
-- Manage permissions for camera, contacts, notifications, and Health Connect through your device settings.
+- Access, update, or correct your account or profile information.
+- Manage permissions for camera, contacts, notifications, and media access through your device settings.
 - Request deletion of your account or certain personal data.
-- Contact us with questions or privacy-related requests.
+- Contact us with privacy-related questions, requests, or complaints.
 
-You may also choose not to use optional features such as Google Sign-In, Health Connect, avatar upload, food photo analysis, or contact import.
+You may also choose not to use optional features such as Google Sign-In, avatar upload, contact import, or food photo-based nutrition estimation.
 
 10. Children's Privacy
 
-PulseWise is not intended for children under 13 unless expressly stated otherwise by `[LEGAL ENTITY NAME]` and supported by appropriate consent and legal safeguards. If you believe a child has provided personal data in violation of applicable law, please contact us at `[CONTACT EMAIL]`.
+PulseWise is not intended for children under 13 unless expressly stated otherwise by `[LEGAL ENTITY NAME]` and supported by appropriate legal safeguards and consent. If you believe a child has provided personal data in violation of applicable law, please contact us at `[CONTACT EMAIL]`.
 
 11. International Processing
 
@@ -165,6 +174,7 @@ If applicable, this Privacy Policy is governed by the laws of `[COUNTRY/JURISDIC
 
 ## Important Publication Notes
 
-- The app currently appears to support in-app account creation, so Google Play also requires an account deletion path in the app and a web deletion link in Play Console.
 - Replace every placeholder before publishing.
-- Make sure the public Notion page is view-only, publicly accessible, and titled clearly as "Privacy Policy".
+- Keep the public privacy policy page accessible without login and clearly titled "Privacy Policy".
+- Make sure the public policy matches the current Play Store build and any Play Console disclosures.
+- The current Play Store release does not use Health Connect permissions. If that changes in a future release, update this policy and the related Play Console forms before shipping.

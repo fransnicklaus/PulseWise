@@ -33,12 +33,16 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage>
     with WidgetsBindingObserver {
+  static const int _defaultTabIndex = 0;
+  static const int _tabCount = 5;
+
   bool _isHandlingHealthConnectPrompt = false;
   bool _isHandlingMissingProfilePrompt = false;
   bool _isHandlingWellnessDisclaimer = false;
   bool _didPromptMissingProfileSetup = false;
   bool _didResolveWellnessDisclaimer = false;
   bool _hasAcknowledgedWellnessDisclaimer = false;
+  final Set<int> _loadedTabIndexes = <int>{_defaultTabIndex};
 
   @override
   void initState() {
@@ -499,6 +503,30 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     );
   }
 
+  Widget _buildTab(int index) {
+    switch (index) {
+      case 0:
+        return const BerandaTab();
+      case 1:
+        return const EdukasiTab();
+      case 2:
+        return const DiariTab();
+      case 3:
+        return const PengingatTab();
+      case 4:
+        return const ProfilTab();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  void _markTabAsLoaded(int index) {
+    if (_loadedTabIndexes.contains(index)) return;
+    setState(() {
+      _loadedTabIndexes.add(index);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final navIndex = ref.watch(dashboardNavIndexProvider);
@@ -530,14 +558,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       }
     }
 
-    // List of tab widgets
-    final tabs = [
-      const BerandaTab(),
-      const EdukasiTab(),
-      const DiariTab(),
-      const PengingatTab(),
-      const ProfilTab(),
-    ];
+    final shouldPersistCurrentTab = !_loadedTabIndexes.contains(navIndex);
+    final loadedTabIndexes = shouldPersistCurrentTab
+        ? {..._loadedTabIndexes, navIndex}
+        : _loadedTabIndexes;
+
+    if (shouldPersistCurrentTab) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _markTabAsLoaded(navIndex);
+      });
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -545,7 +576,12 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       body: SizedBox.expand(
         child: IndexedStack(
           index: navIndex,
-          children: tabs,
+          children: List<Widget>.generate(
+            _tabCount,
+            (index) => loadedTabIndexes.contains(index)
+                ? _buildTab(index)
+                : const SizedBox.shrink(),
+          ),
         ),
       ),
 
@@ -567,6 +603,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
               child: BottomNavigationBar(
                 currentIndex: navIndex,
                 onTap: (index) {
+                  _markTabAsLoaded(index);
                   ref.read(dashboardNavIndexProvider.notifier).state = index;
                 },
                 backgroundColor: Colors.white,
