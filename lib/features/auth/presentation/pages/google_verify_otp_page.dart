@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
-import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 
 class GoogleVerifyOtpPage extends ConsumerStatefulWidget {
   final String email;
@@ -102,14 +101,10 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
 
     if (result.nextStep == GoogleAuthNextStep.home) {
       final normalizedRole = normalizeAppRole(result.role);
-      if (normalizedRole == AppRoles.doctor) {
-        ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      } else {
-        ref.read(previousNavIndexProvider.notifier).state = 0;
-        ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-      }
+      prepareAppForAuthenticatedSession(
+        ref,
+        armHealthConnectPrompt: normalizedRole != AppRoles.doctor,
+      );
       AppToast.success(context, 'Email berhasil diverifikasi');
       context.go(
         routeForRoleSession(
@@ -122,8 +117,10 @@ class _GoogleVerifyOtpPageState extends ConsumerState<GoogleVerifyOtpPage> {
     }
 
     if (result.nextStep == GoogleAuthNextStep.waitAdminVerification) {
-      ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      prepareAppForAuthenticatedSession(
+        ref,
+        armHealthConnectPrompt: false,
+      );
       AppToast.info(
         context,
         'Email berhasil diverifikasi. Akun dokter Anda sedang menunggu verifikasi admin.',

@@ -1,11 +1,10 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/food_analysis/data/models/food_consumption_result.dart';
@@ -126,7 +125,7 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
     return true;
   }
 
-  Future<void> _analyzeImageFile(File imageFile) async {
+  Future<void> _analyzeImageData(_SelectedFoodImage imageData) async {
     if (!_validateMealName() || _isAnalyzing) return;
 
     final mealName = _foodNameController.text.trim();
@@ -139,8 +138,9 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
 
       final result =
           await ref.read(foodNutritionEstimateApiProvider).estimateNutrition(
-                imageFile: imageFile,
+                imageBytes: imageData.bytes,
                 mealName: mealName,
+                imageMimeType: imageData.mimeType,
                 mealDescription: _foodDescriptionController.text.trim(),
               );
 
@@ -162,7 +162,7 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
       });
 
       await _openAnalysisResultPage(
-        imageFile: imageFile,
+        imageData: imageData,
         analysis: result,
       );
     } catch (e) {
@@ -186,7 +186,14 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
 
     try {
       final photo = await controller.takePicture();
-      await _analyzeImageFile(File(photo.path));
+      final bytes = await photo.readAsBytes();
+      await _analyzeImageData(
+        _SelectedFoodImage(
+          bytes: bytes,
+          mimeType: 'image/jpeg',
+          fileName: _fileNameFromPath(photo.path) ?? 'captured_food.jpg',
+        ),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -215,25 +222,25 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
       return;
     }
 
-    String? sourcePath = selected.path;
-    if ((sourcePath == null || sourcePath.isEmpty) && selected.bytes != null) {
-      final tempDir = await getTemporaryDirectory();
-      final fallbackName =
-          selected.name.isEmpty ? 'food_gallery.jpg' : selected.name;
-      final tempFile = File(
-        '${tempDir.path}${Platform.pathSeparator}${DateTime.now().millisecondsSinceEpoch}_$fallbackName',
-      );
-      await tempFile.writeAsBytes(selected.bytes!, flush: true);
-      sourcePath = tempFile.path;
-    }
-
-    if (sourcePath == null || sourcePath.isEmpty) {
+    final imageBytes = selected.bytes;
+    if (imageBytes == null || imageBytes.isEmpty) {
       if (!mounted) return;
-      AppToast.warning(context, 'File gambar tidak valid.');
+      AppToast.warning(
+        context,
+        'File gambar tidak bisa dibaca di perangkat ini. Coba pilih gambar lain.',
+      );
       return;
     }
 
-    await _analyzeImageFile(File(sourcePath));
+    await _analyzeImageData(
+      _SelectedFoodImage(
+        bytes: imageBytes,
+        mimeType: _guessMimeType(
+          selected.name.isNotEmpty ? selected.name : selected.path,
+        ),
+        fileName: selected.name.isNotEmpty ? selected.name : 'food_gallery.jpg',
+      ),
+    );
   }
 
   Widget buildCameraPreview(CameraController controller) {
@@ -266,14 +273,14 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
   }
 
   Future<void> _openAnalysisResultPage({
-    required File imageFile,
+    required _SelectedFoodImage imageData,
     required FoodMacroAnalysis analysis,
   }) async {
     final captureResult = _buildCaptureResult(analysis);
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
       MaterialPageRoute(
         builder: (_) => _FoodMacroAnalysisResultPage(
-          imageFile: imageFile,
+          imageData: imageData,
           analysis: analysis,
           userFoodName: captureResult.userFoodName,
           userDescription: captureResult.userDescription,
@@ -293,6 +300,40 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
     }
     if (action != 'use') return;
     Navigator.of(context).pop(captureResult.toMap());
+  }
+
+  String _guessMimeType(String? filePathOrName) {
+    final source = (filePathOrName ?? '').trim().toLowerCase();
+    final dotIndex = source.lastIndexOf('.');
+    final extension = dotIndex >= 0 ? source.substring(dotIndex) : '';
+
+    switch (extension) {
+      case '.png':
+        return 'image/png';
+      case '.webp':
+        return 'image/webp';
+      case '.heic':
+        return 'image/heic';
+      case '.heif':
+        return 'image/heif';
+      case '.jpg':
+      case '.jpeg':
+      default:
+        return 'image/jpeg';
+    }
+  }
+
+  String? _fileNameFromPath(String? path) {
+    final normalizedPath = (path ?? '').trim();
+    if (normalizedPath.isEmpty) return null;
+
+    final separators = RegExp(r'[\\/]');
+    final segments = normalizedPath.split(separators);
+    for (final segment in segments.reversed) {
+      final trimmed = segment.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return null;
   }
 
   @override
@@ -632,6 +673,18 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
       ),
     );
   }
+}
+
+class _SelectedFoodImage {
+  const _SelectedFoodImage({
+    required this.bytes,
+    required this.mimeType,
+    required this.fileName,
+  });
+
+  final Uint8List bytes;
+  final String mimeType;
+  final String fileName;
 }
 
 class _FoodMacroAnalysisCard extends StatelessWidget {
@@ -995,14 +1048,14 @@ class _NutritionTableCell extends StatelessWidget {
 
 class _FoodMacroAnalysisResultPage extends StatefulWidget {
   const _FoodMacroAnalysisResultPage({
-    required this.imageFile,
+    required this.imageData,
     required this.analysis,
     required this.userFoodName,
     required this.userDescription,
     this.onUseAnalysis,
   });
 
-  final File imageFile;
+  final _SelectedFoodImage imageData;
   final FoodMacroAnalysis analysis;
   final String userFoodName;
   final String userDescription;
@@ -1070,8 +1123,8 @@ class _FoodMacroAnalysisResultPageState
                       borderRadius: BorderRadius.circular(24),
                       child: AspectRatio(
                         aspectRatio: 4 / 3,
-                        child: Image.file(
-                          widget.imageFile,
+                        child: Image.memory(
+                          widget.imageData.bytes,
                           fit: BoxFit.cover,
                         ),
                       ),

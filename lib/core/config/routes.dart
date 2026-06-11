@@ -1,5 +1,7 @@
 import 'package:go_router/go_router.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
@@ -50,6 +52,9 @@ import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
   return GoRouter(
     initialLocation: initialLocation,
+    redirect: (context, state) async {
+      return _guardAppRouteAccess(state);
+    },
     routes: [
       GoRoute(
         path: '/login',
@@ -193,6 +198,8 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
           ),
           GoRoute(
             path: 'health-connect',
+            redirect: (context, state) =>
+                shouldExposeHealthConnectUi ? null : '/home',
             builder: (context, state) => const HealthConnectPage(),
           ),
           GoRoute(
@@ -411,4 +418,44 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
       ),
     ],
   );
+}
+
+Future<String?> _guardAppRouteAccess(GoRouterState state) async {
+  final path = state.uri.path;
+  final isAuthRoute = _isPublicAuthRoute(path);
+
+  final session = await AppSessionStore.readSession(allowEnvFallback: false);
+  if (!session.hasValidSession) {
+    return isAuthRoute ? null : '/login';
+  }
+
+  final token = (session.token ?? '').trim();
+  if (_isSessionTokenExpiredOrInvalid(token)) {
+    await AppSessionStore.clearSession();
+    return isAuthRoute ? null : '/login';
+  }
+
+  if (isAuthRoute) {
+    return routeForRoleSession(
+      role: session.role,
+      nextStep: session.nextStep,
+      accountStatus: session.accountStatus,
+    );
+  }
+
+  return null;
+}
+
+bool _isPublicAuthRoute(String path) {
+  return path == '/login' || path.startsWith('/login/');
+}
+
+bool _isSessionTokenExpiredOrInvalid(String token) {
+  if (token.isEmpty) return true;
+
+  try {
+    return JwtDecoder.isExpired(token);
+  } catch (_) {
+    return true;
+  }
 }

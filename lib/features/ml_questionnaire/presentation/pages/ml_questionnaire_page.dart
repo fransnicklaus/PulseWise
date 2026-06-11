@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/data/ml_mapping.dart';
+import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
@@ -112,7 +113,8 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
           );
 
       if (!mounted) return;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state =
+          shouldExposeHealthConnectUi;
       _goHomeSafely();
     } catch (e) {
       if (!mounted) return;

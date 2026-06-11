@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Melanjutkan Login Google...</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #fff7f8;
+        color: #536278;
+        font-family: Arial, sans-serif;
+      }
+
+      .message {
+        padding: 24px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="message">Melanjutkan login Google ke PulseWise...</div>
+    <script>
+      (function () {
+        var requestKey = 'pulsewise_google_redirect_request';
+        var resultKey = 'pulsewise_google_redirect_result';
+
+        function parseHashParameters() {
+          var hash = window.location.hash || '';
+          var normalized = hash.charAt(0) === '#' ? hash.slice(1) : hash;
+          return new URLSearchParams(normalized);
+        }
+
+        function decodeJwtPayload(token) {
+          var parts = token.split('.');
+          if (parts.length < 2) {
+            return null;
+          }
+
+          var encoded = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+          while (encoded.length % 4 !== 0) {
+            encoded += '=';
+          }
+
+          try {
+            return JSON.parse(atob(encoded));
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function storeResult(payload) {
+          sessionStorage.setItem(resultKey, JSON.stringify(payload));
+        }
+
+        var params = parseHashParameters();
+        var rawRequest = sessionStorage.getItem(requestKey);
+        var request = {};
+        var returnUrl = '/login';
+
+        if (rawRequest) {
+          try {
+            request = JSON.parse(rawRequest) || {};
+            if (request.returnUrl) {
+              returnUrl = request.returnUrl;
+            }
+          } catch (_) {}
+        }
+
+        sessionStorage.removeItem(requestKey);
+
+        var error = params.get('error');
+        var errorDescription = params.get('error_description');
+        if (error) {
+          storeResult({
+            error:
+              'Login Google gagal: ' +
+              (errorDescription || error).replace(/\+/g, ' '),
+          });
+          window.location.replace(returnUrl);
+          return;
+        }
+
+        var state = params.get('state');
+        if (!request.state || !state || request.state !== state) {
+          storeResult({
+            error: 'Status login Google tidak cocok. Silakan coba lagi.',
+          });
+          window.location.replace(returnUrl);
+          return;
+        }
+
+        var idToken = params.get('id_token');
+        if (!idToken) {
+          storeResult({
+            error: 'ID token Google tidak ditemukan pada redirect login.',
+          });
+          window.location.replace(returnUrl);
+          return;
+        }
+
+        var payload = decodeJwtPayload(idToken);
+        if (!payload || !payload.nonce || payload.nonce !== request.nonce) {
+          storeResult({
+            error: 'Nonce login Google tidak valid. Silakan coba lagi.',
+          });
+          window.location.replace(returnUrl);
+          return;
+        }
+
+        storeResult({ idToken: idToken });
+        window.location.replace(returnUrl);
+      })();
+    </script>
+  </body>
+</html>

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -12,8 +12,9 @@ class FoodNutritionEstimateApi {
   final Dio _dio;
 
   Future<FoodMacroAnalysis> estimateNutrition({
-    required File imageFile,
+    required Uint8List imageBytes,
     required String mealName,
+    required String imageMimeType,
     String? mealDescription,
   }) async {
     final normalizedMealName = mealName.trim();
@@ -24,8 +25,7 @@ class FoodNutritionEstimateApi {
 
     final token = await _readBearerToken();
     final userId = await _readUserId();
-    final imageBase64 = await _imageToBase64(imageFile);
-    final imageMimeType = _guessMimeType(imageFile.path);
+    final imageBase64 = base64Encode(imageBytes);
     final payload = <String, dynamic>{
       'mealName': normalizedMealName,
       'imageBase64': imageBase64,
@@ -70,31 +70,6 @@ class FoodNutritionEstimateApi {
 
   Future<String> _readUserId() async {
     return AppSessionStore.requireUserId();
-  }
-
-  Future<String> _imageToBase64(File imageFile) async {
-    final bytes = await imageFile.readAsBytes();
-    return base64Encode(bytes);
-  }
-
-  String _guessMimeType(String filePath) {
-    final dotIndex = filePath.lastIndexOf('.');
-    final extension =
-        dotIndex >= 0 ? filePath.substring(dotIndex).toLowerCase() : '';
-
-    switch (extension) {
-      case '.png':
-        return 'image/png';
-      case '.webp':
-        return 'image/webp';
-      case '.heic':
-      case '.heif':
-        return 'image/heic';
-      case '.jpg':
-      case '.jpeg':
-      default:
-        return 'image/jpeg';
-    }
   }
 
   Map<String, dynamic> _extractEstimatePayload(Map<String, dynamic> body) {

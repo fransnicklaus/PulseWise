@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class GoogleSignInEntryButton extends StatelessWidget {
   const GoogleSignInEntryButton({
     super.key,
-    required this.googleSignIn,
     required this.isLoading,
     required this.onPressed,
   });
 
-  final GoogleSignIn googleSignIn;
   final bool isLoading;
   final VoidCallback onPressed;
 

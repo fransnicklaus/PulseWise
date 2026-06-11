@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -1030,6 +1031,8 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
   bool _isPrimaryContact = false;
   bool _isSubmitting = false;
 
+  bool get _canImportDeviceContacts => !kIsWeb;
+
   @override
   void initState() {
     super.initState();
@@ -1099,26 +1102,48 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
                 icon: Icons.phone_outlined,
               ),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _isSubmitting ? null : _pickFromPhoneContacts,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE64060),
-                  side: const BorderSide(color: Color(0xFFE64060)),
-                  minimumSize: const Size.fromHeight(58),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            if (_canImportDeviceContacts) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _isSubmitting ? null : _pickFromPhoneContacts,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE64060),
+                    side: const BorderSide(color: Color(0xFFE64060)),
+                    minimumSize: const Size.fromHeight(58),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  icon: const Icon(Icons.contact_phone_outlined, size: 22),
+                  label: const Text(
+                    'Pilih dari Kontak HP',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                 ),
-                icon: const Icon(Icons.contact_phone_outlined, size: 22),
-                label: const Text(
-                  'Pilih dari Kontak HP',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ] else ...[
+              const SizedBox(height: 14),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBFB),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFBC8D2)),
+                ),
+                child: const Text(
+                  'Impor kontak dari perangkat belum tersedia di web app. Tambahkan kontak dukungan secara manual.',
+                  style: TextStyle(
+                    color: Color(0xFF9F1239),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.all(14),
@@ -1339,6 +1364,13 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
   }
 
   Future<void> _pickFromPhoneContacts() async {
+    if (!_canImportDeviceContacts) {
+      _showMessage(
+        'Impor kontak dari perangkat belum tersedia di web app. Silakan isi manual.',
+      );
+      return;
+    }
+
     try {
       final hasPermission = await FlutterContacts.requestPermission(
         readonly: true,

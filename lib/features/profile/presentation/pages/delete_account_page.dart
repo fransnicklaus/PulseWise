@@ -39,7 +39,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
   void initState() {
     super.initState();
     _availableMethods = _defaultAvailableMethods();
-    _selectedMethod = _availableMethods.first;
+    _selectedMethod = _pickFirstAvailableMethod(_availableMethods);
   }
 
   @override
@@ -55,7 +55,14 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
 
   int get _currentStepIndex => _requestResult == null ? 0 : 1;
 
-  String get _activeMethod => _requestResult?.reauthMethod ?? _selectedMethod;
+  String get _activeMethod {
+    final requestedMethod =
+        normalizeAccountDeletionMethod(_requestResult?.reauthMethod);
+    if (requestedMethod.isNotEmpty) {
+      return requestedMethod;
+    }
+    return _selectedMethod;
+  }
 
   List<String> _defaultAvailableMethods() {
     return _sanitizeAvailableMethods(
@@ -70,6 +77,13 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
               accountDeletionGoogleMethod,
             ],
     );
+  }
+
+  String _pickFirstAvailableMethod(List<String> methods) {
+    if (methods.isNotEmpty) {
+      return methods.first;
+    }
+    return accountDeletionPasswordMethod;
   }
 
   List<String> _sanitizeAvailableMethods(List<String> methods) {
@@ -158,7 +172,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
       setState(() {
         _availableMethods = updatedMethods;
         if (!_availableMethods.contains(_selectedMethod)) {
-          _selectedMethod = _availableMethods.first;
+          _selectedMethod = _pickFirstAvailableMethod(_availableMethods);
         }
       });
 
@@ -299,7 +313,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
       _passwordController.clear();
       _otpController.clear();
       if (!_availableMethods.contains(_selectedMethod)) {
-        _selectedMethod = _availableMethods.first;
+        _selectedMethod = _pickFirstAvailableMethod(_availableMethods);
       }
     });
   }
@@ -1023,7 +1037,11 @@ class _OtpDotFieldState extends State<_OtpDotField> {
 
   void _handleValueChanged() {
     final field = _formFieldState;
+    final shouldRevalidate = field?.hasError ?? false;
     field?.didChange(widget.controller.text);
+    if (shouldRevalidate) {
+      field?.validate();
+    }
     if (mounted) {
       setState(() {});
     }
@@ -1035,22 +1053,12 @@ class _OtpDotFieldState extends State<_OtpDotField> {
     }
   }
 
-  Future<void> _showKeyboard() async {
-    if (_focusNode.hasFocus) {
-      _focusNode.unfocus();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      if (!mounted) return;
-    }
-
-    FocusScope.of(context).requestFocus(_focusNode);
-  }
-
   @override
   Widget build(BuildContext context) {
     return FormField<String>(
       initialValue: widget.controller.text,
       validator: widget.validator,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
+      autovalidateMode: AutovalidateMode.disabled,
       builder: (field) {
         _formFieldState = field;
         final otp = widget.controller.text;
@@ -1059,115 +1067,121 @@ class _OtpDotFieldState extends State<_OtpDotField> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _showKeyboard,
-              child: Row(
-                children: List.generate(6 * 2 - 1, (index) {
-                  if (index.isOdd) {
-                    return const SizedBox(width: 10);
-                  }
+            SizedBox(
+              height: 58,
+              child: Stack(
+                children: [
+                  IgnorePointer(
+                    child: Row(
+                      children: List.generate(6 * 2 - 1, (index) {
+                        if (index.isOdd) {
+                          return const SizedBox(width: 10);
+                        }
 
-                  final slotIndex = index ~/ 2;
-                  final isFilled = slotIndex < otp.length;
-                  final isActive = _focusNode.hasFocus &&
-                      slotIndex == activeIndex &&
-                      otp.length < 6;
-                  final digit = isFilled ? otp[slotIndex] : '';
-                  final borderColor = field.hasError
-                      ? const Color(0xFFDC2626)
-                      : isActive
-                          ? const Color(0xFFE64060)
-                          : const Color(0xFFE2E8F0);
+                        final slotIndex = index ~/ 2;
+                        final isFilled = slotIndex < otp.length;
+                        final isActive = _focusNode.hasFocus &&
+                            slotIndex == activeIndex &&
+                            otp.length < 6;
+                        final digit = isFilled ? otp[slotIndex] : '';
+                        final borderColor = field.hasError
+                            ? const Color(0xFFDC2626)
+                            : isActive
+                                ? const Color(0xFFE64060)
+                                : const Color(0xFFE2E8F0);
 
-                  return Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF9FBFD),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: borderColor,
-                          width: isActive ? 1.6 : 1.2,
+                        return Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FBFD),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: borderColor,
+                                width: isActive ? 1.6 : 1.2,
+                              ),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFE64060,
+                                        ).withOpacity(0.12),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeOut,
+                                child: isFilled
+                                    ? Text(
+                                        digit,
+                                        key: ValueKey('digit_$slotIndex$digit'),
+                                        style: const TextStyle(
+                                          color: Color(0xFFE64060),
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      )
+                                    : Container(
+                                        key:
+                                            ValueKey('dot_$slotIndex$isActive'),
+                                        width: isActive ? 10 : 8,
+                                        height: isActive ? 10 : 8,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isActive
+                                              ? const Color(0xFFF8A3B2)
+                                              : const Color(0xFFD7DEE7),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.02,
+                      child: TextField(
+                        controller: widget.controller,
+                        focusNode: _focusNode,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        showCursor: false,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.transparent,
+                          height: 1,
                         ),
-                        boxShadow: isActive
-                            ? [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFE64060,
-                                  ).withOpacity(0.12),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeOut,
-                          child: isFilled
-                              ? Text(
-                                  digit,
-                                  key: ValueKey('digit_$slotIndex$digit'),
-                                  style: const TextStyle(
-                                    color: Color(0xFFE64060),
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : Container(
-                                  key: ValueKey('dot_$slotIndex$isActive'),
-                                  width: isActive ? 10 : 8,
-                                  height: isActive ? 10 : 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isActive
-                                        ? const Color(0xFFF8A3B2)
-                                        : const Color(0xFFD7DEE7),
-                                  ),
-                                ),
+                        cursorColor: Colors.transparent,
+                        decoration: const InputDecoration(
+                          counterText: '',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isCollapsed: true,
+                          contentPadding: EdgeInsets.zero,
                         ),
                       ),
                     ),
-                  );
-                }),
-              ),
-            ),
-            SizedBox(
-              width: 0.1,
-              height: 0.1,
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                onTap: _showKeyboard,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                showCursor: false,
-                autocorrect: false,
-                enableSuggestions: false,
-                autofillHints: const [AutofillHints.oneTimeCode],
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
+                  ),
                 ],
-                style: const TextStyle(
-                  fontSize: 0.1,
-                  color: Colors.transparent,
-                  height: 0.1,
-                ),
-                cursorColor: Colors.transparent,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
               ),
             ),
             const SizedBox(height: 10),

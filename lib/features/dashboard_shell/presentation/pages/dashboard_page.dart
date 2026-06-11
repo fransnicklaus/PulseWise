@@ -2,6 +2,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
@@ -65,6 +66,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   }
 
   Future<void> _triggerHealthConnectSync() async {
+    if (!shouldExposeHealthConnectUi) return;
     try {
       final profile = await _resolvePatientProfileForHealthConnect();
       if (profile == null) {
@@ -128,6 +130,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
   Future<void> _maybeHandleHealthConnectPrompt(
     PatientProfile profile,
   ) async {
+    if (!shouldExposeHealthConnectUi) {
+      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      return;
+    }
     if (_isHandlingHealthConnectPrompt) return;
 
     final promptArmed = ref.read(healthConnectLoginPromptArmedProvider);
@@ -454,6 +460,13 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     final navIndex = ref.watch(dashboardNavIndexProvider);
     final promptArmed = ref.watch(healthConnectLoginPromptArmedProvider);
     final profileAsync = ref.watch(patientProfileProvider);
+
+    if (!shouldExposeHealthConnectUi && promptArmed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+      });
+    }
 
     if (profileAsync.hasError &&
         isPatientProfileNotSetupError(profileAsync.error)) {

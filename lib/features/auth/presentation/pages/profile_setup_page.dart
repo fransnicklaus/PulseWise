@@ -7,9 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
 
 class ProfileSetupPage extends ConsumerStatefulWidget {
   final String token;
@@ -294,6 +294,10 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
       await AppFcmService.instance.registerTokenForCurrentSession(
         trigger: 'profile_setup',
       );
+      prepareAppForAuthenticatedSession(
+        ref,
+        armHealthConnectPrompt: true,
+      );
       if (!mounted) return;
 
       AppToast.success(context, 'Profil berhasil dilengkapi');
@@ -386,9 +390,6 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
           },
         );
       } else {
-        ref.read(previousNavIndexProvider.notifier).state = 0;
-        ref.read(dashboardNavIndexProvider.notifier).state = 0;
-        ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
         _goSafely('/home');
       }
     } catch (e) {

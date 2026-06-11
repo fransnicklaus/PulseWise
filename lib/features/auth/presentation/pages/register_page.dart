@@ -3,16 +3,18 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   final String? googleRegistrationToken;
   final String? googleEmail;
   final String? googleIdToken;
@@ -33,10 +35,10 @@ class RegisterPage extends StatefulWidget {
   });
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   static const String _privacyPolicyUrl =
       'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8';
 
@@ -563,6 +565,10 @@ class _RegisterPageState extends State<RegisterPage> {
             role: session.role,
             nextStep: session.nextStep,
             accountStatus: session.accountStatus,
+          );
+          prepareAppForAuthenticatedSession(
+            ref,
+            armHealthConnectPrompt: false,
           );
           if (!mounted) return;
           if (isDoctorPendingAdminVerification(
@@ -1392,10 +1398,6 @@ class _OtpDotFieldState extends State<_OtpDotField> {
     }
   }
 
-  void _showKeyboard() {
-    FocusScope.of(context).requestFocus(_focusNode);
-  }
-
   @override
   Widget build(BuildContext context) {
     return FormField<String>(
@@ -1410,118 +1412,121 @@ class _OtpDotFieldState extends State<_OtpDotField> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _showKeyboard,
-              child: Row(
-                children: List.generate(6 * 2 - 1, (index) {
-                  if (index.isOdd) {
-                    return const SizedBox(width: 10);
-                  }
+            SizedBox(
+              height: 58,
+              child: Stack(
+                children: [
+                  IgnorePointer(
+                    child: Row(
+                      children: List.generate(6 * 2 - 1, (index) {
+                        if (index.isOdd) {
+                          return const SizedBox(width: 10);
+                        }
 
-                  final slotIndex = index ~/ 2;
-                  final isFilled = slotIndex < otp.length;
-                  final isActive = _focusNode.hasFocus &&
-                      slotIndex == activeIndex &&
-                      otp.length < 6;
-                  final digit = isFilled ? otp[slotIndex] : '';
-                  final borderColor = field.hasError
-                      ? const Color(0xFFDC2626)
-                      : isActive
-                          ? const Color(0xFFE64060)
-                          : const Color(0xFFE2E8F0);
-                  final backgroundColor = isFilled
-                      ? const Color(0xFFF9FBFD)
-                      : const Color(0xFFF9FBFD);
+                        final slotIndex = index ~/ 2;
+                        final isFilled = slotIndex < otp.length;
+                        final isActive = _focusNode.hasFocus &&
+                            slotIndex == activeIndex &&
+                            otp.length < 6;
+                        final digit = isFilled ? otp[slotIndex] : '';
+                        final borderColor = field.hasError
+                            ? const Color(0xFFDC2626)
+                            : isActive
+                                ? const Color(0xFFE64060)
+                                : const Color(0xFFE2E8F0);
 
-                  return Expanded(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      height: 58,
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: borderColor,
-                          width: isActive ? 1.6 : 1.2,
+                        return Expanded(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOut,
+                            height: 58,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FBFD),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: borderColor,
+                                width: isActive ? 1.6 : 1.2,
+                              ),
+                              boxShadow: isActive
+                                  ? [
+                                      BoxShadow(
+                                        color: const Color(
+                                          0xFFE64060,
+                                        ).withOpacity(0.12),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Center(
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeOut,
+                                child: isFilled
+                                    ? Text(
+                                        digit,
+                                        key: ValueKey('digit_$slotIndex$digit'),
+                                        style: const TextStyle(
+                                          color: Color(0xFFE64060),
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      )
+                                    : Container(
+                                        key:
+                                            ValueKey('dot_$slotIndex$isActive'),
+                                        width: isActive ? 10 : 8,
+                                        height: isActive ? 10 : 8,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isActive
+                                              ? const Color(0xFFF8A3B2)
+                                              : const Color(0xFFD7DEE7),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: Opacity(
+                      opacity: 0.02,
+                      child: TextField(
+                        controller: widget.controller,
+                        focusNode: _focusNode,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        showCursor: false,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        autofillHints: const [AutofillHints.oneTimeCode],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.transparent,
+                          height: 1,
                         ),
-                        boxShadow: isActive
-                            ? [
-                                BoxShadow(
-                                  color: const Color(
-                                    0xFFE64060,
-                                  ).withOpacity(0.12),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Center(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 180),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeOut,
-                          child: isFilled
-                              ? Text(
-                                  digit,
-                                  key: ValueKey('digit_$slotIndex$digit'),
-                                  style: const TextStyle(
-                                    color: Color(0xFFE64060),
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : Container(
-                                  key: ValueKey('dot_$slotIndex$isActive'),
-                                  width: isActive ? 10 : 8,
-                                  height: isActive ? 10 : 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isActive
-                                        ? const Color(0xFFF8A3B2)
-                                        : const Color(0xFFD7DEE7),
-                                  ),
-                                ),
+                        cursorColor: Colors.transparent,
+                        decoration: const InputDecoration(
+                          counterText: '',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isCollapsed: true,
+                          contentPadding: EdgeInsets.zero,
                         ),
                       ),
                     ),
-                  );
-                }),
-              ),
-            ),
-            SizedBox(
-              width: 0.1,
-              height: 0.1,
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                onTap: _showKeyboard,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                showCursor: false,
-                autocorrect: false,
-                enableSuggestions: false,
-                autofillHints: const [AutofillHints.oneTimeCode],
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
+                  ),
                 ],
-                style: const TextStyle(
-                  fontSize: 0.1,
-                  color: Colors.transparent,
-                  height: 0.1,
-                ),
-                cursorColor: Colors.transparent,
-                decoration: const InputDecoration(
-                  counterText: '',
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
               ),
             ),
             const SizedBox(height: 10),

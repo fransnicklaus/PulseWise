@@ -5,15 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
+import 'package:pulsewise/features/auth/presentation/services/google_web_redirect_sign_in.dart';
 import 'package:pulsewise/features/auth/presentation/widgets/google_sign_in_entry_button.dart';
-import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -25,22 +23,14 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  late final GoogleSignIn _googleSignIn;
-  StreamSubscription<GoogleSignInAccount?>? _googleUserSubscription;
-  bool _isHandlingWebGoogleUser = false;
   bool _obscurePassword = true;
+  bool _isRedirectingToGoogle = false;
 
   @override
   void initState() {
     super.initState();
-    _googleSignIn = buildGoogleSignInClient();
     if (kIsWeb) {
-      _googleUserSubscription = _googleSignIn.onCurrentUserChanged.listen((
-        account,
-      ) {
-        if (account == null || _isHandlingWebGoogleUser) return;
-        unawaited(_handleWebGoogleAccount(account));
-      });
+      unawaited(_consumeGoogleRedirectResult());
     }
   }
 
@@ -61,27 +51,44 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       nextStep: nextStep,
       accountStatus: accountStatus,
     );
-    if (normalizedRole == AppRoles.doctor) {
-      ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
-      ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
-      context.go(targetRoute);
-      return;
-    }
-
-    ref.read(previousNavIndexProvider.notifier).state = 0;
-    ref.read(dashboardNavIndexProvider.notifier).state = 0;
-    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = true;
-    ref.invalidate(authMeProvider);
-    ref.invalidate(patientProfileProvider);
+    prepareAppForAuthenticatedSession(
+      ref,
+      armHealthConnectPrompt: normalizedRole != AppRoles.doctor,
+    );
     context.go(targetRoute);
   }
 
   @override
   void dispose() {
-    _googleUserSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _consumeGoogleRedirectResult() async {
+    final redirectResult = await consumeGoogleWebRedirectSignInResult();
+    if (!mounted || redirectResult == null) return;
+
+    final errorMessage = (redirectResult.error ?? '').trim();
+    if (errorMessage.isNotEmpty) {
+      AppToast.error(context, errorMessage);
+      return;
+    }
+
+    final idToken = (redirectResult.idToken ?? '').trim();
+    if (idToken.isEmpty) {
+      AppToast.error(
+        context,
+        'ID token Google tidak ditemukan setelah redirect login.',
+      );
+      return;
+    }
+
+    _logGoogleUi('Google redirect callback received, exchanging idToken');
+    final result =
+        await ref.read(authProvider.notifier).loginWithGoogleIdToken(idToken);
+    if (!mounted) return;
+    _handleGoogleResult(result);
   }
 
   Future<void> _onLogin() async {
@@ -123,6 +130,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _onGoogleLogin() async {
     _logGoogleUi('Button tapped, dismissing keyboard');
     FocusScope.of(context).unfocus();
+
+    if (kIsWeb && supportsGoogleWebRedirectSignIn) {
+      _logGoogleUi('Starting full-page Google redirect sign-in');
+      setState(() => _isRedirectingToGoogle = true);
+      try {
+        await beginGoogleWebRedirectSignIn(
+          clientId: resolveGoogleWebClientId(),
+        );
+      } catch (error) {
+        if (!mounted) return;
+        setState(() => _isRedirectingToGoogle = false);
+        AppToast.error(
+          context,
+          error.toString().replaceFirst('Exception: ', ''),
+        );
+      }
+      return;
+    }
+
     _logGoogleUi('Calling authProvider.loginWithGoogle');
     final result = await ref.read(authProvider.notifier).loginWithGoogle();
     if (!mounted) return;
@@ -133,36 +159,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
 
     _handleGoogleResult(result);
-  }
-
-  Future<void> _handleWebGoogleAccount(GoogleSignInAccount account) async {
-    _isHandlingWebGoogleUser = true;
-    try {
-      final authentication = await account.authentication;
-      final idToken = authentication.idToken;
-      if (!mounted) return;
-
-      if (idToken == null || idToken.isEmpty) {
-        AppToast.error(
-          context,
-          'idToken Google tidak tersedia di browser. Pastikan Web Client ID sudah benar.',
-        );
-        return;
-      }
-
-      final result =
-          await ref.read(authProvider.notifier).loginWithGoogleIdToken(idToken);
-      if (!mounted) return;
-      _handleGoogleResult(result);
-    } catch (error) {
-      if (!mounted) return;
-      AppToast.error(
-        context,
-        error.toString().replaceFirst('Exception: ', ''),
-      );
-    } finally {
-      _isHandlingWebGoogleUser = false;
-    }
   }
 
   void _handleGoogleResult(GoogleAuthFlowResult result) {
@@ -245,6 +241,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final size = MediaQuery.of(context).size;
+    final isGoogleLoading = authState.isLoading || _isRedirectingToGoogle;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -519,8 +516,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               const SizedBox(height: 24),
 
                               GoogleSignInEntryButton(
-                                googleSignIn: _googleSignIn,
-                                isLoading: authState.isLoading,
+                                isLoading: isGoogleLoading,
                                 onPressed: _onGoogleLogin,
                               ),
 

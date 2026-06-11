@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/education/data/models/education_models.dart';
 import 'package:pulsewise/features/education/presentation/providers/education_provider.dart';
@@ -286,12 +287,13 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: _WearableConnectionCard(
-              initiallyExpanded: false,
+          if (shouldExposeHealthConnectUi)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: _WearableConnectionCard(
+                initiallyExpanded: false,
+              ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
             child: SizedBox(
