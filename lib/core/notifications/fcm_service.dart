@@ -7,7 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:pulsewise/core/config/firebase_app_options.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
+import 'package:pulsewise/core/notifications/browser_push_notification.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,7 +109,9 @@ class AppFcmService {
       return;
     }
 
-    await _setupLocalNotifications();
+    if (!kIsWeb) {
+      await _setupLocalNotifications();
+    }
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
@@ -210,7 +214,9 @@ class AppFcmService {
     }
 
     try {
-      final token = await _messaging.getToken();
+      final token = await _messaging.getToken(
+        vapidKey: kIsWeb ? pulseWiseWebVapidKey : null,
+      );
       if (token != null && token.isNotEmpty) {
         await _persistToken(token);
       }
@@ -472,8 +478,6 @@ class AppFcmService {
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {
-    if (!_localNotificationsReady) return;
-
     final title =
         message.notification?.title ?? message.data['title']?.toString();
     final body = message.notification?.body ?? message.data['body']?.toString();
@@ -481,6 +485,22 @@ class AppFcmService {
     if ((title == null || title.isEmpty) && (body == null || body.isEmpty)) {
       return;
     }
+
+    if (kIsWeb) {
+      if (!supportsBrowserForegroundNotifications) {
+        return;
+      }
+
+      await showBrowserForegroundNotification(
+        title: title ?? 'PulseWise',
+        body: body ?? 'Anda memiliki notifikasi baru.',
+        tag: message.messageId,
+        link: _resolveNotificationLink(message),
+      );
+      return;
+    }
+
+    if (!_localNotificationsReady) return;
 
     await _localNotifications.show(
       message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
@@ -710,7 +730,32 @@ class AppFcmService {
       return;
     }
 
+    final options = firebaseInitializationOptionsForCurrentPlatform();
+    if (options != null) {
+      await Firebase.initializeApp(options: options);
+      return;
+    }
+
     await Firebase.initializeApp();
+  }
+
+  String? _resolveNotificationLink(RemoteMessage message) {
+    final directLink = (message.data['link'] ?? '').toString().trim();
+    if (directLink.isNotEmpty) {
+      return directLink;
+    }
+
+    final clickAction = (message.data['click_action'] ?? '').toString().trim();
+    if (clickAction.isNotEmpty) {
+      return clickAction;
+    }
+
+    final route = (message.data['route'] ?? '').toString().trim();
+    if (route.isEmpty) {
+      return null;
+    }
+
+    return Uri.base.resolve(route).toString();
   }
 }
 

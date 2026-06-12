@@ -1006,7 +1006,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                         ],
                       ),
-                      if (isAdminViewer && shouldExposeHealthConnectUi) ...[
+                      if (isAdminViewer) ...[
                         const SizedBox(height: 14),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1147,7 +1147,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                         ),
                       ],
-                      if (isAdminViewer) ...[
+                      if (isAdminViewer && shouldExposeHealthConnectUi) ...[
                         const SizedBox(height: 14),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),

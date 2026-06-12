@@ -29,14 +29,10 @@ class FoodMacroCameraPage extends ConsumerStatefulWidget {
 }
 
 class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
-  final TextEditingController _foodNameController = TextEditingController();
-  final TextEditingController _foodDescriptionController =
-      TextEditingController();
-
   CameraController? _cameraController;
   List<CameraDescription> _availableCameras = const [];
   bool _isCameraLoading = true;
-  bool _isAnalyzing = false;
+  bool _isSelectingImage = false;
   String? _errorMessage;
   int _cameraIndex = 0;
 
@@ -48,8 +44,6 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
 
   @override
   void dispose() {
-    _foodNameController.dispose();
-    _foodDescriptionController.dispose();
     _cameraController?.dispose();
     super.dispose();
   }
@@ -105,7 +99,7 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
   }
 
   Future<void> _switchCamera() async {
-    if (_availableCameras.length < 2 || _isCameraLoading || _isAnalyzing) {
+    if (_availableCameras.length < 2 || _isCameraLoading || _isSelectingImage) {
       return;
     }
 
@@ -113,81 +107,58 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
     await _initializeCamera(index: nextIndex);
   }
 
-  bool _validateMealName() {
-    final mealName = _foodNameController.text.trim();
-    if (mealName.isEmpty) {
-      setState(() {
-        _errorMessage = 'Nama makanan wajib diisi sebelum analisis.';
-      });
-      AppToast.warning(context, _errorMessage!);
-      return false;
-    }
-    return true;
-  }
-
-  Future<void> _analyzeImageData(_SelectedFoodImage imageData) async {
-    if (!_validateMealName() || _isAnalyzing) return;
-
-    final mealName = _foodNameController.text.trim();
-
+  Future<void> _openImageReviewPage(_SelectedFoodImage imageData) async {
     try {
-      setState(() {
-        _isAnalyzing = true;
-        _errorMessage = null;
-      });
+      final result = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (_) => _FoodMacroImageReviewPage(
+            imageData: imageData,
+            onUseAnalysis: widget.onUseAnalysis,
+          ),
+        ),
+      );
 
-      final result =
-          await ref.read(foodNutritionEstimateApiProvider).estimateNutrition(
-                imageBytes: imageData.bytes,
-                mealName: mealName,
-                imageMimeType: imageData.mimeType,
-                mealDescription: _foodDescriptionController.text.trim(),
-              );
+      if (!mounted || result == null) return;
 
-      if (!mounted) return;
-      if (!result.hasValidFoodResult) {
-        setState(() {
-          _isAnalyzing = false;
-          _errorMessage = result.validationMessage.isNotEmpty
-              ? result.validationMessage
-              : 'Foto ini tidak terlihat seperti makanan atau minuman. Coba ambil ulang.';
-        });
-        AppToast.warning(context, _errorMessage!);
+      final action = (result['action'] ?? '').toString();
+      if (action == 'saved') {
+        Navigator.of(context).pop(const {'action': 'saved'});
         return;
       }
-
-      setState(() {
-        _isAnalyzing = false;
-        _errorMessage = null;
-      });
-
-      await _openAnalysisResultPage(
-        imageData: imageData,
-        analysis: result,
-      );
+      if (action == 'use') {
+        Navigator.of(context).pop(result);
+        return;
+      }
+      if (action.isEmpty && result.containsKey('analysis')) {
+        Navigator.of(context).pop(result);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _isAnalyzing = false;
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
 
-  Future<void> _captureAndAnalyze() async {
-    if (!_validateMealName()) return;
-
+  Future<void> _capturePhoto() async {
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) {
       AppToast.warning(context, 'Kamera belum siap.');
       return;
     }
-    if (_isAnalyzing) return;
+    if (_isSelectingImage) return;
+
+    setState(() {
+      _isSelectingImage = true;
+      _errorMessage = null;
+    });
 
     try {
       final photo = await controller.takePicture();
       final bytes = await photo.readAsBytes();
-      await _analyzeImageData(
+      if (!mounted) return;
+
+      await _openImageReviewPage(
         _SelectedFoodImage(
           bytes: bytes,
           mimeType: 'image/jpeg',
@@ -199,48 +170,73 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
       setState(() {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSelectingImage = false;
+        });
+      }
     }
   }
 
   Future<void> _pickFromGallery() async {
-    if (!_validateMealName() || _isAnalyzing) return;
+    if (_isSelectingImage) return;
 
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
-      allowMultiple: false,
-      withData: true,
-    );
+    setState(() {
+      _isSelectingImage = true;
+      _errorMessage = null;
+    });
 
-    if (picked == null || picked.files.isEmpty) return;
-
-    final selected = picked.files.first;
-    const maxImageBytes = 10 * 1024 * 1024;
-    if (selected.size > maxImageBytes) {
-      if (!mounted) return;
-      AppToast.warning(context, 'Ukuran gambar maksimal 10 MB.');
-      return;
-    }
-
-    final imageBytes = selected.bytes;
-    if (imageBytes == null || imageBytes.isEmpty) {
-      if (!mounted) return;
-      AppToast.warning(
-        context,
-        'File gambar tidak bisa dibaca di perangkat ini. Coba pilih gambar lain.',
+    try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+        allowMultiple: false,
+        withData: true,
       );
-      return;
-    }
 
-    await _analyzeImageData(
-      _SelectedFoodImage(
-        bytes: imageBytes,
-        mimeType: _guessMimeType(
-          selected.name.isNotEmpty ? selected.name : selected.path,
+      if (picked == null || picked.files.isEmpty) return;
+
+      final selected = picked.files.first;
+      const maxImageBytes = 10 * 1024 * 1024;
+      if (selected.size > maxImageBytes) {
+        if (!mounted) return;
+        AppToast.warning(context, 'Ukuran gambar maksimal 10 MB.');
+        return;
+      }
+
+      final imageBytes = selected.bytes;
+      if (imageBytes == null || imageBytes.isEmpty) {
+        if (!mounted) return;
+        AppToast.warning(
+          context,
+          'File gambar tidak bisa dibaca di perangkat ini. Coba pilih gambar lain.',
+        );
+        return;
+      }
+
+      await _openImageReviewPage(
+        _SelectedFoodImage(
+          bytes: imageBytes,
+          mimeType: _guessMimeType(
+            selected.name.isNotEmpty ? selected.name : selected.path,
+          ),
+          fileName:
+              selected.name.isNotEmpty ? selected.name : 'food_gallery.jpg',
         ),
-        fileName: selected.name.isNotEmpty ? selected.name : 'food_gallery.jpg',
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSelectingImage = false;
+        });
+      }
+    }
   }
 
   Widget buildCameraPreview(CameraController controller) {
@@ -262,44 +258,6 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
         ),
       ),
     );
-  }
-
-  FoodMacroCaptureResult _buildCaptureResult(FoodMacroAnalysis analysis) {
-    return FoodMacroCaptureResult(
-      analysis: analysis,
-      userFoodName: _foodNameController.text.trim(),
-      userDescription: _foodDescriptionController.text.trim(),
-    );
-  }
-
-  Future<void> _openAnalysisResultPage({
-    required _SelectedFoodImage imageData,
-    required FoodMacroAnalysis analysis,
-  }) async {
-    final captureResult = _buildCaptureResult(analysis);
-    final result = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => _FoodMacroAnalysisResultPage(
-          imageData: imageData,
-          analysis: analysis,
-          userFoodName: captureResult.userFoodName,
-          userDescription: captureResult.userDescription,
-          onUseAnalysis: widget.onUseAnalysis == null
-              ? null
-              : () => widget.onUseAnalysis!(captureResult),
-        ),
-      ),
-    );
-
-    if (!mounted || result == null) return;
-
-    final action = (result['action'] ?? '').toString();
-    if (action == 'saved') {
-      Navigator.of(context).pop(const {'action': 'saved'});
-      return;
-    }
-    if (action != 'use') return;
-    Navigator.of(context).pop(captureResult.toMap());
   }
 
   String _guessMimeType(String? filePathOrName) {
@@ -343,230 +301,192 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF020617),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_isCameraLoading)
-                  const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                    ),
-                  )
-                else if (hasPreview)
-                  buildCameraPreview(controller)
-                else
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Text(
-                        _errorMessage ?? 'Kamera tidak bisa dimuat.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0x99000000),
-                        Color(0x00000000),
-                        Color(0xAA000000),
-                      ],
-                    ),
+          if (_isCameraLoading)
+            const Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+              ),
+            )
+          else if (hasPreview)
+            buildCameraPreview(controller)
+          else
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  _errorMessage ?? 'Kamera tidak bisa dimuat.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
                 ),
-                SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.black.withOpacity(0.35),
-                              ),
-                              icon: const Icon(
-                                Icons.arrow_back,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Expanded(
-                              child: Text(
-                                'Foto Nutrisi Makanan',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            if (_availableCameras.length > 1)
-                              IconButton(
-                                onPressed: _switchCamera,
-                                style: IconButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.black.withOpacity(0.35),
-                                ),
-                                icon: const Icon(
-                                  Icons.cameraswitch_rounded,
-                                  color: Colors.white,
-                                ),
-                              ),
-                          ],
-                        ),
-                        const Spacer(),
-                        // Container(
-                        //   width: double.infinity,
-                        //   padding: const EdgeInsets.all(14),
-                        //   decoration: BoxDecoration(
-                        //     color: Colors.black.withOpacity(0.42),
-                        //     borderRadius: BorderRadius.circular(16),
-                        //     border: Border.all(
-                        //       color: Colors.white.withOpacity(0.15),
-                        //     ),
-                        //   ),
-                        //   child: const Text(
-                        //     'Isi nama atau deskripsi kalau mau, lalu ambil foto. Hasil nutrisi akan muncul di halaman berikutnya dan bisa langsung disimpan.',
-                        //     textAlign: TextAlign.center,
-                        //     style: TextStyle(
-                        //       color: Colors.white,
-                        //       fontSize: 16,
-                        //       fontWeight: FontWeight.w600,
-                        //       height: 1.4,
-                        //     ),
-                        //   ),
-                        // ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (_isAnalyzing)
-                  Container(
-                    color: Colors.black.withOpacity(0.55),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(
-                            color: Colors.white,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'Menganalisis foto makanan...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
+              ),
+            ),
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x99000000),
+                  Color(0x00000000),
+                  Color(0xCC000000),
+                ],
+              ),
             ),
           ),
           SafeArea(
-            top: false,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _isSelectingImage
+                            ? null
+                            : () => Navigator.of(context).pop(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.black.withOpacity(0.35),
+                        ),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Foto Nutrisi Makanan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (_availableCameras.length > 1)
+                        IconButton(
+                          onPressed: _switchCamera,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.black.withOpacity(0.35),
+                          ),
+                          icon: const Icon(
+                            Icons.cameraswitch_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  if (hasPreview)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 152),
+                      child: IgnorePointer(
+                        ignoring: _isSelectingImage,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 180),
+                          opacity: _isSelectingImage ? 0.55 : 1,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _capturePhoto,
+                                  customBorder: const CircleBorder(),
+                                  child: Ink(
+                                    width: 84,
+                                    height: 84,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 4,
+                                      ),
+                                      color: Colors.white.withOpacity(0.18),
+                                    ),
+                                    child: Center(
+                                      child: Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Ambil Foto',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              child: SingleChildScrollView(
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              top: false,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(28),
+                    topRight: Radius.circular(28),
+                  ),
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Nama Makanan (Wajib)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF334155),
+                    Container(
+                      width: 46,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _foodNameController,
-                      enabled: !_isAnalyzing,
-                      decoration: InputDecoration(
-                        hintText: 'Contoh: nasi padang, bakso, salad ayam',
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _isSelectingImage ? null : _pickFromGallery,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF475569),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE64060),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Deskripsi Tambahan (Opsional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF334155),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _foodDescriptionController,
-                      enabled: !_isAnalyzing,
-                      minLines: 3,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText:
-                            'Contoh: pakai santan, ada sambal, porsi besar, lebih banyak ayam',
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE2E8F0),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFE64060),
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text(
+                          'Pilih dari Galeri',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
@@ -575,6 +495,7 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
                       const SizedBox(height: 12),
                       Text(
                         _errorMessage!,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -582,80 +503,11 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
                           height: 1.4,
                         ),
                       ),
-                    ],
-                    const SizedBox(height: 16),
-                    // Container(
-                    //   width: double.infinity,
-                    //   padding: const EdgeInsets.all(14),
-                    //   decoration: BoxDecoration(
-                    //     color: const Color(0xFFFFFBFB),
-                    //     borderRadius: BorderRadius.circular(16),
-                    //     border: Border.all(color: const Color(0xFFFBC8D2)),
-                    //   ),
-                    //   child: const Text(
-                    //     'Pilih cara ambil gambar. Bisa foto langsung dari kamera atau pilih gambar dari galeri.',
-                    //     style: TextStyle(
-                    //       fontSize: 16,
-                    //       fontWeight: FontWeight.w600,
-                    //       color: Color(0xFF475569),
-                    //       height: 1.45,
-                    //     ),
-                    //   ),
-                    // ),
-                    // const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _isAnalyzing ? null : _pickFromGallery,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF475569),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              side: const BorderSide(color: Color(0xFFCBD5E1)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            icon: const Icon(Icons.photo_library_outlined),
-                            label: const Text(
-                              'Pilih Galeri',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _isAnalyzing || !hasPreview
-                                ? null
-                                : _captureAndAnalyze,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE64060),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            icon: const Icon(Icons.camera_alt_rounded),
-                            label: const Text(
-                              'Ambil Foto',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (!hasPreview) ...[
-                      const SizedBox(height: 10),
+                    ] else if (!hasPreview) ...[
+                      const SizedBox(height: 12),
                       const Text(
                         'Kamera belum tersedia, tapi Anda tetap bisa pilih gambar dari galeri.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -669,6 +521,15 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
               ),
             ),
           ),
+          if (_isSelectingImage)
+            Container(
+              color: Colors.black.withOpacity(0.28),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -685,6 +546,334 @@ class _SelectedFoodImage {
   final Uint8List bytes;
   final String mimeType;
   final String fileName;
+}
+
+class _FoodMacroImageReviewPage extends ConsumerStatefulWidget {
+  const _FoodMacroImageReviewPage({
+    required this.imageData,
+    this.onUseAnalysis,
+  });
+
+  final _SelectedFoodImage imageData;
+  final SubmitFoodMacroCaptureCallback? onUseAnalysis;
+
+  @override
+  ConsumerState<_FoodMacroImageReviewPage> createState() =>
+      _FoodMacroImageReviewPageState();
+}
+
+class _FoodMacroImageReviewPageState
+    extends ConsumerState<_FoodMacroImageReviewPage> {
+  final TextEditingController _foodNameController = TextEditingController();
+  final TextEditingController _foodDescriptionController =
+      TextEditingController();
+
+  bool _isAnalyzing = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _foodNameController.dispose();
+    _foodDescriptionController.dispose();
+    super.dispose();
+  }
+
+  bool _validateMealName() {
+    final mealName = _foodNameController.text.trim();
+    if (mealName.isEmpty) {
+      setState(() {
+        _errorMessage = 'Nama makanan wajib diisi sebelum analisis.';
+      });
+      AppToast.warning(context, _errorMessage!);
+      return false;
+    }
+    return true;
+  }
+
+  FoodMacroCaptureResult _buildCaptureResult(FoodMacroAnalysis analysis) {
+    return FoodMacroCaptureResult(
+      analysis: analysis,
+      userFoodName: _foodNameController.text.trim(),
+      userDescription: _foodDescriptionController.text.trim(),
+    );
+  }
+
+  Future<void> _openAnalysisResultPage(FoodMacroAnalysis analysis) async {
+    final captureResult = _buildCaptureResult(analysis);
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(
+        builder: (_) => _FoodMacroAnalysisResultPage(
+          imageData: widget.imageData,
+          analysis: analysis,
+          userFoodName: captureResult.userFoodName,
+          userDescription: captureResult.userDescription,
+          onUseAnalysis: widget.onUseAnalysis == null
+              ? null
+              : () => widget.onUseAnalysis!(captureResult),
+        ),
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    final action = (result['action'] ?? '').toString();
+    if (action == 'saved') {
+      Navigator.of(context).pop(const {'action': 'saved'});
+      return;
+    }
+    if (action == 'use') {
+      Navigator.of(context).pop({
+        'action': 'use',
+        ...captureResult.toMap(),
+      });
+      return;
+    }
+    if (action == 'retake') {
+      Navigator.of(context).pop(const {'action': 'retake'});
+    }
+  }
+
+  Future<void> _analyzeImage() async {
+    if (!_validateMealName() || _isAnalyzing) return;
+
+    try {
+      setState(() {
+        _isAnalyzing = true;
+        _errorMessage = null;
+      });
+
+      final result =
+          await ref.read(foodNutritionEstimateApiProvider).estimateNutrition(
+                imageBytes: widget.imageData.bytes,
+                mealName: _foodNameController.text.trim(),
+                imageMimeType: widget.imageData.mimeType,
+                mealDescription: _foodDescriptionController.text.trim(),
+              );
+
+      if (!mounted) return;
+      if (!result.hasValidFoodResult) {
+        setState(() {
+          _isAnalyzing = false;
+          _errorMessage = result.validationMessage.isNotEmpty
+              ? result.validationMessage
+              : 'Foto ini tidak terlihat seperti makanan atau minuman. Coba ambil ulang.';
+        });
+        AppToast.warning(context, _errorMessage!);
+        return;
+      }
+
+      setState(() {
+        _isAnalyzing = false;
+        _errorMessage = null;
+      });
+
+      await _openAnalysisResultPage(result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isAnalyzing = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  InputDecoration _buildInputDecoration(String hintText) {
+    return InputDecoration(
+      hintText: hintText,
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: Color(0xFFE2E8F0),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: Color(0xFFE2E8F0),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(
+          color: Color(0xFFE64060),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: CustomAppBar(
+        title: 'Lengkapi Foto Makanan',
+        onBackPressed: () {
+          context.pop();
+        },
+      ),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: AspectRatio(
+                        aspectRatio: 4 / 3,
+                        child: Image.memory(
+                          widget.imageData.bytes,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nama Makanan (Wajib)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _foodNameController,
+                            enabled: !_isAnalyzing,
+                            decoration: _buildInputDecoration(
+                              'Contoh: nasi padang, bakso, salad ayam',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Deskripsi Tambahan (Opsional)',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF334155),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _foodDescriptionController,
+                            enabled: !_isAnalyzing,
+                            minLines: 3,
+                            maxLines: 5,
+                            decoration: _buildInputDecoration(
+                              'Contoh: rendang, telur bulat, porsi besar, lebih banyak ayam',
+                            ),
+                          ),
+                          if (_errorMessage != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFB91C1C),
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE2E8F0)),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isAnalyzing
+                            ? null
+                            : () => Navigator.of(
+                                  context,
+                                ).pop(const {'action': 'retake'}),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: const Text(
+                          'Ambil Ulang',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isAnalyzing ? null : _analyzeImage,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE64060),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: _isAnalyzing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Analisis Foto',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _FoodMacroAnalysisCard extends StatelessWidget {

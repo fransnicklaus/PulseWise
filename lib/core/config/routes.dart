@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/platform/health_connect_visibility.dart';
+import 'package:pulsewise/core/presentation/pages/not_found_page.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/features/auth/presentation/pages/login_page.dart';
 import 'package:pulsewise/features/admin/presentation/pages/admin_doctor_detail_page.dart';
@@ -55,6 +56,9 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
     redirect: (context, state) async {
       return _guardAppRouteAccess(state);
     },
+    errorBuilder: (context, state) => NotFoundPage(
+      requestedLocation: state.uri.toString(),
+    ),
     routes: [
       GoRoute(
         path: '/login',

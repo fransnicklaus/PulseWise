@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/platform/health_connect_visibility.dart';
+import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/education/data/models/education_models.dart';
 import 'package:pulsewise/features/education/presentation/providers/education_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class EdukasiTab extends ConsumerStatefulWidget {
   const EdukasiTab({super.key});
@@ -16,6 +18,9 @@ class EdukasiTab extends ConsumerStatefulWidget {
 }
 
 class _EdukasiTabState extends ConsumerState<EdukasiTab> {
+  static final Uri _educationCmsUri = Uri.parse(
+    'https://pulsewise-cms.vercel.app/',
+  );
   final TextEditingController _searchController = TextEditingController();
 
   String _searchKeyword = '';
@@ -33,6 +38,16 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
     setState(() {
       _searchKeyword = _searchController.text.trim();
     });
+  }
+
+  Future<void> _openEducationCms() async {
+    final opened = await launchUrl(_educationCmsUri);
+    if (opened || !mounted) return;
+
+    AppToast.warning(
+      context,
+      'CMS PulseWise belum bisa dibuka saat ini.',
+    );
   }
 
   Future<void> _openFilterSheet(List<EducationCategory> categories) async {
@@ -271,17 +286,27 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
                     color: Color(0xFF525252),
                   ),
                 ),
-                Container(
-                  width: 44,
+                SizedBox(
                   height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFAFAFA),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.bookmark_border,
-                    color: Color(0xFFE64060),
-                    size: 24,
+                  child: FilledButton.icon(
+                    onPressed: _openEducationCms,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 20),
+                    label: const Text(
+                      'Tambah',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
