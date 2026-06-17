@@ -352,6 +352,13 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
             builder: (context, state) => const UpdateDoctorProfilePage(),
           ),
           GoRoute(
+            path: 'education/articles/:slug',
+            builder: (context, state) {
+              final slug = state.pathParameters['slug'] ?? '';
+              return EducationArticleDetailPage(slug: slug);
+            },
+          ),
+          GoRoute(
             path: 'patients/:patientId',
             builder: (context, state) {
               final patientId = state.pathParameters['patientId'] ?? '';

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
-import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/education/data/models/education_models.dart';
@@ -11,7 +10,14 @@ import 'package:pulsewise/features/education/presentation/providers/education_pr
 import 'package:url_launcher/url_launcher.dart';
 
 class EdukasiTab extends ConsumerStatefulWidget {
-  const EdukasiTab({super.key});
+  const EdukasiTab({
+    super.key,
+    required this.articleDetailRoutePrefix,
+    this.showWearableConnectionCard = false,
+  });
+
+  final String articleDetailRoutePrefix;
+  final bool showWearableConnectionCard;
 
   @override
   ConsumerState<EdukasiTab> createState() => _EdukasiTabState();
@@ -312,7 +318,7 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
               ],
             ),
           ),
-          if (shouldExposeHealthConnectUi)
+          if (widget.showWearableConnectionCard)
             const Padding(
               padding: EdgeInsets.fromLTRB(24, 24, 24, 0),
               child: _WearableConnectionCard(
@@ -557,7 +563,7 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
                                 child: _ArticleCard(
                                   article: article,
                                   onTap: () => context.push(
-                                    '/home/education/articles/${Uri.encodeComponent(article.slug)}',
+                                    '${widget.articleDetailRoutePrefix}/${Uri.encodeComponent(article.slug)}',
                                   ),
                                 ),
                               ),

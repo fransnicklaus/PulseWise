@@ -5,6 +5,7 @@ import 'package:pulsewise/features/doctor/presentation/pages/tabs/doctor_qr_tab.
 import 'package:pulsewise/features/doctor/presentation/pages/tabs/doctor_profile_tab.dart';
 import 'package:pulsewise/features/doctor/presentation/pages/tabs/doctor_tabs.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
+import 'package:pulsewise/features/home_dashboard/presentation/pages/edukasi_tab.dart';
 
 class DoctorDashboardPage extends ConsumerWidget {
   const DoctorDashboardPage({super.key});
@@ -17,6 +18,9 @@ class DoctorDashboardPage extends ConsumerWidget {
       // DoctorHomeTab(),
       DoctorPatientsTab(),
       DoctorQrTab(),
+      EdukasiTab(
+        articleDetailRoutePrefix: '/doctor/home/education/articles',
+      ),
       // DoctorDiaryTab(),
       DoctorProfileTab(),
     ];
@@ -77,6 +81,11 @@ class DoctorDashboardPage extends ConsumerWidget {
                     icon: Icon(Icons.qr_code_2_outlined),
                     activeIcon: Icon(Icons.qr_code_2_rounded),
                     label: 'QR',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(FluentIcons.book_open_24_regular),
+                    activeIcon: Icon(FluentIcons.book_open_24_filled),
+                    label: 'Edukasi',
                   ),
                   // BottomNavigationBarItem(
                   //   icon: Icon(Icons.favorite_border),

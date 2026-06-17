@@ -491,7 +491,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
     // List of tab widgets
     final tabs = [
       const BerandaTab(),
-      const EdukasiTab(),
+      EdukasiTab(
+        articleDetailRoutePrefix: '/home/education/articles',
+        showWearableConnectionCard: shouldExposeHealthConnectUi,
+      ),
       const DiariTab(),
       const PengingatTab(),
       const ProfilTab(),
