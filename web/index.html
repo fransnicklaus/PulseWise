@@ -29,6 +29,48 @@
 
   <title>PulseWise</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+  <style>
+    .cropper-crop-box,
+    .cropper-view-box,
+    .cropper-face {
+      border-radius: 50%;
+    }
+
+    .cropper-crop-box {
+      top: 50% !important;
+      left: 50% !important;
+      width: calc(100% - 48px) !important;
+      height: calc(100% - 48px) !important;
+      margin: 0 !important;
+      transform: translate(-50%, -50%) !important;
+      box-sizing: border-box !important;
+    }
+
+    .cropper-view-box,
+    .cropper-face {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .cropper-view-box {
+      outline: 0;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+    }
+
+    .cropper-modal {
+      background-color: rgba(15, 23, 42, 0.55);
+      opacity: 1 !important;
+    }
+
+    .cropper-dashed,
+    .cropper-center,
+    .cropper-line,
+    .cropper-point {
+      display: none !important;
+    }
+  </style>
   
   
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">

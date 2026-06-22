@@ -1,7 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -242,6 +241,35 @@ class _FoodMacroCameraPageState extends ConsumerState<FoodMacroCameraPage> {
   Widget buildCameraPreview(CameraController controller) {
     if (!controller.value.isInitialized) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (kIsWeb) {
+      final aspectRatio = controller.value.aspectRatio == 0
+          ? 4 / 3
+          : controller.value.aspectRatio;
+
+      return ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              var previewWidth = constraints.maxWidth;
+              var previewHeight = previewWidth / aspectRatio;
+
+              if (previewHeight > constraints.maxHeight) {
+                previewHeight = constraints.maxHeight;
+                previewWidth = previewHeight * aspectRatio;
+              }
+
+              return SizedBox(
+                width: previewWidth,
+                height: previewHeight,
+                child: CameraPreview(controller),
+              );
+            },
+          ),
+        ),
+      );
     }
 
     final previewSize = controller.value.previewSize!;

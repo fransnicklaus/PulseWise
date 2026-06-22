@@ -22,7 +22,6 @@ class _PatientMlAssessmentPageState
 
   DateTime _assessmentDate = DateTime.now();
   String? _assessmentId;
-  bool _isInitialLoading = true;
   bool _isSubmitting = false;
 
   @override
@@ -32,7 +31,7 @@ class _PatientMlAssessmentPageState
       for (final fieldKey in MlMapping.dynamic_form_mapping)
         if (_isRangeFieldKey(fieldKey)) fieldKey: TextEditingController(),
     };
-    _loadLatestAssessment();
+    _resetAssessmentForm();
   }
 
   @override
@@ -50,66 +49,13 @@ class _PatientMlAssessmentPageState
     return MlMapping.isRange(group, codeId);
   }
 
-  Future<void> _loadLatestAssessment() async {
-    if (!mounted) return;
-
-    setState(() => _isInitialLoading = true);
-    try {
-      final latest =
-          await ref.read(mlAssessmentApiProvider).fetchLatestMlAssessment();
-      if (!mounted) return;
-
-      if (latest == null) {
-        setState(() {
-          _assessmentId = null;
-          _assessmentDate = DateTime.now();
-          _selectionValues.clear();
-          for (final controller in _rangeControllers.values) {
-            controller.clear();
-          }
-        });
-        return;
-      }
-
-      setState(() {
-        _assessmentId = latest.assessmentId;
-        _assessmentDate = latest.assessmentDate ?? DateTime.now();
-        _selectionValues.clear();
-
-        for (final fieldKey in MlMapping.dynamic_form_mapping) {
-          final raw = latest.valueFor(fieldKey);
-          if (raw == null) continue;
-
-          final group = MlMapping.getGroupFromFieldKey(fieldKey);
-          final codeId = MlMapping.getCodeIdFromFieldKey(fieldKey);
-          if (group == null || codeId == null) continue;
-
-          if (MlMapping.isSelection(group, codeId)) {
-            final parsed = _toIntOrNull(raw);
-            if (parsed != null &&
-                MlMapping.getOptions(group, codeId).containsKey(parsed)) {
-              _selectionValues[fieldKey] = parsed;
-            }
-          } else {
-            _rangeControllers[fieldKey]?.text = raw.toString();
-          }
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      AppToast.warning(context, e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) {
-        setState(() => _isInitialLoading = false);
-      }
+  void _resetAssessmentForm() {
+    _assessmentId = null;
+    _assessmentDate = DateTime.now();
+    _selectionValues.clear();
+    for (final controller in _rangeControllers.values) {
+      controller.clear();
     }
-  }
-
-  int? _toIntOrNull(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
   }
 
   double? _toDoubleOrNull(String value) {
@@ -186,47 +132,6 @@ class _PatientMlAssessmentPageState
     }
   }
 
-  Widget _buildLoadingScreen() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 54,
-              height: 54,
-              child: CircularProgressIndicator(
-                strokeWidth: 4,
-                color: Color(0xFFE64060),
-              ),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Menyiapkan Form Asesmen',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF0F172A),
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Kami sedang memuat asesmen terbaru agar Anda bisa langsung memperbaruinya.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 15,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildHeaderCard() {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -265,7 +170,7 @@ class _PatientMlAssessmentPageState
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Pilih jawaban yang sesuai untuk setiap pertanyaan.',
+                  'Form dimulai kosong. Pilih jawaban yang sesuai untuk setiap pertanyaan.',
                   style: TextStyle(
                     color: Color(0xFF64748B),
                     fontSize: 14,
@@ -277,12 +182,14 @@ class _PatientMlAssessmentPageState
           ),
           const SizedBox(width: 12),
           TextButton.icon(
-            onPressed: _loadLatestAssessment,
+            onPressed: () {
+              setState(_resetAssessmentForm);
+            },
             style: TextButton.styleFrom(
               foregroundColor: const Color(0xFFE64060),
             ),
             icon: const Icon(Icons.refresh_rounded),
-            label: const Text('Muat terbaru'),
+            label: const Text('Kosongkan'),
           ),
         ],
       ),
@@ -503,68 +410,66 @@ class _PatientMlAssessmentPageState
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: CustomAppBar(
         title: 'Form Asesmen Pasien',
-        subtitle: 'Isi asesmen terbaru pasien',
+        subtitle: 'Isi form asesmen baru pasien',
         showBackButton: true,
         onBackPressed: () => context.pop(),
       ),
       body: SafeArea(
-        child: _isInitialLoading
-            ? _buildLoadingScreen()
-            : Form(
-                key: _formKey,
-                child: Column(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                   children: [
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                        children: [
-                          _buildHeaderCard(),
-                          ...MlMapping.dynamic_form_mapping.map(
-                            (fieldKey) => Container(
-                              margin: const EdgeInsets.only(bottom: 4),
-                              child: _buildFieldCard(fieldKey),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSubmitting ? null : _submitAssessment,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFE64060),
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(52),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: _isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.save_rounded, size: 20),
-                          label: Text(
-                            _isSubmitting ? 'Menyimpan...' : 'Simpan Asesmen',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
+                    _buildHeaderCard(),
+                    ...MlMapping.dynamic_form_mapping.map(
+                      (fieldKey) => Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        child: _buildFieldCard(fieldKey),
                       ),
                     ),
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isSubmitting ? null : _submitAssessment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE64060),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_rounded, size: 20),
+                    label: Text(
+                      _isSubmitting ? 'Menyimpan...' : 'Simpan Asesmen',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

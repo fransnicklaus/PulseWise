@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -32,6 +34,18 @@ class ProfilTab extends ConsumerStatefulWidget {
 }
 
 class _ProfilTabState extends ConsumerState<ProfilTab> {
+  static const CropperSize _webAvatarCropperSize = CropperSize(
+    width: 360,
+    height: 360,
+  );
+  static const Size _webAvatarCropperDialogSize = Size(360, 360);
+  static const WebTranslations _webAvatarCropperTranslations = WebTranslations(
+    title: 'Sesuaikan Avatar',
+    rotateLeftTooltip: 'Putar 90 derajat ke kiri',
+    rotateRightTooltip: 'Putar 90 derajat ke kanan',
+    cancelButton: 'Batal',
+    cropButton: 'Simpan',
+  );
   static final Uri _privacyPolicyUri = Uri.parse(
     'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8?source=copy_link',
   );
@@ -496,73 +510,148 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
   Future<void> _pickAndUploadAvatar() async {
     if (_isUploadingAvatar) return;
-
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
-      allowMultiple: false,
-      withData: true,
-    );
-
-    if (picked == null || picked.files.isEmpty) return;
-
-    final selected = picked.files.first;
-    const maxAvatarBytes = 5 * 1024 * 1024;
-    if (selected.size > maxAvatarBytes) {
-      if (!mounted) return;
-      AppToast.warning(context, 'Ukuran avatar maksimal 5 MB.');
-      return;
-    }
-
-    final filename = selected.name.isEmpty ? 'avatar.jpg' : selected.name;
-
-    String? sourcePath = selected.path;
-    if ((sourcePath == null || sourcePath.isEmpty) && selected.bytes != null) {
-      final tempDir = await getTemporaryDirectory();
-      final tempFile = File(
-        '${tempDir.path}${Platform.pathSeparator}avatar_pick_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      );
-      await tempFile.writeAsBytes(selected.bytes!, flush: true);
-      sourcePath = tempFile.path;
-    }
-
-    if (sourcePath == null || sourcePath.isEmpty) {
-      if (!mounted) return;
-      AppToast.warning(context, 'File gambar tidak valid.');
-      return;
-    }
-
-    final croppedFile = await ImageCropper().cropImage(
-      sourcePath: sourcePath,
-      compressFormat: ImageCompressFormat.jpg,
-      compressQuality: 85,
-      uiSettings: [
-        AndroidUiSettings(
-          toolbarTitle: 'Sesuaikan Avatar',
-          toolbarColor: const Color(0xFFE64060),
-          toolbarWidgetColor: Colors.white,
-          initAspectRatio: CropAspectRatioPreset.square,
-          lockAspectRatio: true,
-          cropStyle: CropStyle.circle,
-        ),
-        IOSUiSettings(
-          title: 'Sesuaikan Avatar',
-          cropStyle: CropStyle.circle,
-          aspectRatioLockEnabled: true,
-          resetAspectRatioEnabled: false,
-        ),
-      ],
-    );
-
-    if (croppedFile == null) return;
-    if (!mounted) return;
-
-    final file =
-        await MultipartFile.fromFile(croppedFile.path, filename: filename);
-    if (!mounted) return;
-
-    setState(() => _isUploadingAvatar = true);
     try {
+      final picked = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (picked == null || picked.files.isEmpty) return;
+
+      final selected = picked.files.first;
+      const maxAvatarBytes = 5 * 1024 * 1024;
+      if (selected.size > maxAvatarBytes) {
+        if (!mounted) return;
+        AppToast.warning(context, 'Ukuran avatar maksimal 5 MB.');
+        return;
+      }
+
+      final filename = selected.name.isEmpty ? 'avatar.jpg' : selected.name;
+      MultipartFile file;
+
+      if (kIsWeb) {
+        final bytes = selected.bytes;
+        if (bytes == null || bytes.isEmpty) {
+          if (!mounted) return;
+          AppToast.warning(
+            context,
+            'File gambar tidak bisa dibaca di browser ini. Coba pilih ulang.',
+          );
+          return;
+        }
+
+        final extension = filename.contains('.')
+            ? filename.split('.').last.toLowerCase()
+            : 'jpg';
+        final mimeType = switch (extension) {
+          'png' => 'image/png',
+          'webp' => 'image/webp',
+          _ => 'image/jpeg',
+        };
+        final cropSessionId = DateTime.now().microsecondsSinceEpoch;
+        final sourcePath =
+            'data:$mimeType;pw_session=$cropSessionId;base64,${base64Encode(bytes)}';
+        if (!mounted) return;
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: sourcePath,
+          aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+          compressFormat: ImageCompressFormat.jpg,
+          uiSettings: [
+            WebUiSettings(
+              context: context,
+              presentStyle: WebPresentStyle.dialog,
+              size: _webAvatarCropperSize,
+              viewwMode: WebViewMode.mode_1,
+              dragMode: WebDragMode.move,
+              background: false,
+              guides: false,
+              center: false,
+              highlight: false,
+              cropBoxMovable: false,
+              cropBoxResizable: false,
+              toggleDragModeOnDblclick: false,
+              minContainerWidth: _webAvatarCropperDialogSize.width,
+              minContainerHeight: _webAvatarCropperDialogSize.height,
+              translations: _webAvatarCropperTranslations,
+              customDialogBuilder: (
+                cropper,
+                initCropper,
+                crop,
+                rotate,
+                _,
+              ) {
+                return _WebAvatarCropDialog(
+                  cropper: cropper,
+                  initCropper: initCropper,
+                  crop: crop,
+                  rotate: rotate,
+                  cropperSize: _webAvatarCropperDialogSize,
+                  translations: _webAvatarCropperTranslations,
+                );
+              },
+            ),
+          ],
+        );
+
+        if (croppedFile == null) return;
+
+        file = MultipartFile.fromBytes(
+          await croppedFile.readAsBytes(),
+          filename: filename,
+        );
+      } else {
+        String? sourcePath = selected.path;
+        if ((sourcePath == null || sourcePath.isEmpty) &&
+            selected.bytes != null) {
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File(
+            '${tempDir.path}${Platform.pathSeparator}avatar_pick_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          );
+          await tempFile.writeAsBytes(selected.bytes!, flush: true);
+          sourcePath = tempFile.path;
+        }
+
+        if (sourcePath == null || sourcePath.isEmpty) {
+          if (!mounted) return;
+          AppToast.warning(context, 'File gambar tidak valid.');
+          return;
+        }
+
+        final croppedFile = await ImageCropper().cropImage(
+          sourcePath: sourcePath,
+          compressFormat: ImageCompressFormat.jpg,
+          compressQuality: 85,
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Sesuaikan Avatar',
+              toolbarColor: const Color(0xFFE64060),
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.square,
+              lockAspectRatio: true,
+              cropStyle: CropStyle.circle,
+            ),
+            IOSUiSettings(
+              title: 'Sesuaikan Avatar',
+              cropStyle: CropStyle.circle,
+              aspectRatioLockEnabled: true,
+              resetAspectRatioEnabled: false,
+            ),
+          ],
+        );
+
+        if (croppedFile == null) return;
+
+        file = await MultipartFile.fromFile(
+          croppedFile.path,
+          filename: filename,
+        );
+      }
+
+      if (!mounted) return;
+      setState(() => _isUploadingAvatar = true);
+
       if (!mounted) return;
       await ref.read(patientProfileApiProvider).uploadAvatar(file: file);
       if (!mounted) return;
@@ -579,7 +668,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
         e.toString().replaceFirst('Exception: ', ''),
       );
     } finally {
-      if (mounted) {
+      if (mounted && _isUploadingAvatar) {
         setState(() => _isUploadingAvatar = false);
       }
     }
@@ -1646,6 +1735,250 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
           ),
         );
       },
+    );
+  }
+}
+
+class _WebAvatarCropDialog extends StatefulWidget {
+  const _WebAvatarCropDialog({
+    required this.cropper,
+    required this.initCropper,
+    required this.crop,
+    required this.rotate,
+    required this.cropperSize,
+    required this.translations,
+  });
+
+  final Widget cropper;
+  final VoidCallback initCropper;
+  final Future<String?> Function() crop;
+  final void Function(RotationAngle) rotate;
+  final Size cropperSize;
+  final WebTranslations translations;
+
+  @override
+  State<_WebAvatarCropDialog> createState() => _WebAvatarCropDialogState();
+}
+
+class _WebAvatarCropDialogState extends State<_WebAvatarCropDialog> {
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.initCropper();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.translations.title,
+                      style: const TextStyle(
+                        color: Color(0xFF0F172A),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _isProcessing
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    style: IconButton.styleFrom(
+                      foregroundColor: const Color(0xFF64748B),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                    ),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Cubit untuk memperbesar, lalu geser foto sampai pas di dalam lingkaran.',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Center(
+                child: Container(
+                  width: widget.cropperSize.width,
+                  height: widget.cropperSize.height,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: widget.cropper,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Center(
+                child: Wrap(
+                  spacing: 14,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _AvatarCropControlButton(
+                      tooltip: widget.translations.rotateLeftTooltip,
+                      icon: Icons.rotate_90_degrees_ccw_rounded,
+                      onPressed: _isProcessing
+                          ? null
+                          : () => widget.rotate(
+                                RotationAngle.counterClockwise90,
+                              ),
+                    ),
+                    _AvatarCropControlButton(
+                      tooltip: widget.translations.rotateRightTooltip,
+                      icon: Icons.rotate_90_degrees_cw_outlined,
+                      onPressed: _isProcessing
+                          ? null
+                          : () => widget.rotate(
+                                RotationAngle.clockwise90,
+                              ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Tampilan crop di PWA dibuat menyerupai avatar bulat seperti di mobile.',
+                style: TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _isProcessing
+                          ? null
+                          : () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF334155),
+                        side: const BorderSide(color: Color(0xFFCBD5E1)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        widget.translations.cancelButton,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isProcessing ? null : _handleCrop,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE64060),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: _isProcessing
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              widget.translations.cropButton,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleCrop() async {
+    if (_isProcessing) return;
+    setState(() => _isProcessing = true);
+
+    try {
+      final result = await widget.crop();
+      if (!mounted) return;
+      Navigator.of(context).pop(result);
+    } catch (error) {
+      debugPrint(error.toString());
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+}
+
+class _AvatarCropControlButton extends StatelessWidget {
+  const _AvatarCropControlButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Icon(
+              icon,
+              color: onPressed == null
+                  ? const Color(0xFFCBD5E1)
+                  : const Color(0xFFE64060),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

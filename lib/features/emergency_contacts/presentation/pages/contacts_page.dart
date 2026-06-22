@@ -1125,24 +1125,24 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
               ),
             ] else ...[
               const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBFB),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFFBC8D2)),
-                ),
-                child: const Text(
-                  'Impor kontak dari perangkat belum tersedia di web app. Tambahkan kontak dukungan secara manual.',
-                  style: TextStyle(
-                    color: Color(0xFF9F1239),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
-                  ),
-                ),
-              ),
+              // Container(
+              //   width: double.infinity,
+              //   padding: const EdgeInsets.all(14),
+              //   decoration: BoxDecoration(
+              //     color: const Color(0xFFFFFBFB),
+              //     borderRadius: BorderRadius.circular(14),
+              //     border: Border.all(color: const Color(0xFFFBC8D2)),
+              //   ),
+              //   child: const Text(
+              //     'Impor kontak dari perangkat belum tersedia di web app. Tambahkan kontak dukungan secara manual.',
+              //     style: TextStyle(
+              //       color: Color(0xFF9F1239),
+              //       fontSize: 15,
+              //       fontWeight: FontWeight.w600,
+              //       height: 1.45,
+              //     ),
+              //   ),
+              // ),
             ],
             const SizedBox(height: 24),
             Container(
