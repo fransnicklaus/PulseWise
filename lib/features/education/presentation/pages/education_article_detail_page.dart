@@ -618,6 +618,10 @@ class _CommentComposerCard extends StatelessWidget {
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: 'Bagikan pemikiran atau pertanyaan Anda di sini',
+              hintStyle: TextStyle(
+                color: const Color(0xFF94A3B8),
+                fontSize: 15,
+              ),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(

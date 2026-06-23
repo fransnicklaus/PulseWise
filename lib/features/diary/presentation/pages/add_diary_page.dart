@@ -252,7 +252,7 @@ class _AddDiaryPageState extends State<AddDiaryPage> {
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: 'Tulis catatan...',
-                hintStyle: const TextStyle(color: Color(0xFFBCBCBC)),
+                hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: Color(0xFFE2E8F0)),

@@ -273,7 +273,7 @@ class _PatientMlAssessmentPageState
                         child: Text(
                           'Pilih salah satu',
                           style: TextStyle(
-                            color: Color(0xFF475569),
+                            color: Color(0xFF94A3B8),
                             fontSize: 15,
                             fontWeight: FontWeight.w500,
                           ),
@@ -361,7 +361,7 @@ class _PatientMlAssessmentPageState
                     ? '${_rangeLabel(rangeStart)} - ${_rangeLabel(rangeEnd)}${rangeUnit == null ? '' : ' $rangeUnit'}'
                     : null,
                 hintStyle: const TextStyle(
-                  color: Color(0xFF475569),
+                  color: Color(0xFF94A3B8),
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),

@@ -135,7 +135,7 @@ class _ProfileSetupPageState extends ConsumerState<ProfileSetupPage> {
   }
 
   TextStyle get _fieldHintTextStyle => const TextStyle(
-        color: Color(0xFF64748B),
+        color: Color(0xFF94A3B8),
         fontSize: 18,
         fontWeight: FontWeight.w500,
         height: 1.1,

@@ -1226,7 +1226,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
             decoration: InputDecoration(
               hintText: 'Contoh: 172.5',
-              hintStyle: const TextStyle(color: Color(0x7094A3B8)),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               suffixText: 'cm',
               errorText: _metrikHeightError,
               filled: true,
@@ -1272,7 +1272,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
             decoration: InputDecoration(
               hintText: 'Contoh: 72',
-              hintStyle: const TextStyle(color: Color(0x7094A3B8)),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               suffixText: 'Kg',
               errorText: _metrikWeightError,
               filled: true,
@@ -1415,7 +1415,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
             decoration: InputDecoration(
               hintText: 'Contoh: 72',
-              hintStyle: const TextStyle(color: Color(0x7094A3B8)),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               suffixText: 'BPM',
               errorText: _metrikHeartRateError,
               filled: true,
@@ -1461,7 +1461,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
             decoration: InputDecoration(
               hintText: 'Contoh: 98',
-              hintStyle: const TextStyle(color: Color(0x7094A3B8)),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               suffixText: '%',
               errorText: _metrikOxygenError,
               filled: true,
@@ -2006,7 +2006,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                     value: _painFrequencyCode,
                     hint: const Text(
                       'Pilih durasi nyeri',
-                      style: TextStyle(fontSize: 16),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF94A3B8),
+                      ),
                     ),
                     isExpanded: true,
                     items: const [
@@ -2045,7 +2048,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                   child: DropdownButton<int>(
                     dropdownColor: Colors.white,
                     value: _painLocationCode,
-                    hint: const Text('Pilih lokasi nyeri'),
+                    hint: const Text(
+                      'Pilih lokasi nyeri',
+                      style: TextStyle(color: Color(0xFF94A3B8)),
+                    ),
                     isExpanded: true,
                     items: const [
                       DropdownMenuItem(
@@ -2282,7 +2288,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             DropdownButtonFormField<String>(
               dropdownColor: Colors.white,
               value: _intensityLevel,
-              hint: const Text('Pilih Intensitas'),
+              hint: const Text(
+                'Pilih Intensitas',
+                style: TextStyle(color: Color(0xFF94A3B8)),
+              ),
               decoration: InputDecoration(
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -2315,7 +2324,10 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
             DropdownButtonFormField<String>(
               dropdownColor: Colors.white,
               value: _transportMode,
-              hint: const Text('Pilih Mode'),
+              hint: const Text(
+                'Pilih Mode',
+                style: TextStyle(color: Color(0xFF94A3B8)),
+              ),
               decoration: InputDecoration(
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

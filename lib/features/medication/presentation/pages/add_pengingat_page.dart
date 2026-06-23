@@ -839,8 +839,8 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: const Color(0xFF475569).withOpacity(0.45),
+      hintStyle: const TextStyle(
+        color: Color(0xFF94A3B8),
       ),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),

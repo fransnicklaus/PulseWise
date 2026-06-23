@@ -476,7 +476,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                           // fillColor: Colors.white,
                           hintText: 'Masukkan nama',
                           hintStyle: const TextStyle(
-                            color: textMuted,
+                            color: Color(0xFF94A3B8),
                             fontSize: 18,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -526,7 +526,7 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
                           // fillColor: Colors.white,
                           hintText: '08xx-xxxx-xxxx',
                           hintStyle: const TextStyle(
-                            color: textMuted,
+                            color: Color(0xFF94A3B8),
                             fontSize: 18,
                           ),
                           contentPadding: const EdgeInsets.symmetric(
@@ -1307,7 +1307,7 @@ class _AddContactPageState extends ConsumerState<AddContactPage> {
   }) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 18),
+      hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 18),
       prefixIcon: Icon(icon, color: const Color(0xFF62748E), size: 24),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       border: OutlineInputBorder(

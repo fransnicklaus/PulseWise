@@ -353,7 +353,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 decoration: InputDecoration(
                                   hintText: 'Alamat Email',
                                   hintStyle: const TextStyle(
-                                    color: Color.fromRGBO(83, 98, 120, 0.5),
+                                    color: Color(0xFF94A3B8),
                                     fontWeight: FontWeight.normal,
                                   ),
                                   prefixIcon: const Icon(
@@ -385,7 +385,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 decoration: InputDecoration(
                                   hintText: 'Kata Sandi',
                                   hintStyle: const TextStyle(
-                                    color: Color.fromRGBO(83, 98, 120, 0.5),
+                                    color: Color(0xFF94A3B8),
                                     fontWeight: FontWeight.normal,
                                   ),
                                   prefixIcon: const Icon(

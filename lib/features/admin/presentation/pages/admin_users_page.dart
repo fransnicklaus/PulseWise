@@ -418,6 +418,7 @@ class _UsersFilterDropdown extends StatelessWidget {
       value: value,
       hint: Text(
         hint,
+        style: const TextStyle(color: Color(0xFF94A3B8)),
         overflow: TextOverflow.ellipsis,
       ),
       items: [
@@ -425,6 +426,7 @@ class _UsersFilterDropdown extends StatelessWidget {
           value: null,
           child: Text(
             hint,
+            style: const TextStyle(color: Color(0xFF94A3B8)),
             overflow: TextOverflow.ellipsis,
           ),
         ),

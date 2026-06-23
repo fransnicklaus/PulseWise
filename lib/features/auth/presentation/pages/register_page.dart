@@ -639,7 +639,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return InputDecoration(
       hintText: hint,
       hintStyle: const TextStyle(
-        color: Color(0xFF64748B),
+        color: Color(0xFF94A3B8),
         fontSize: 17,
         fontWeight: FontWeight.w500,
       ),

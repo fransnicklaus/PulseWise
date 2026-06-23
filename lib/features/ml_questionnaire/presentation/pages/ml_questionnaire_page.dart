@@ -185,7 +185,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
               child: Text(
                 'Pilih salah satu',
                 style: TextStyle(
-                  color: Color(0xFF475569),
+                  color: Color(0xFF94A3B8),
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),

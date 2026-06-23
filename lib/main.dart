@@ -141,6 +141,11 @@ class _MyAppState extends State<MyApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
         fontFamily: 'Outfit',
+        inputDecorationTheme: const InputDecorationTheme(
+          hintStyle: TextStyle(
+            color: Color(0xFF94A3B8),
+          ),
+        ),
       ),
       debugShowCheckedModeBanner: false,
       routerConfig: router,
