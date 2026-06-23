@@ -792,61 +792,15 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
                       label: 'Ubah Kata Sandi',
                       onTap: _showChangePasswordSheet,
                     ),
+                    _ActionRow(
+                      label: 'Edit Profil',
+                      onTap: () => context.push('/doctor/home/update-profile'),
+                    ),
+                    _ActionRow(
+                      label: 'Keluar',
+                      onTap: _confirmLogout,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          context.push('/doctor/home/update-profile'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE64060),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.edit_outlined, size: 22),
-                      label: const Text(
-                        'Edit Profil',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _confirmLogout,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFFE64060),
-                        side: const BorderSide(color: Color(0xFFE64060)),
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: const Icon(Icons.logout, size: 22),
-                      label: const Text(
-                        'Keluar',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ],
             ],
