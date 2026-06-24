@@ -47,7 +47,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     cropButton: 'Simpan',
   );
   static final Uri _privacyPolicyUri = Uri.parse(
-    'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8?source=copy_link',
+    'https://pulsewise-cms.algoritme.tech/privacy-policy',
   );
 
   bool _isUploadingAvatar = false;

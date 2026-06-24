@@ -40,7 +40,7 @@ class RegisterPage extends ConsumerStatefulWidget {
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
   static const String _privacyPolicyUrl =
-      'https://wary-macaroni-e2b.notion.site/PulseWise-Privacy-Policy-8c2d114165dc429ebe5bf951bc0859d8';
+      'https://pulsewise-cms.algoritme.tech/privacy-policy';
 
   final _usernameController = TextEditingController();
   final _firstNameController = TextEditingController();

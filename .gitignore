@@ -32,7 +32,12 @@ migrate_working_dir/
 /build/
 /build_android/
 /node_modules/
-/scripts
+.vercel/
+.vercel-cache/
+/scripts/*
+!/scripts/
+!/scripts/deploy_web_prod.ps1
+!/scripts/vercel_build.sh
 
 
 # Environment variables

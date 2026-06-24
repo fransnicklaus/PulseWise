@@ -25,7 +25,7 @@ class EdukasiTab extends ConsumerStatefulWidget {
 
 class _EdukasiTabState extends ConsumerState<EdukasiTab> {
   static final Uri _educationCmsUri = Uri.parse(
-    'https://pulsewise-cms.vercel.app/',
+    'https://pulsewise-cms.algoritme.tech/',
   );
   final TextEditingController _searchController = TextEditingController();
 

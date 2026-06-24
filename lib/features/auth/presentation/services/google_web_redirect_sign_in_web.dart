@@ -19,6 +19,8 @@ const _resultStorageKey = 'pulsewise_google_redirect_result';
 const _scopes = 'openid email profile';
 const _googleAuthorizationEndpoint =
     'https://accounts.google.com/o/oauth2/v2/auth';
+const _googleRedirectCallbackUri =
+    'https://pulsewise.algoritme.tech/google-signin-callback.html';
 const _randomAlphabet =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
@@ -34,7 +36,7 @@ Future<void> beginGoogleWebRedirectSignIn({
 
   final state = _generateRandomValue();
   final nonce = _generateRandomValue();
-  final callbackUri = Uri.base.resolve('google-signin-callback.html');
+  final callbackUri = Uri.parse(_googleRedirectCallbackUri);
   final returnUrl = html.window.location.href;
 
   html.window.sessionStorage[_requestStorageKey] = jsonEncode({
