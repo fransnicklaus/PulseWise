@@ -3,7 +3,7 @@ class AppEnv {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.darrellvalentino.com',
+    defaultValue: 'https://pulsewise-api.algoritme.tech',
   );
 
   static const String googleWebClientId = String.fromEnvironment(

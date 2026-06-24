@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
+import 'package:pulsewise/features/doctor/presentation/providers/doctor_dashboard_provider.dart';
+import 'package:pulsewise/features/doctor/presentation/providers/doctor_patients_provider.dart';
 import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart'
     as shell;
 
@@ -18,9 +21,6 @@ class DoctorQrTab extends ConsumerStatefulWidget {
 
 class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
   static const int _doctorQrTabIndex = 1;
-  static final RegExp _uuidRegex = RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-  );
 
   final MobileScannerController _controller = MobileScannerController(
     autoStart: false,
@@ -29,7 +29,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
   );
 
   bool _handled = false;
-  bool _isResolvingPatient = false;
+  bool _isLinkingPatient = false;
   bool _isRestartingScanner = false;
   bool _isCameraRunning = false;
   bool _isSyncingCamera = false;
@@ -71,23 +71,24 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
   }
 
   void _onDetect(BarcodeCapture capture) {
-    if (_handled || _isResolvingPatient) return;
+    if (_handled || _isLinkingPatient) return;
 
     final rawValue = capture.barcodes.firstOrNull?.rawValue?.trim() ?? '';
     if (rawValue.isEmpty) return;
 
-    if (!_uuidRegex.hasMatch(rawValue)) {
-      AppToast.warning(context, 'QR pasien tidak valid.');
+    final shareCode = _extractShareCode(rawValue);
+    if (shareCode.isEmpty) {
+      AppToast.warning(context, 'QR share pasien tidak valid.');
       unawaited(_restartScanner());
       return;
     }
 
     _handled = true;
-    unawaited(_openPatientDashboard(rawValue));
+    unawaited(_linkPatientByShare(shareCode));
   }
 
   Future<void> _restartScanner() async {
-    if (_isRestartingScanner || _isResolvingPatient) return;
+    if (_isRestartingScanner || _isLinkingPatient) return;
     _isRestartingScanner = true;
     try {
       await _controller.stop();
@@ -107,15 +108,37 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
     }
   }
 
-  Future<void> _openPatientDashboard(String patientId) async {
-    setState(() => _isResolvingPatient = true);
+  Future<void> _linkPatientByShare(String shareCode) async {
+    setState(() => _isLinkingPatient = true);
     try {
       await _controller.stop();
       _isCameraRunning = false;
 
+      final linkedPatient = await ref
+          .read(doctorDashboardApiProvider)
+          .linkPatientByShare(shareCode: shareCode);
+
       if (!mounted) return;
 
-      await context.push('/doctor/home/patients/$patientId');
+      try {
+        await ref.read(doctorPatientsNotifierProvider.notifier).loadPatients();
+      } catch (_) {
+        // Pairing succeeded; list refresh can retry from the patient list tab.
+      }
+
+      if (!mounted) return;
+
+      final patientName = linkedPatient.displayName.trim();
+      AppToast.success(
+        context,
+        patientName.isEmpty
+            ? 'Pasien berhasil terhubung.'
+            : '$patientName berhasil terhubung.',
+      );
+
+      await GoRouter.of(context).replace<void>(
+        '/doctor/home/patients/${linkedPatient.patientId}',
+      );
     } catch (error) {
       if (!mounted) return;
       AppToast.error(
@@ -126,17 +149,66 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
       if (mounted) {
         setState(() {
           _handled = false;
-          _isResolvingPatient = false;
+          _isLinkingPatient = false;
         });
       }
     }
+  }
+
+  String _extractShareCode(String rawValue) {
+    final normalized = rawValue.trim();
+    if (normalized.isEmpty) return '';
+
+    try {
+      final decoded = jsonDecode(normalized);
+      final shareCode = _extractShareCodeFromDecoded(decoded);
+      if (shareCode.isNotEmpty) return shareCode;
+    } catch (_) {
+      // Fallback to URI/plain-string parsing.
+    }
+
+    final uri = Uri.tryParse(normalized);
+    if (uri != null) {
+      for (final key in const [
+        'shareCode',
+        'share_code',
+        'code',
+      ]) {
+        final candidate = uri.queryParameters[key]?.trim() ?? '';
+        if (candidate.isNotEmpty) return candidate;
+      }
+    }
+
+    return normalized;
+  }
+
+  String _extractShareCodeFromDecoded(Object? decoded) {
+    if (decoded is! Map) return '';
+
+    for (final key in const [
+      'shareCode',
+      'share_code',
+      'code',
+    ]) {
+      final candidate = decoded[key]?.toString().trim() ?? '';
+      if (candidate.isNotEmpty) return candidate;
+    }
+
+    final qrPayload =
+        (decoded['qrPayload'] ?? decoded['qr_payload'])?.toString().trim() ??
+            '';
+    if (qrPayload.isNotEmpty && qrPayload != decoded.toString()) {
+      return _extractShareCode(qrPayload);
+    }
+
+    return '';
   }
 
   @override
   Widget build(BuildContext context) {
     final navIndex = ref.watch(shell.doctorDashboardNavIndexProvider);
     final isActive = navIndex == _doctorQrTabIndex;
-    _syncCameraState(isActive && !_isResolvingPatient);
+    _syncCameraState(isActive && !_isLinkingPatient);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -153,7 +225,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                 final isPermissionDenied =
                     error.errorCode == MobileScannerErrorCode.permissionDenied;
                 final message = isPermissionDenied
-                    ? 'Izin kamera belum diberikan. Izinkan kamera agar QR pasien bisa dipindai.'
+                    ? 'Izin kamera belum diberikan. Izinkan kamera agar QR share pasien bisa dipindai.'
                     : (error.errorDetails?.message?.trim().isNotEmpty ?? false)
                         ? error.errorDetails!.message!
                         : 'Kamera gagal dibuka. Coba lagi.';
@@ -196,7 +268,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed:
-                                  _isResolvingPatient ? null : _restartScanner,
+                                  _isLinkingPatient ? null : _restartScanner,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFE64060),
                                 foregroundColor: Colors.white,
@@ -221,7 +293,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton.icon(
-                                onPressed: _isResolvingPatient
+                                onPressed: _isLinkingPatient
                                     ? null
                                     : () => openAppSettings(),
                                 style: OutlinedButton.styleFrom(
@@ -287,7 +359,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Text(
-                      'Arahkan kamera ke QR pasien. QR berisi userId pasien dan akan membuka dashboard metrik dokter.',
+                      'Arahkan kamera ke QR share pasien untuk menghubungkan pasien ke akun dokter.',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 15,
@@ -302,13 +374,13 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                     children: [
                       _DoctorToolbarActionButton(
                         icon: Icons.flash_on,
-                        onTap: _isResolvingPatient
+                        onTap: _isLinkingPatient
                             ? null
                             : () => _controller.toggleTorch(),
                       ),
                       _DoctorToolbarActionButton(
                         icon: Icons.cameraswitch_rounded,
-                        onTap: _isResolvingPatient
+                        onTap: _isLinkingPatient
                             ? null
                             : () => _controller.switchCamera(),
                       ),
@@ -319,7 +391,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
               ),
             ),
           ),
-          if (_isResolvingPatient)
+          if (_isLinkingPatient)
             Positioned.fill(
               child: Container(
                 color: Colors.black.withOpacity(0.55),
@@ -330,7 +402,7 @@ class _DoctorQrTabState extends ConsumerState<DoctorQrTab> {
                       CircularProgressIndicator(color: Colors.white),
                       SizedBox(height: 18),
                       Text(
-                        'Membuka dashboard pasien...',
+                        'Menghubungkan pasien...',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,

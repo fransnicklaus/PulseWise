@@ -637,8 +637,8 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: const Color(0xFFFFF7F8),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFBCDD6)),
+        // borderRadius: BorderRadius.circular(20),
+        // border: Border.all(color: const Color(0xFFFBCDD6)),
       ),
       child: AnimatedSize(
         duration: const Duration(milliseconds: 220),
@@ -717,15 +717,15 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
                 ],
               ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'Buka bagian ini untuk melihat panduan integrasi Health Connect dan data apa saja yang bisa disinkronkan.',
-              style: TextStyle(
-                fontSize: 15,
-                color: Color(0xFF64748B),
-                height: 1.5,
-              ),
-            ),
+            // const SizedBox(height: 10),
+            // const Text(
+            //   'Buka bagian ini untuk melihat panduan integrasi Health Connect dan data apa saja yang bisa disinkronkan.',
+            //   style: TextStyle(
+            //     fontSize: 15,
+            //     color: Color(0xFF64748B),
+            //     height: 1.5,
+            //   ),
+            // ),
             if (_isExpanded) ...[
               const SizedBox(height: 14),
               const Text(
@@ -738,17 +738,17 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
                 ),
               ),
               const SizedBox(height: 14),
-              const Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _InfoChip(label: 'Langkah'),
-                  _InfoChip(label: 'Detak Jantung'),
-                  _InfoChip(label: 'Tidur'),
-                  _InfoChip(label: 'Aktivitas'),
-                ],
-              ),
-              const SizedBox(height: 18),
+              // const Wrap(
+              //   spacing: 8,
+              //   runSpacing: 8,
+              //   children: [
+              //     _InfoChip(label: 'Langkah'),
+              //     _InfoChip(label: 'Detak Jantung'),
+              //     _InfoChip(label: 'Tidur'),
+              //     _InfoChip(label: 'Aktivitas'),
+              //   ],
+              // ),
+              // const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(

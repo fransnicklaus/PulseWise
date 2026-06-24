@@ -253,3 +253,43 @@ class DoctorDashboardPatientsListResponse {
     );
   }
 }
+
+class DoctorLinkedPatient {
+  const DoctorLinkedPatient({
+    required this.doctorId,
+    required this.patientId,
+    required this.source,
+    required this.linkedAt,
+    required this.isActive,
+    required this.firstName,
+    required this.lastName,
+    required this.email,
+  });
+
+  final String doctorId;
+  final String patientId;
+  final String source;
+  final String linkedAt;
+  final bool isActive;
+  final String firstName;
+  final String lastName;
+  final String email;
+
+  String get displayName {
+    final fullName = '$firstName $lastName'.trim();
+    return fullName.isNotEmpty ? fullName : email;
+  }
+
+  factory DoctorLinkedPatient.fromJson(Map<String, dynamic> json) {
+    return DoctorLinkedPatient(
+      doctorId: (json['doctor_id'] ?? json['doctorId'] ?? '').toString(),
+      patientId: (json['patient_id'] ?? json['patientId'] ?? '').toString(),
+      source: (json['source'] ?? '').toString(),
+      linkedAt: (json['linked_at'] ?? json['linkedAt'] ?? '').toString(),
+      isActive: json['is_active'] == true || json['isActive'] == true,
+      firstName: (json['first_name'] ?? json['firstName'] ?? '').toString(),
+      lastName: (json['last_name'] ?? json['lastName'] ?? '').toString(),
+      email: (json['email'] ?? '').toString(),
+    );
+  }
+}

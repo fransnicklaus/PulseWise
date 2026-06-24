@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pulsewise/core/config/app_env.dart';
 import 'package:pulsewise/core/network/api_logger.dart';
 
-const defaultApiBaseUrl = 'https://api.darrellvalentino.com';
+const defaultApiBaseUrl = 'https://pulsewise-api.algoritme.tech';
 
 String resolveApiBaseUrl() {
   final configuredBaseUrl = AppEnv.apiBaseUrl.trim();

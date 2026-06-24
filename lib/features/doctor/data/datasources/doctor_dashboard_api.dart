@@ -105,6 +105,49 @@ class DoctorDashboardApi {
     }
   }
 
+  Future<DoctorLinkedPatient> linkPatientByShare({
+    required String shareCode,
+  }) async {
+    final normalizedShareCode = shareCode.trim();
+    if (normalizedShareCode.isEmpty) {
+      throw Exception('Kode share pasien tidak valid.');
+    }
+
+    final token = await _readBearerToken();
+    final doctorId = await _readDoctorId();
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/doctors/$doctorId/patients/link-by-share',
+        data: {
+          'shareCode': normalizedShareCode,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal menghubungkan pasien').toString(),
+        );
+      }
+
+      final data = (body['data'] as Map<String, dynamic>?) ?? const {};
+      final linkedPatient = DoctorLinkedPatient.fromJson(data);
+      if (linkedPatient.patientId.isEmpty) {
+        throw Exception('patientId tidak ditemukan setelah pairing.');
+      }
+
+      return linkedPatient;
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal menghubungkan pasien.');
+    }
+  }
+
   Future<DoctorDashboardPatientVitalsResponse> fetchPatientVitals(
     String patientId, {
     String timePeriod = 'last_30_days',
