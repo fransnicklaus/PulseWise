@@ -48,6 +48,7 @@ import 'package:pulsewise/features/profile/presentation/pages/date_time_picker_d
 import 'package:pulsewise/features/profile/presentation/pages/delete_account_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/fcm_token_page.dart';
 import 'package:pulsewise/features/profile/presentation/pages/update_profile_page.dart';
+import 'package:pulsewise/features/install/presentation/pages/install_page.dart';
 import 'package:pulsewise/features/reports/presentation/pages/print_page.dart';
 
 GoRouter buildRouterConfig({String initialLocation = '/login'}) {
@@ -60,6 +61,14 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
       requestedLocation: state.uri.toString(),
     ),
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) => '/login',
+      ),
+      GoRoute(
+        path: '/install',
+        builder: (context, state) => const InstallPage(),
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginPage(),
@@ -433,17 +442,18 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
 
 Future<String?> _guardAppRouteAccess(GoRouterState state) async {
   final path = state.uri.path;
-  final isAuthRoute = _isPublicAuthRoute(path);
+  final isPublicRoute = _isPublicRoute(path);
+  final isAuthRoute = _isAuthRoute(path);
 
   final session = await AppSessionStore.readSession(allowEnvFallback: false);
   if (!session.hasValidSession) {
-    return isAuthRoute ? null : '/login';
+    return isPublicRoute ? null : '/login';
   }
 
   final token = (session.token ?? '').trim();
   if (_isSessionTokenExpiredOrInvalid(token)) {
     await AppSessionStore.clearSession();
-    return isAuthRoute ? null : '/login';
+    return isPublicRoute ? null : '/login';
   }
 
   if (isAuthRoute) {
@@ -457,7 +467,11 @@ Future<String?> _guardAppRouteAccess(GoRouterState state) async {
   return null;
 }
 
-bool _isPublicAuthRoute(String path) {
+bool _isPublicRoute(String path) {
+  return path == '/install' || path == '/login' || path.startsWith('/login/');
+}
+
+bool _isAuthRoute(String path) {
   return path == '/login' || path.startsWith('/login/');
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -12,6 +13,7 @@ import 'injection_container.dart' as di;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
 
   // Initialize Local Storage
   await Hive.initFlutter();
@@ -22,7 +24,7 @@ void main() async {
   await initializeDateFormatting('id_ID');
 
   final initialLocation = await _resolveInitialLocation();
-  if (initialLocation != '/login') {
+  if (_shouldRegisterTokenOnLaunch(initialLocation)) {
     await AppFcmService.instance.registerTokenForCurrentSession(
       trigger: 'app_launch',
     );
@@ -33,6 +35,14 @@ void main() async {
       child: MyApp(initialLocation: initialLocation),
     ),
   );
+}
+
+bool _shouldRegisterTokenOnLaunch(String initialLocation) {
+  return !_isPublicBootstrapRoute(initialLocation);
+}
+
+bool _isPublicBootstrapRoute(String location) {
+  return location == '/login' || location == '/install';
 }
 
 Future<String> _resolveInitialLocation() async {
@@ -84,7 +94,9 @@ class _MyAppState extends State<MyApp> {
         .addListener(_handleReminderNotificationNavigation);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleReminderNotificationNavigation();
-      _requestNotificationPermissionOnFirstLaunch();
+      if (!_isPublicBootstrapRoute(widget.initialLocation)) {
+        _requestNotificationPermissionOnFirstLaunch();
+      }
     });
   }
 
@@ -105,9 +117,10 @@ class _MyAppState extends State<MyApp> {
       '[ReminderNotification][Router] currentPath=$currentPath '
       'pending=${pending.debugSummary}',
     );
-    if (currentPath.startsWith('/login')) {
+    if (_isPublicBootstrapRoute(currentPath) ||
+        currentPath.startsWith('/login/')) {
       debugPrint(
-        '[ReminderNotification][Router] Still on login flow, keeping payload queued.',
+        '[ReminderNotification][Router] Still on public install/login flow, keeping payload queued.',
       );
       return;
     }
