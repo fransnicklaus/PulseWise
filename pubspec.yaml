@@ -83,6 +83,7 @@ dependencies:
   another_flushbar: ^1.12.30
   open_file: ^3.5.7
   flutter_html: ^3.0.0-beta.2
+  flutter_emoji: ^2.5.1
   markdown: ^7.3.0
   syncfusion_flutter_pdfviewer: ^27.1.53
   go_router: ^15.1.2

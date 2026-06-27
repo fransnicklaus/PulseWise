@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/utils/app_emoji.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/education/data/models/education_models.dart';
@@ -635,8 +636,8 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F8),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFF7F8),
         // borderRadius: BorderRadius.circular(20),
         // border: Border.all(color: const Color(0xFFFBCDD6)),
       ),
@@ -875,12 +876,12 @@ class _ArticleCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      category.name,
-                      style: TextStyle(
+                      normalizeEmojiText(category.name),
+                      style: withEmojiFallback(TextStyle(
                         color: categoryColor,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                      ),
+                      )),
                     ),
                   ),
                 if (category != null) const SizedBox(width: 8),
@@ -902,24 +903,26 @@ class _ArticleCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              article.title,
-              style: const TextStyle(
+              normalizeEmojiText(article.title),
+              style: withEmojiFallback(const TextStyle(
                 color: Color(0xFF334155),
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 height: 1.3,
-              ),
+              )),
             ),
             const SizedBox(height: 8),
             Text(
-              article.excerpt.trim().isEmpty
-                  ? 'Buka artikel untuk membaca isi lengkapnya.'
-                  : article.excerpt,
-              style: const TextStyle(
+              normalizeEmojiText(
+                article.excerpt.trim().isEmpty
+                    ? 'Buka artikel untuk membaca isi lengkapnya.'
+                    : article.excerpt,
+              ),
+              style: withEmojiFallback(const TextStyle(
                 color: Color(0xFF62748E),
                 fontSize: 16,
                 height: 1.55,
-              ),
+              )),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),

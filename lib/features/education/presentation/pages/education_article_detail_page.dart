@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/utils/app_emoji.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
@@ -310,13 +311,13 @@ class _EducationArticleDetailPageState
                   ),
                 const SizedBox(height: 16),
                 Text(
-                  article.title,
-                  style: const TextStyle(
+                  normalizeEmojiText(article.title),
+                  style: withEmojiFallback(const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF334155),
                     height: 1.2,
-                  ),
+                  )),
                 ),
                 const SizedBox(height: 16),
                 if (article.author != null)
@@ -618,8 +619,8 @@ class _CommentComposerCard extends StatelessWidget {
             textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: 'Bagikan pemikiran atau pertanyaan Anda di sini',
-              hintStyle: TextStyle(
-                color: const Color(0xFF94A3B8),
+              hintStyle: const TextStyle(
+                color: Color(0xFF94A3B8),
                 fontSize: 15,
               ),
               filled: true,
@@ -884,6 +885,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         'body': Style(
           margin: Margins.zero,
           padding: HtmlPaddings.zero,
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(16),
           lineHeight: const LineHeight(1.75),
           color: const Color(0xFF334155),
@@ -891,12 +893,14 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'p': Style(
           margin: Margins.only(bottom: 14),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(18),
           lineHeight: const LineHeight(1.75),
           color: const Color(0xFF334155),
         ),
         'h1': Style(
           margin: Margins.only(bottom: 16, top: 6),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(30),
           fontWeight: FontWeight.w900,
           lineHeight: const LineHeight(1.15),
@@ -904,6 +908,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'h2': Style(
           margin: Margins.only(bottom: 14, top: 6),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(26),
           fontWeight: FontWeight.w800,
           lineHeight: const LineHeight(1.2),
@@ -911,6 +916,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'h3': Style(
           margin: Margins.only(bottom: 12, top: 6),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(22),
           fontWeight: FontWeight.w800,
           lineHeight: const LineHeight(1.25),
@@ -918,6 +924,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'h4': Style(
           margin: Margins.only(bottom: 12, top: 6),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(20),
           fontWeight: FontWeight.w800,
           lineHeight: const LineHeight(1.3),
@@ -925,6 +932,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'h5': Style(
           margin: Margins.only(bottom: 10, top: 4),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(18),
           fontWeight: FontWeight.w800,
           lineHeight: const LineHeight(1.3),
@@ -932,6 +940,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'h6': Style(
           margin: Margins.only(bottom: 10, top: 4),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(16),
           fontWeight: FontWeight.w800,
           lineHeight: const LineHeight(1.35),
@@ -939,6 +948,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'blockquote': Style(
           color: const Color(0xFFBE123C),
+          fontFamilyFallback: appEmojiFontFallback,
           fontStyle: FontStyle.italic,
           fontSize: FontSize(18),
           lineHeight: const LineHeight(1.65),
@@ -960,6 +970,7 @@ class _MarkdownArticleContent extends StatelessWidget {
         ),
         'li': Style(
           margin: Margins.only(bottom: 8),
+          fontFamilyFallback: appEmojiFontFallback,
           fontSize: FontSize(18),
           lineHeight: const LineHeight(1.7),
           color: const Color(0xFF334155),
@@ -985,8 +996,9 @@ class _MarkdownArticleContent extends StatelessWidget {
   }
 
   String _toHtml(String rawMarkdown) {
-    final normalized =
-        rawMarkdown.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final normalized = normalizeEmojiText(rawMarkdown)
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\r', '\n');
 
     return md.markdownToHtml(
       normalized,
@@ -1044,12 +1056,12 @@ class _CommentCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            comment.content,
-            style: const TextStyle(
+            normalizeEmojiText(comment.content),
+            style: withEmojiFallback(const TextStyle(
               fontSize: 15,
               height: 1.6,
               color: Color(0xFF334155),
-            ),
+            )),
           ),
           if (onReply != null) ...[
             const SizedBox(height: 8),
@@ -1187,12 +1199,12 @@ class _ReplyCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            reply.content,
-            style: const TextStyle(
+            normalizeEmojiText(reply.content),
+            style: withEmojiFallback(const TextStyle(
               fontSize: 14,
               height: 1.55,
               color: Color(0xFF475569),
-            ),
+            )),
           ),
         ],
       ),
