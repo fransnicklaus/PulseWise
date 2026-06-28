@@ -17,7 +17,7 @@ class InstallPage extends StatefulWidget {
 
 class _InstallPageState extends State<InstallPage> {
   final _controller = pwaInstallPromptController;
-  bool _manualInstructionsExpanded = false;
+  bool _showManualInstallFallback = false;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +41,8 @@ class _InstallPageState extends State<InstallPage> {
                   builder: (context, _) {
                     final isInstalled = _controller.isInstalled;
                     final canPrompt = _controller.canPromptInstall;
-                    final showManualInstall = !isInstalled && !canPrompt;
+                    final showManualInstall = !isInstalled &&
+                        (!canPrompt || _showManualInstallFallback);
                     final instructions = _manualStepsFor(_controller.platform);
 
                     return Container(
@@ -66,9 +67,9 @@ class _InstallPageState extends State<InstallPage> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
                               child: Image.asset(
-                                'assets/images/group_8.png',
-                                width: 72,
-                                height: 72,
+                                'assets/images/android12_splash_icon.png',
+                                width: 108,
+                                height: 108,
                                 fit: BoxFit.cover,
                               ),
                             ),
@@ -126,50 +127,33 @@ class _InstallPageState extends State<InstallPage> {
                             ),
                           ),
                           const SizedBox(height: 24),
-                          FilledButton(
-                            onPressed: isInstalled
-                                ? null
-                                : canPrompt
-                                    ? _handleInstallPressed
-                                    : _toggleManualInstructions,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: InstallPage.accent,
-                              disabledBackgroundColor: const Color(0xFFF1F5F9),
-                              disabledForegroundColor: const Color(0xFF94A3B8),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size.fromHeight(56),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
+                          if (isInstalled || canPrompt)
+                            FilledButton(
+                              onPressed:
+                                  isInstalled ? null : _handleInstallPressed,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: InstallPage.accent,
+                                disabledBackgroundColor:
+                                    const Color(0xFFF1F5F9),
+                                disabledForegroundColor:
+                                    const Color(0xFF94A3B8),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(56),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              child: Text(
+                                isInstalled
+                                    ? 'App Sudah Terpasang'
+                                    : 'Install App',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              isInstalled
-                                  ? 'App Sudah Terpasang'
-                                  : canPrompt
-                                      ? 'Install App'
-                                      : _manualInstructionsExpanded
-                                          ? 'Sembunyikan Cara Install Manual'
-                                          : 'Lihat Cara Install Manual',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
                           const SizedBox(height: 12),
-                          if (showManualInstall)
-                            Text(
-                              _manualInstructionsExpanded
-                                  ? 'Petunjuk manual sedang terbuka di bawah.'
-                                  : 'Prompt install belum tersedia. Buka petunjuk manual di bawah.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: InstallPage.subtext,
-                                fontSize: 15,
-                                height: 1.6,
-                              ),
-                            ),
-                          if (showManualInstall) const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => context.go('/login'),
                             child: const Text(
@@ -184,9 +168,7 @@ class _InstallPageState extends State<InstallPage> {
                           if (showManualInstall) const SizedBox(height: 20),
                           if (showManualInstall)
                             _ManualInstructionsSection(
-                              expanded: _manualInstructionsExpanded,
                               instructions: instructions,
-                              onToggle: _toggleManualInstructions,
                             ),
                         ],
                       ),
@@ -224,7 +206,7 @@ class _InstallPageState extends State<InstallPage> {
         );
         break;
       case PwaInstallOutcome.unavailable:
-        _expandManualInstructions();
+        _showManualInstructionsFallback();
         break;
       case PwaInstallOutcome.alreadyInstalled:
         messenger.showSnackBar(
@@ -235,29 +217,18 @@ class _InstallPageState extends State<InstallPage> {
         );
         break;
       case PwaInstallOutcome.unsupported:
-        _expandManualInstructions();
+        _showManualInstructionsFallback();
         break;
       case PwaInstallOutcome.error:
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Gagal membuka prompt install.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        _showManualInstructionsFallback();
         break;
     }
   }
 
-  void _toggleManualInstructions() {
+  void _showManualInstructionsFallback() {
+    if (_showManualInstallFallback) return;
     setState(() {
-      _manualInstructionsExpanded = !_manualInstructionsExpanded;
-    });
-  }
-
-  void _expandManualInstructions() {
-    if (_manualInstructionsExpanded) return;
-    setState(() {
-      _manualInstructionsExpanded = true;
+      _showManualInstallFallback = true;
     });
   }
 
@@ -271,17 +242,10 @@ class _InstallPageState extends State<InstallPage> {
     }
 
     if (canPrompt) {
-      return 'Browser ini sudah siap menampilkan prompt install. Tekan tombol di bawah lalu konfirmasi install langsung dari browser.';
+      return 'Browser ini sudah siap untuk install langsung. Tekan tombol di bawah lalu konfirmasi install dari browser.';
     }
 
-    switch (platform) {
-      case PwaInstallPlatform.iosSafari:
-        return 'Safari di iPhone atau iPad biasanya tidak memberi prompt install otomatis. Pakai menu Share lalu pilih Add to Home Screen.';
-      case PwaInstallPlatform.chromium:
-        return 'Prompt install otomatis belum muncul, tapi kamu masih bisa pasang PulseWise secara manual dari menu browser.';
-      case PwaInstallPlatform.other:
-        return 'Browser ini belum menampilkan prompt install otomatis. Ikuti langkah manual di bawah atau coba Chrome/Edge.';
-    }
+    return 'PulseWise tetap bisa dipasang dari menu browser. Langkah install sudah langsung tersedia di bawah.';
   }
 
   String _statusLabel({
@@ -290,37 +254,29 @@ class _InstallPageState extends State<InstallPage> {
     required PwaInstallPlatform platform,
   }) {
     if (isInstalled) return 'App terpasang';
-    if (canPrompt) return 'Prompt install tersedia';
-
-    switch (platform) {
-      case PwaInstallPlatform.iosSafari:
-        return 'Ikuti langkah manual';
-      case PwaInstallPlatform.chromium:
-        return 'Install manual tersedia';
-      case PwaInstallPlatform.other:
-        return 'Gunakan cara manual';
-    }
+    if (canPrompt) return 'Install langsung tersedia';
+    return 'Install dari browser';
   }
 
   List<String> _manualStepsFor(PwaInstallPlatform platform) {
     switch (platform) {
       case PwaInstallPlatform.iosSafari:
         return const [
-          'Tekan tombol Share di Safari.',
+          'Buka menu browser pada halaman ini.',
           'Pilih Add to Home Screen.',
           'Konfirmasi agar PulseWise muncul di layar utama.',
         ];
       case PwaInstallPlatform.chromium:
         return const [
-          'Coba tombol install di atas terlebih dahulu.',
-          'Kalau tidak muncul, buka menu browser.',
+          'Buka menu browser.',
           'Pilih Install App atau Add to Home Screen.',
+          'Konfirmasi agar PulseWise tersimpan di perangkat kamu.',
         ];
       case PwaInstallPlatform.other:
         return const [
-          'Buka halaman ini di Chrome, Edge, atau Safari iPhone.',
-          'Kalau browser mendukung, prompt install bisa muncul otomatis.',
-          'Kalau tidak, gunakan opsi Add to Home Screen dari menu browser.',
+          'Buka menu browser pada halaman ini.',
+          'Cari opsi seperti Install App atau Add to Home Screen.',
+          'Kalau opsi itu tidak ada, coba buka halaman ini di Chrome atau Edge.',
         ];
     }
   }
@@ -377,14 +333,10 @@ class _InstructionRow extends StatelessWidget {
 
 class _ManualInstructionsSection extends StatelessWidget {
   const _ManualInstructionsSection({
-    required this.expanded,
     required this.instructions,
-    required this.onToggle,
   });
 
-  final bool expanded;
   final List<String> instructions;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -395,69 +347,45 @@ class _ManualInstructionsSection extends StatelessWidget {
         border: Border.all(color: InstallPage.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(24),
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Cara install manual',
-                      style: TextStyle(
-                        color: InstallPage.text,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: InstallPage.subtext,
-                      size: 28,
-                    ),
-                  ),
-                ],
+          const Padding(
+            padding: EdgeInsets.fromLTRB(18, 18, 18, 0),
+            child: Text(
+              'Cara install manual',
+              style: TextStyle(
+                color: InstallPage.text,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Ikuti langkah berikut dari menu browser:',
-                      style: TextStyle(
-                        color: InstallPage.subtext,
-                        fontSize: 15,
-                        height: 1.6,
-                      ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Langkah install dari menu browser:',
+                    style: TextStyle(
+                      color: InstallPage.subtext,
+                      fontSize: 15,
+                      height: 1.6,
                     ),
                   ),
-                  for (var index = 0; index < instructions.length; index++) ...[
-                    _InstructionRow(
-                      number: '${index + 1}',
-                      text: instructions[index],
-                    ),
-                    if (index != instructions.length - 1)
-                      const SizedBox(height: 12),
-                  ],
+                ),
+                for (var index = 0; index < instructions.length; index++) ...[
+                  _InstructionRow(
+                    number: '${index + 1}',
+                    text: instructions[index],
+                  ),
+                  if (index != instructions.length - 1)
+                    const SizedBox(height: 12),
                 ],
-              ),
+              ],
             ),
-            crossFadeState:
-                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 220),
           ),
         ],
       ),
