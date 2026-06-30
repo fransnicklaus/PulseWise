@@ -72,6 +72,21 @@ Future<void> loginAsPatient(
   await dismissOptionalPatientPrompt(tester);
 }
 
+void ensurePatientProfileReadyForE2e() {
+  if (find.text('Profil Belum Lengkap').evaluate().isNotEmpty ||
+      find.text('Isi Profil Sekarang').evaluate().isNotEmpty) {
+    throw TestFailure(
+      'Patient E2E account must have a completed profile before patient shell tests can run.',
+    );
+  }
+}
+
+Future<void> openPatientTab(WidgetTester tester, String label) async {
+  await tapLastText(tester, label);
+  await tester.pump(const Duration(milliseconds: 500));
+  await dismissOptionalPatientPrompt(tester);
+}
+
 Future<void> logoutFromPatientProfile(WidgetTester tester) async {
   if (find.text('Profil Belum Lengkap').evaluate().isNotEmpty) {
     throw TestFailure(

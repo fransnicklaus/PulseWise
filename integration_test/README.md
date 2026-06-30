@@ -6,6 +6,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 ## File
 
 - `integration_test/auth_flow_test.dart`
+- `integration_test/patient_shell_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -16,6 +17,14 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - Login dengan credential salah tetap berada di halaman login dan menampilkan error.
 - Login pasien valid masuk ke home pasien.
 - Logout pasien kembali ke halaman login.
+
+## Skenario Termin 2
+
+- Pasien valid login ke shell pasien.
+- Pasien dapat membuka tab utama: Beranda, Edukasi, Diari, Pengingat, dan
+  Profil.
+- Setiap tab utama menampilkan konten khasnya, tanpa membuat atau mengubah data
+  backend.
 
 ## Konfigurasi Backend
 
@@ -47,6 +56,16 @@ Jika memang ingin memakai default API app, tambahkan flag eksplisit:
 
 ```bash
 --dart-define=E2E_ALLOW_DEFAULT_API=true
+```
+
+Jalankan Termin 2 patient shell flow:
+
+```bash
+flutter test integration_test/patient_shell_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
 ```
 
 ## Device/Emulator
