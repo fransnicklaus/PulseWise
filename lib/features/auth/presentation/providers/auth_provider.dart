@@ -177,6 +177,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> login(String email, String password) async {
+    if (!mounted) return;
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -212,6 +213,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       await _syncFcmTokenForCurrentSession('login');
 
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: null,
@@ -226,6 +228,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
     } on DioException catch (e) {
       final message = _extractErrorMessage(e);
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: message,
@@ -235,6 +238,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: false,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),

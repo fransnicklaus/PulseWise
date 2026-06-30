@@ -20,6 +20,7 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
   static const _defaultLimit = 20;
 
   Future<void> fetchInitial() async {
+    if (!mounted) return;
     if (state.isLoadingInitial) return;
 
     state = state.copyWith(
@@ -31,6 +32,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
 
     try {
       final result = await _api.fetchPage(page: 1, limit: _defaultLimit);
+      if (!mounted) return;
+
       state = state.copyWith(
         isLoadingInitial: false,
         items: result.items,
@@ -40,6 +43,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
         errorCause: null,
       );
     } catch (e) {
+      if (!mounted) return;
+
       state = state.copyWith(
         isLoadingInitial: false,
         error: e.toString().replaceFirst('Exception: ', ''),
@@ -49,6 +54,7 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
   }
 
   Future<void> fetchNextPage() async {
+    if (!mounted) return;
     if (state.isLoadingInitial || state.isLoadingMore || !state.hasMore) return;
 
     state = state.copyWith(
@@ -60,6 +66,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
     try {
       final nextPage = state.page + 1;
       final result = await _api.fetchPage(page: nextPage, limit: _defaultLimit);
+      if (!mounted) return;
+
       state = state.copyWith(
         isLoadingMore: false,
         items: [...state.items, ...result.items],
@@ -69,6 +77,8 @@ class EmergencyContactsNotifier extends StateNotifier<EmergencyContactsState> {
         errorCause: null,
       );
     } catch (e) {
+      if (!mounted) return;
+
       state = state.copyWith(
         isLoadingMore: false,
         error: e.toString().replaceFirst('Exception: ', ''),

@@ -1091,6 +1091,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                           _ActionRow(
                             label: 'Keluar',
+                            actionKey: isSkeleton
+                                ? null
+                                : const Key('patient_profile_logout_action'),
                             onTap: _confirmLogout,
                           ),
                         ],
@@ -2142,36 +2145,45 @@ class _ActionRow extends StatelessWidget {
   final String label;
 
   final VoidCallback? onTap;
+  final Key? actionKey;
 
-  const _ActionRow({required this.label, this.onTap});
+  const _ActionRow({
+    required this.label,
+    this.onTap,
+    this.actionKey,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
+        key: actionKey,
         onTap: onTap ?? () {},
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
+        child: SizedBox(
+          width: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Color(0xFF0F172A),
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-              const Icon(
-                Icons.chevron_right,
-                color: Color(0xFF94A3B8),
-                size: 28,
-              ),
-            ],
+                const Icon(
+                  Icons.chevron_right,
+                  color: Color(0xFF94A3B8),
+                  size: 28,
+                ),
+              ],
+            ),
           ),
         ),
       ),

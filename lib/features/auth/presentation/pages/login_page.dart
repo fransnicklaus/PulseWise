@@ -349,6 +349,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                               // Email Field
                               TextFormField(
+                                key: const Key('login_email_field'),
                                 controller: _emailController,
                                 decoration: InputDecoration(
                                   hintText: 'Alamat Email',
@@ -380,6 +381,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
                               // Password Field
                               TextFormField(
+                                key: const Key('login_password_field'),
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
@@ -452,6 +454,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 width: double.infinity,
                                 height: 55,
                                 child: ElevatedButton(
+                                  key: const Key('login_submit_button'),
                                   onPressed:
                                       authState.isLoading ? null : _onLogin,
                                   style: ElevatedButton.styleFrom(

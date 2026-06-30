@@ -11,14 +11,16 @@ class ApiLogger {
         onRequest: (options, handler) {
           if (kDebugMode) {
             final uri = _fullUri(options);
-            debugPrint('[API][REQUEST] ${options.method} $uri');
-            if (options.queryParameters.isNotEmpty) {
-              debugPrint(
-                '[API][QUERY] ${_summarizeValue(options.queryParameters)}',
-              );
-            }
-            if (options.data != null) {
-              debugPrint('[API][PAYLOAD] ${_summarizeValue(options.data)}');
+            if (!_shouldSkipLog(uri)) {
+              debugPrint('[API][REQUEST] ${options.method} $uri');
+              if (options.queryParameters.isNotEmpty) {
+                debugPrint(
+                  '[API][QUERY] ${_summarizeValue(options.queryParameters)}',
+                );
+              }
+              if (options.data != null) {
+                debugPrint('[API][PAYLOAD] ${_summarizeValue(options.data)}');
+              }
             }
           }
           handler.next(options);
@@ -26,22 +28,26 @@ class ApiLogger {
         onResponse: (response, handler) {
           if (kDebugMode) {
             final uri = _fullUri(response.requestOptions);
-            debugPrint('[API][RESPONSE] ${response.statusCode} $uri');
-            debugPrint('[API][BODY] ${_summarizeValue(response.data)}');
+            if (!_shouldSkipLog(uri)) {
+              debugPrint('[API][RESPONSE] ${response.statusCode} $uri');
+              debugPrint('[API][BODY] ${_summarizeValue(response.data)}');
+            }
           }
           handler.next(response);
         },
         onError: (error, handler) {
           if (kDebugMode) {
             final uri = _fullUri(error.requestOptions);
-            debugPrint(
-              '[API][ERROR] ${error.response?.statusCode ?? '-'} '
-              '${error.requestOptions.method} $uri',
-            );
-            debugPrint(
-              '[API][ERROR_BODY] ${_summarizeValue(error.response?.data)}',
-            );
-            debugPrint('[API][ERROR_MESSAGE] ${error.message}');
+            if (!_shouldSkipLog(uri)) {
+              debugPrint(
+                '[API][ERROR] ${error.response?.statusCode ?? '-'} '
+                '${error.requestOptions.method} $uri',
+              );
+              debugPrint(
+                '[API][ERROR_BODY] ${_summarizeValue(error.response?.data)}',
+              );
+              debugPrint('[API][ERROR_MESSAGE] ${error.message}');
+            }
           }
           handler.next(error);
         },
@@ -51,6 +57,11 @@ class ApiLogger {
 
   static String _fullUri(RequestOptions options) {
     return options.uri.toString();
+  }
+
+  static bool _shouldSkipLog(String uri) {
+    final path = Uri.tryParse(uri)?.path.toLowerCase() ?? uri.toLowerCase();
+    return path.contains('/education') || path.contains('/edukasi');
   }
 
   static Object? _summarizeValue(dynamic value, {String? key}) {

@@ -13,13 +13,18 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
   final DiaryApi _diaryApi;
 
   Future<void> ensureCurrentDiaryLoaded() async {
+    if (!mounted) return;
     if (state.hasLoadedOnce) return;
     await loadCurrentDiaryForToday();
   }
 
   Future<void> loadCurrentDiaryForToday(
       {bool preserveCurrentData = false}) async {
-    final hasCurrentData = state.diary != null;
+    if (!mounted) return;
+
+    final previousDiary = state.diary;
+    final previousHasCurrentDiary = state.hasCurrentDiary;
+    final hasCurrentData = previousDiary != null;
     final shouldPreserve = preserveCurrentData && hasCurrentData;
 
     state = state.copyWith(
@@ -30,6 +35,8 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
 
     try {
       var diary = await _diaryApi.fetchDiaryDetailByDate(DateTime.now());
+      if (!mounted) return;
+
       Map<String, dynamic>? sleepData;
       Object? sleepError;
       try {
@@ -37,6 +44,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       } catch (error) {
         sleepError = error;
       }
+      if (!mounted) return;
 
       if (diary == null) {
         if (sleepData != null) {
@@ -58,7 +66,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
             isRefreshing: false,
             hasLoadedOnce: true,
             hasCurrentDiary: false,
-            diary: shouldPreserve ? state.diary : null,
+            diary: shouldPreserve ? previousDiary : null,
           );
           return;
         }
@@ -86,6 +94,8 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
+
       final message = e.toString().toLowerCase();
       if (message.contains('not found') ||
           message.contains('404') ||
@@ -95,7 +105,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
           isRefreshing: false,
           hasLoadedOnce: true,
           hasCurrentDiary: false,
-          diary: shouldPreserve ? state.diary : null,
+          diary: shouldPreserve ? previousDiary : null,
           errorCause: null,
         );
         return;
@@ -107,7 +117,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
         hasLoadedOnce: true,
         error: e.toString(),
         errorCause: e,
-        hasCurrentDiary: shouldPreserve ? state.hasCurrentDiary : false,
+        hasCurrentDiary: shouldPreserve ? previousHasCurrentDiary : false,
       );
     }
   }
