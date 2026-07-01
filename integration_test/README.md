@@ -9,6 +9,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_shell_flow_test.dart`
 - `integration_test/patient_medication_flow_test.dart`
 - `integration_test/patient_medication_lifecycle_test.dart`
+- `integration_test/patient_diary_history_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -43,16 +44,21 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 ## Skenario Termin 4
 
 - Pasien valid membuat pengingat obat dummy dengan nama unik.
-- Pengingat yang dibuat muncul di halaman Kelola Pengingat.
-- Pengingat yang dibuat muncul di kalender obat pada tab Pengingat.
-- Pengingat yang dibuat muncul di ringkasan Pengingat Obat pada Beranda.
-- Pasien menandai pengingat sebagai `Diminum`.
-- Pasien membuka detail obat dari bottom sheet kalender.
-- Pasien menghapus pengingat dummy dan test memastikan item hilang dari daftar
-  Kelola Pengingat.
+- Setelah simpan berhasil, pasien kembali ke tab Pengingat/Kalender Obat.
+- Test memastikan form tambah pengingat sudah tertutup.
 
-Termin 4 menyentuh data backend, tetapi memakai nama obat unik dan melakukan
-cleanup lewat UI pada akhir test.
+Termin 4 menyentuh data backend dan memakai nama obat unik. Untuk saat ini test
+tidak melakukan cleanup lewat UI karena validasi kalender/detail/delete dipisah
+dari flow create agar stabil.
+
+## Skenario Termin 5
+
+- Pasien valid membuka tab Diari.
+- Pasien membuka halaman Riwayat Diari.
+- Pasien kembali ke tab Diari.
+
+Termin 5 hanya melakukan navigasi dan membaca data; test tidak membuat atau
+mengubah data backend.
 
 ## Konfigurasi Backend
 
@@ -106,10 +112,20 @@ flutter test integration_test/patient_medication_flow_test.dart \
   --dart-define=E2E_PATIENT_PASSWORD=change-me
 ```
 
-Jalankan Termin 4 medication lifecycle flow:
+Jalankan Termin 4 medication create flow:
 
 ```bash
 flutter test integration_test/patient_medication_lifecycle_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 5 diary history flow:
+
+```bash
+flutter test integration_test/patient_diary_history_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \

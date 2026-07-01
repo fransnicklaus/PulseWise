@@ -455,6 +455,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                       Row(
                                         children: [
                                           GestureDetector(
+                                            key: const Key(
+                                              'patient_diary_history_button',
+                                            ),
                                             onTap: () =>
                                                 context.push('/home/diary'),
                                             child: Container(
