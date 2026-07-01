@@ -16,6 +16,28 @@ const patientMedicationDoseFieldKey = Key('patient_medication_dose_field');
 const patientMedicationFormPillOptionKey =
     Key('patient_medication_form_pill_option');
 const patientMedicationNextButtonKey = Key('patient_medication_next_button');
+const patientMedicationCalendarManageButtonKey =
+    Key('patient_medication_calendar_manage_button');
+const patientMedicationStatusSaveButtonKey =
+    Key('patient_medication_status_save_button');
+const patientMedicationStatusManageButtonKey =
+    Key('patient_medication_status_manage_button');
+const patientMedicationDetailDeleteButtonKey =
+    Key('patient_medication_detail_delete_button');
+const patientMedicationConfirmDeleteButtonKey =
+    Key('patient_medication_confirm_delete_button');
+
+Key patientMedicationManageCardKey(String medicationName) {
+  return Key('patient_medication_manage_card_$medicationName');
+}
+
+Key patientMedicationCalendarCardKey(String medicationName) {
+  return Key('patient_medication_calendar_card_$medicationName');
+}
+
+Key patientHomeMedicationTileKey(String medicationName) {
+  return Key('patient_home_medication_tile_$medicationName');
+}
 
 Future<void> clearPulseWiseSession() async {
   await AppSessionStore.clearSession();
@@ -169,6 +191,34 @@ Future<void> ensureLastFinderVisible(
     await tester.drag(scrollables.last, const Offset(0, -140));
     await tester.pump(const Duration(milliseconds: 300));
   }
+}
+
+Future<void> scrollUntilVisible(
+  WidgetTester tester,
+  Finder finder, {
+  Finder? scrollable,
+  Duration timeout = const Duration(seconds: 20),
+  double scrollDelta = -420,
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    if (finder.evaluate().isNotEmpty) {
+      await tester.ensureVisible(finder.first);
+      await tester.pump(const Duration(milliseconds: 300));
+      return;
+    }
+
+    final scrollableFinder = scrollable ?? find.byType(Scrollable).last;
+    if (scrollableFinder.evaluate().isEmpty) {
+      await tester.pump(const Duration(milliseconds: 100));
+      continue;
+    }
+
+    await tester.drag(scrollableFinder, Offset(0, scrollDelta));
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  throw TestFailure('Timed out scrolling to visible finder: $finder');
 }
 
 Future<void> waitForVisible(

@@ -48,6 +48,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
               onPressed: _isDeleting
                   ? null
                   : () => Navigator.of(dialogContext).pop(true),
+              key: const Key('patient_medication_confirm_delete_button'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF435D),
                 foregroundColor: Colors.white,
@@ -171,6 +172,8 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton(
+                          key: const Key(
+                              'patient_medication_detail_delete_button'),
                           onPressed: _isDeleting
                               ? null
                               : () => _deleteMedication(item.medicationId),

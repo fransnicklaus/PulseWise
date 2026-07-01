@@ -1697,6 +1697,7 @@ class _HomeMedicationTile extends StatelessWidget {
         dateString = date!.toIso8601String().substring(0, 10);
     }
     return InkWell(
+      key: Key('patient_home_medication_tile_${item.name}'),
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(

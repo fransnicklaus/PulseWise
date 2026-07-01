@@ -322,6 +322,7 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
             ),
           ),
           _HeaderAction(
+            actionKey: const Key('patient_medication_calendar_manage_button'),
             icon: Icons.medication_rounded,
             label: 'Kelola',
             onTap: () => context.push('/home/reminder/manage'),
@@ -606,11 +607,13 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
 
 class _HeaderAction extends StatelessWidget {
   const _HeaderAction({
+    this.actionKey,
     required this.icon,
     required this.label,
     required this.onTap,
   });
 
+  final Key? actionKey;
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -618,6 +621,7 @@ class _HeaderAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
+      key: actionKey,
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Ink(
@@ -682,6 +686,7 @@ class _MedicationCalendarCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: InkWell(
+        key: Key('patient_medication_calendar_card_${item.name}'),
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(

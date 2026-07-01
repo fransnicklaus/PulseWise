@@ -303,6 +303,7 @@ class _MedicationStatusBottomSheetState
                   ? const SizedBox.shrink()
                   : Expanded(
                       child: ElevatedButton.icon(
+                        key: const Key('patient_medication_status_save_button'),
                         onPressed: _isSaving ? null : _submit,
                         icon: _isSaving
                             ? const SizedBox.shrink()
@@ -336,6 +337,7 @@ class _MedicationStatusBottomSheetState
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
+                  key: const Key('patient_medication_status_manage_button'),
                   onPressed: _isSaving ? null : _handleManage,
                   icon: const Icon(Icons.settings),
                   label: const Text(

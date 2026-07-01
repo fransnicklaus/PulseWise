@@ -334,6 +334,7 @@ class _MedicationCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: InkWell(
+        key: Key('patient_medication_manage_card_${item.name}'),
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Container(

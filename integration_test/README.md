@@ -8,6 +8,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/auth_flow_test.dart`
 - `integration_test/patient_shell_flow_test.dart`
 - `integration_test/patient_medication_flow_test.dart`
+- `integration_test/patient_medication_lifecycle_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -38,6 +39,20 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
   angka.
 - Test Termin 3 tidak menyimpan pengingat baru, sehingga tidak mengubah data
   backend.
+
+## Skenario Termin 4
+
+- Pasien valid membuat pengingat obat dummy dengan nama unik.
+- Pengingat yang dibuat muncul di halaman Kelola Pengingat.
+- Pengingat yang dibuat muncul di kalender obat pada tab Pengingat.
+- Pengingat yang dibuat muncul di ringkasan Pengingat Obat pada Beranda.
+- Pasien menandai pengingat sebagai `Diminum`.
+- Pasien membuka detail obat dari bottom sheet kalender.
+- Pasien menghapus pengingat dummy dan test memastikan item hilang dari daftar
+  Kelola Pengingat.
+
+Termin 4 menyentuh data backend, tetapi memakai nama obat unik dan melakukan
+cleanup lewat UI pada akhir test.
 
 ## Konfigurasi Backend
 
@@ -85,6 +100,16 @@ Jalankan Termin 3 medication reminder validation flow:
 
 ```bash
 flutter test integration_test/patient_medication_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 4 medication lifecycle flow:
+
+```bash
+flutter test integration_test/patient_medication_lifecycle_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
