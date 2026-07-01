@@ -1079,6 +1079,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                           _ActionRow(
                             label: 'Edit Profil',
+                            actionKey: const Key('patient_profile_edit_action'),
                             onTap: () => context.push('/home/update-profile'),
                           ),
                           _ActionRow(
