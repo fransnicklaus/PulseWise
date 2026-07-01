@@ -76,7 +76,7 @@ void main() {
           timeout: const Duration(seconds: 60),
         );
 
-        await tester.pageBack();
+        await tapCustomAppBarBack(tester);
         await waitForVisible(
           tester,
           find.text('Kalender Obat'),

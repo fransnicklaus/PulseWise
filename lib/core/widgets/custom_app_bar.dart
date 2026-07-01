@@ -48,6 +48,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: IconButton(
+                      key: const Key('custom_app_bar_back_button'),
                       icon: Container(
                         width: 40,
                         height: 40,

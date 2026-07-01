@@ -26,6 +26,7 @@ const patientMedicationDetailDeleteButtonKey =
     Key('patient_medication_detail_delete_button');
 const patientMedicationConfirmDeleteButtonKey =
     Key('patient_medication_confirm_delete_button');
+const customAppBarBackButtonKey = Key('custom_app_bar_back_button');
 
 Key patientMedicationManageCardKey(String medicationName) {
   return Key('patient_medication_manage_card_$medicationName');
@@ -175,6 +176,10 @@ Future<void> tapByKey(WidgetTester tester, Key key) async {
   await waitForVisible(tester, finder);
   await tester.tap(finder);
   await tester.pump();
+}
+
+Future<void> tapCustomAppBarBack(WidgetTester tester) async {
+  await tapByKey(tester, customAppBarBackButtonKey);
 }
 
 Future<void> ensureLastFinderVisible(
