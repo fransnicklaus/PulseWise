@@ -475,6 +475,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
       //         child: SafeArea(child: sidebar),
       //       ),
       body: SafeArea(
+        key: const Key('patient_dashboard_content'),
         child: Row(
           children: [
             if (isDesktop) SizedBox(width: 320, child: sidebar),

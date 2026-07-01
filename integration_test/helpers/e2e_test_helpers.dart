@@ -18,6 +18,9 @@ const patientEducationFirstArticleCardKey =
     Key('patient_education_article_card_0');
 const patientEducationArticleDetailContentKey =
     Key('patient_education_article_detail_content');
+const patientHomeHealthDetailButtonKey =
+    Key('patient_home_health_detail_button');
+const patientDashboardContentKey = Key('patient_dashboard_content');
 const patientMedicationManageAddButtonKey =
     Key('patient_medication_manage_add_button');
 const patientMedicationNameFieldKey = Key('patient_medication_name_field');

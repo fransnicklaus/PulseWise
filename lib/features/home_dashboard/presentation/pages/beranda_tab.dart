@@ -1063,6 +1063,9 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                             Row(
                               children: [
                                 GestureDetector(
+                                  key: const Key(
+                                    'patient_home_health_detail_button',
+                                  ),
                                   onTap: () {
                                     context.push('/home/patient-dashboard');
                                   },
