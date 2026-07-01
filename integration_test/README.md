@@ -12,6 +12,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_diary_history_flow_test.dart`
 - `integration_test/patient_profile_edit_flow_test.dart`
 - `integration_test/patient_emergency_contacts_flow_test.dart`
+- `integration_test/patient_education_article_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -79,6 +80,16 @@ atau mengubah data backend.
 
 Termin 7 hanya melakukan navigasi dan membaca data kontak darurat; test tidak
 membuat atau mengubah data backend.
+
+## Skenario Termin 8
+
+- Pasien valid membuka tab Edukasi.
+- Pasien membuka artikel edukasi pertama dari daftar.
+- Pasien melihat halaman detail artikel.
+- Pasien kembali ke tab Edukasi.
+
+Termin 8 hanya melakukan navigasi dan membaca artikel; test tidak memberi like,
+komentar, atau mengubah data backend.
 
 ## Konfigurasi Backend
 
@@ -166,6 +177,16 @@ Jalankan Termin 7 emergency contacts navigation flow:
 
 ```bash
 flutter test integration_test/patient_emergency_contacts_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 8 education article detail flow:
+
+```bash
+flutter test integration_test/patient_education_article_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \

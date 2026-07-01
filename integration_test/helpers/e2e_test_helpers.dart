@@ -13,6 +13,11 @@ const patientProfileEditActionKey = Key('patient_profile_edit_action');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
 const patientHomeEmergencyContactCardKey =
     Key('patient_home_emergency_contact_card');
+const patientEducationSearchFieldKey = Key('patient_education_search_field');
+const patientEducationFirstArticleCardKey =
+    Key('patient_education_article_card_0');
+const patientEducationArticleDetailContentKey =
+    Key('patient_education_article_detail_content');
 const patientMedicationManageAddButtonKey =
     Key('patient_medication_manage_add_button');
 const patientMedicationNameFieldKey = Key('patient_medication_name_field');
@@ -189,13 +194,22 @@ Future<void> tapCustomAppBarBack(WidgetTester tester) async {
   final finder = find.byKey(customAppBarBackButtonKey);
   await waitForVisible(tester, finder);
   await pumpUntilNoTransientCallbacks(tester);
-  final didPop = await tester.binding.handlePopRoute();
-  if (!didPop) {
-    await tester.ensureVisible(finder.last);
+  await tester.tap(finder.last, warnIfMissed: false);
+
+  final end = DateTime.now().add(const Duration(seconds: 2));
+  while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.tapAt(tester.getCenter(finder.last));
+    if (finder.evaluate().isEmpty) {
+      return;
+    }
   }
-  await tester.pump(const Duration(milliseconds: 300));
+
+  if (finder.evaluate().isNotEmpty) {
+    final didPop = await tester.binding.handlePopRoute();
+    if (didPop) {
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+  }
 }
 
 Future<void> pumpUntilNoTransientCallbacks(

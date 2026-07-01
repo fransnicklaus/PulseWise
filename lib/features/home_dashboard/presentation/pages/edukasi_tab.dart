@@ -331,6 +331,7 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
             child: SizedBox(
               height: 48,
               child: TextField(
+                key: const Key('patient_education_search_field'),
                 controller: _searchController,
                 textInputAction: TextInputAction.search,
                 onChanged: (_) => setState(() {}),
@@ -557,19 +558,25 @@ class _EdukasiTabState extends ConsumerState<EdukasiTab> {
                       )
                     else
                       Column(
-                        children: feed.items
-                            .map(
-                              (article) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: _ArticleCard(
-                                  article: article,
-                                  onTap: () => context.push(
-                                    '${widget.articleDetailRoutePrefix}/${Uri.encodeComponent(article.slug)}',
-                                  ),
+                        children: feed.items.asMap().entries.map(
+                          (entry) {
+                            final index = entry.key;
+                            final article = entry.value;
+
+                            return Padding(
+                              key: Key(
+                                'patient_education_article_card_$index',
+                              ),
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _ArticleCard(
+                                article: article,
+                                onTap: () => context.push(
+                                  '${widget.articleDetailRoutePrefix}/${Uri.encodeComponent(article.slug)}',
                                 ),
                               ),
-                            )
-                            .toList(growable: false),
+                            );
+                          },
+                        ).toList(growable: false),
                       ),
                   ],
                 ),

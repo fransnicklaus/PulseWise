@@ -293,6 +293,7 @@ class _EducationArticleDetailPageState
           return RefreshIndicator(
             onRefresh: _handleRefresh,
             child: ListView(
+              key: const Key('patient_education_article_detail_content'),
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(35, 20, 35, 32),
               children: [
