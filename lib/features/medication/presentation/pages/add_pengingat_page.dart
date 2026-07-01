@@ -223,6 +223,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
         _sectionCard(
           title: 'Nama Obat',
           child: TextField(
+            key: const Key('patient_medication_name_field'),
             controller: _nameController,
             enabled: !_isSubmitting,
             decoration: _inputDecoration('Contoh: Obat Jantung'),
@@ -369,6 +370,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
               Expanded(
                 flex: 2,
                 child: TextField(
+                  key: const Key('patient_medication_dose_field'),
                   controller: _doseController,
                   enabled: !_isSubmitting,
                   keyboardType:
@@ -526,7 +528,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                           return ChoiceChip(
                             label: Text(
                               _weekdays[index],
-                              style: TextStyle(fontSize: 15),
+                              style: const TextStyle(fontSize: 15),
                             ),
                             selected: selected,
                             onSelected: (_) {
@@ -799,8 +801,10 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                     )
                   : Text(
                       isLast ? 'Simpan Pengingat' : 'Lanjut',
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
             ),
           ),

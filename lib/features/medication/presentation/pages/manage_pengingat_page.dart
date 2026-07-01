@@ -126,6 +126,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
           showBackButton: true,
           onBackPressed: () => context.pop(),
           action: GestureDetector(
+            key: const Key('patient_medication_manage_add_button'),
             onTap: () => _openAddMedication(context),
             child: Container(
               width: 48,
@@ -134,7 +135,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.add, color: Colors.white, size: 24),
+              child: const Icon(Icons.add, color: Colors.white, size: 24),
             ),
           )),
       body: SafeArea(
@@ -263,7 +264,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return SizedBox();
+    return const SizedBox();
   }
 
   // Widget _buildHeader(BuildContext context) {
@@ -320,29 +321,6 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
   //     ),
   //   );
   // }
-}
-
-class _HeaderIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _HeaderIcon({required this.icon, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: Colors.white, size: 24),
-      ),
-    );
-  }
 }
 
 class _MedicationCard extends StatelessWidget {

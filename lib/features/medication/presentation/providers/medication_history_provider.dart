@@ -25,8 +25,8 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
     int limit = 10,
     bool append = false,
   }) async {
-    if (append && (state.isLoading || state.isLoadingMore)) return;
     if (!mounted) return;
+    if (append && (state.isLoading || state.isLoadingMore)) return;
 
     state = state.copyWith(
       isLoading: !append,
@@ -67,6 +67,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
   }
 
   Future<void> loadNextPage() async {
+    if (!mounted) return;
     if (state.isLoading || state.isLoadingMore) return;
     if (state.page >= state.totalPages) return;
 
@@ -78,6 +79,7 @@ class MedicationHistoryNotifier extends StateNotifier<MedicationHistoryState> {
   }
 
   Future<void> refreshMedications() async {
+    if (!mounted) return;
     await loadMedications(page: 1, limit: state.limit);
   }
 }

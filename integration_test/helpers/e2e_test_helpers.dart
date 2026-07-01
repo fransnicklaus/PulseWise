@@ -9,6 +9,10 @@ const loginEmailFieldKey = Key('login_email_field');
 const loginPasswordFieldKey = Key('login_password_field');
 const loginSubmitButtonKey = Key('login_submit_button');
 const patientProfileLogoutActionKey = Key('patient_profile_logout_action');
+const patientMedicationManageAddButtonKey =
+    Key('patient_medication_manage_add_button');
+const patientMedicationNameFieldKey = Key('patient_medication_name_field');
+const patientMedicationDoseFieldKey = Key('patient_medication_dose_field');
 
 Future<void> clearPulseWiseSession() async {
   await AppSessionStore.clearSession();
