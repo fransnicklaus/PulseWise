@@ -132,10 +132,11 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
         color: const Color(0xFFE64060),
         backgroundColor: Colors.white,
         child: ListView(
+          key: const Key('patient_medication_calendar_scroll_view'),
           padding: const EdgeInsets.only(bottom: 120),
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            _buildHeader(context),
+            _buildHeader(context, query),
             const SizedBox(height: 14),
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -280,7 +281,10 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(
+    BuildContext context,
+    MedicationCalendarRangeQuery query,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
@@ -325,11 +329,25 @@ class _PengingatTabState extends ConsumerState<PengingatTab>
             actionKey: const Key('patient_medication_calendar_manage_button'),
             icon: Icons.medication_rounded,
             label: 'Kelola',
-            onTap: () => context.push('/home/reminder/manage'),
+            onTap: () => _openMedicationManager(context, query),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _openMedicationManager(
+    BuildContext context,
+    MedicationCalendarRangeQuery query,
+  ) async {
+    final result = await context.push('/home/reminder/manage');
+    if (!mounted) return;
+
+    if (result == true) {
+      await _refreshCalendarSilently(query);
+      if (!mounted) return;
+      AppToast.success(this.context, 'Pengingat obat berhasil ditambahkan');
+    }
   }
 
   Future<void> _showMedicationBottomSheet(

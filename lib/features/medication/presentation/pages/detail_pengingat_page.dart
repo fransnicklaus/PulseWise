@@ -8,6 +8,7 @@ import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/medication/data/models/medication_models.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_api_provider.dart';
+import 'package:pulsewise/features/medication/presentation/providers/medication_calendar_provider.dart';
 import 'package:pulsewise/features/medication/presentation/providers/medication_history_provider.dart';
 import 'package:pulsewise/features/medication/presentation/widgets/medication_consumption_tracking_card.dart';
 
@@ -27,35 +28,135 @@ class DetailPengingatPage extends ConsumerStatefulWidget {
 class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
   bool _isDeleting = false;
 
-  Future<bool> _showDeleteConfirmationDialog() async {
-    final result = await showDialog<bool>(
+  Future<bool> _showDeleteConfirmationSheet() async {
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: !_isDeleting,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Hapus Pengingat?'),
-          content: const Text(
-            'Apakah Anda yakin ingin menghapus pengingat obat ini?',
+      isScrollControlled: true,
+      isDismissible: !_isDeleting,
+      enableDrag: !_isDeleting,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              top: 16,
+              right: 16,
+              bottom: 24 + MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFE4E6),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Color(0xFFE11D48),
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Text(
+                        'Hapus Pengingat?',
+                        style: TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Pengingat obat ini akan dihapus dari daftar dan kalender. Tindakan ini tidak bisa dibatalkan.',
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isDeleting
+                            ? null
+                            : () => Navigator.of(sheetContext).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF334155),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Batal',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        key: const Key(
+                          'patient_medication_confirm_delete_button',
+                        ),
+                        onPressed: _isDeleting
+                            ? null
+                            : () => Navigator.of(sheetContext).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE11D48),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Ya, Hapus',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: _isDeleting
-                  ? null
-                  : () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: _isDeleting
-                  ? null
-                  : () => Navigator.of(dialogContext).pop(true),
-              key: const Key('patient_medication_confirm_delete_button'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF435D),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Ya, Hapus'),
-            ),
-          ],
         );
       },
     );
@@ -66,12 +167,18 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
   Future<void> _deleteMedication(String medicationId) async {
     if (_isDeleting) return;
 
-    final shouldDelete = await _showDeleteConfirmationDialog();
+    final shouldDelete = await _showDeleteConfirmationSheet();
     if (!shouldDelete) return;
 
     setState(() => _isDeleting = true);
     try {
       await ref.read(medicationApiProvider).deleteMedication(medicationId);
+      if (!mounted) return;
+
+      invalidateMedicationCalendarCache(ref);
+      ref.invalidate(medicationDetailProvider(medicationId));
+      await ref.read(medicationHistoryProvider.notifier).refreshMedications();
+
       if (!mounted) return;
       context.pop(true);
     } catch (e) {
@@ -517,61 +624,6 @@ class _ColorChip extends StatelessWidget {
   }
 }
 
-class _InfoStatCard extends StatelessWidget {
-  const _InfoStatCard({
-    required this.label,
-    required this.value,
-    // required this.accentColor,
-    required this.compact,
-    this.fullWidth = false,
-  });
-
-  final String label;
-  final String value;
-  // final Color accentColor;
-  final bool compact;
-  final bool fullWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: fullWidth ? double.infinity : null,
-      constraints: BoxConstraints(minWidth: compact ? 0 : 124),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.withOpacity(0.14)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              color: Colors.black.withOpacity(0.6),
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.black,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ErrorState extends StatelessWidget {
   const _ErrorState({
     required this.message,
@@ -608,31 +660,6 @@ class _ErrorState extends StatelessWidget {
               child: const Text('Coba Lagi'),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GreyChip extends StatelessWidget {
-  const _GreyChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF64748B),
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
         ),
       ),
     );

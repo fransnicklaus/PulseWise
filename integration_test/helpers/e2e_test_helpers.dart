@@ -18,6 +18,8 @@ const patientMedicationFormPillOptionKey =
 const patientMedicationNextButtonKey = Key('patient_medication_next_button');
 const patientMedicationCalendarManageButtonKey =
     Key('patient_medication_calendar_manage_button');
+const patientMedicationCalendarScrollViewKey =
+    Key('patient_medication_calendar_scroll_view');
 const patientMedicationStatusSaveButtonKey =
     Key('patient_medication_status_save_button');
 const patientMedicationStatusManageButtonKey =
@@ -174,14 +176,36 @@ Future<void> tapLastText(WidgetTester tester, String text) async {
 Future<void> tapByKey(WidgetTester tester, Key key) async {
   final finder = find.byKey(key);
   await waitForVisible(tester, finder);
-  await tester.ensureVisible(finder.first);
-  await tester.pump(const Duration(milliseconds: 300));
+  await revealFinderInScrollable(tester, finder);
   await tester.tap(finder.first);
   await tester.pump();
 }
 
 Future<void> tapCustomAppBarBack(WidgetTester tester) async {
-  await tapByKey(tester, customAppBarBackButtonKey);
+  final finder = find.byKey(customAppBarBackButtonKey);
+  await waitForVisible(tester, finder);
+  await pumpUntilNoTransientCallbacks(tester);
+  final didPop = await tester.binding.handlePopRoute();
+  if (!didPop) {
+    await tester.ensureVisible(finder.last);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tapAt(tester.getCenter(finder.last));
+  }
+  await tester.pump(const Duration(milliseconds: 300));
+}
+
+Future<void> pumpUntilNoTransientCallbacks(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 2),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(step);
+    if (tester.binding.transientCallbackCount == 0) {
+      return;
+    }
+  }
 }
 
 Future<void> dismissKeyboard(WidgetTester tester) async {
@@ -195,8 +219,11 @@ Future<void> ensureLastFinderVisible(
   Duration timeout = const Duration(seconds: 10),
 }) async {
   await waitForVisible(tester, finder, timeout: timeout);
-  await tester.ensureVisible(finder.last);
-  await tester.pump(const Duration(milliseconds: 300));
+  await revealFinderInScrollable(
+    tester,
+    finder.last,
+    alignment: 0.65,
+  );
 
   final scrollables = find.byType(Scrollable);
   if (scrollables.evaluate().isNotEmpty) {
@@ -213,10 +240,10 @@ Future<void> scrollUntilVisible(
   double scrollDelta = -420,
 }) async {
   final end = DateTime.now().add(timeout);
+  var attempts = 0;
   while (DateTime.now().isBefore(end)) {
     if (finder.evaluate().isNotEmpty) {
-      await tester.ensureVisible(finder.first);
-      await tester.pump(const Duration(milliseconds: 300));
+      await revealFinderInScrollable(tester, finder);
       return;
     }
 
@@ -226,11 +253,54 @@ Future<void> scrollUntilVisible(
       continue;
     }
 
-    await tester.drag(scrollableFinder, Offset(0, scrollDelta));
+    final direction = ((attempts ~/ 20).isEven) ? scrollDelta : -scrollDelta;
+    attempts += 1;
+    await tester.dragFrom(
+      safeDragStartForScrollable(tester, scrollableFinder),
+      Offset(0, direction),
+    );
     await tester.pump(const Duration(milliseconds: 300));
   }
 
   throw TestFailure('Timed out scrolling to visible finder: $finder');
+}
+
+Future<void> revealFinderInScrollable(
+  WidgetTester tester,
+  Finder finder, {
+  double alignment = 0.35,
+}) async {
+  if (finder.evaluate().isEmpty) return;
+
+  await Scrollable.ensureVisible(
+    tester.element(finder.first),
+    alignment: alignment,
+    duration: const Duration(milliseconds: 250),
+  );
+  await tester.pump(const Duration(milliseconds: 350));
+}
+
+Offset safeDragStartForScrollable(
+  WidgetTester tester,
+  Finder scrollableFinder,
+) {
+  final rect = tester.getRect(scrollableFinder.first);
+  final view = tester.view;
+  final viewportHeight = view.physicalSize.height / view.devicePixelRatio;
+  final minY = rect.top + 96;
+  final maxYFromScrollable = rect.bottom - 180;
+  final maxYFromViewport = viewportHeight - 180;
+  final maxY = maxYFromScrollable < maxYFromViewport
+      ? maxYFromScrollable
+      : maxYFromViewport;
+  final y = maxY > minY ? rect.center.dy.clamp(minY, maxY).toDouble() : minY;
+  final minX = rect.left + 24;
+  final maxX = rect.right - 24;
+  final x = maxX > minX
+      ? rect.center.dx.clamp(minX, maxX).toDouble()
+      : rect.center.dx;
+
+  return Offset(x, y);
 }
 
 Future<void> waitForVisible(

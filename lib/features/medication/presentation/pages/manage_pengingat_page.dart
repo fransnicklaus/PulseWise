@@ -77,8 +77,9 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
     final result = await context.push('/home/reminder/add');
     if (!context.mounted) return;
     if (result == true) {
-      AppToast.success(context, 'Pengingat obat berhasil ditambahkan');
       await ref.read(medicationHistoryProvider.notifier).refreshMedications();
+      if (!context.mounted) return;
+      context.pop(true);
     }
   }
 
