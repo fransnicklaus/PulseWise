@@ -62,6 +62,7 @@ void main() {
           'Obat E2E',
         );
         await tester.pump();
+        await dismissKeyboard(tester);
 
         await tapByKey(tester, patientMedicationFormPillOptionKey);
         await tapByKey(tester, patientMedicationNextButtonKey);
@@ -80,6 +81,7 @@ void main() {
         await tester.enterText(
             find.byKey(patientMedicationDoseFieldKey), 'abc');
         await tester.pump();
+        await dismissKeyboard(tester);
 
         await tapByKey(tester, patientMedicationNextButtonKey);
         await waitForVisible(

@@ -54,12 +54,14 @@ void main() {
           medicationName,
         );
         await tester.pump();
+        await dismissKeyboard(tester);
         await tapByKey(tester, patientMedicationFormPillOptionKey);
         await tapByKey(tester, patientMedicationNextButtonKey);
 
         await waitForVisible(tester, find.text('Besar Dosis'));
         await tester.enterText(find.byKey(patientMedicationDoseFieldKey), '1');
         await tester.pump();
+        await dismissKeyboard(tester);
         await tapByKey(tester, patientMedicationNextButtonKey);
 
         await waitForVisible(tester, find.text('Seberapa sering obat diminum'));

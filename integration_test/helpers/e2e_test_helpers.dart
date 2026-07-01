@@ -174,12 +174,19 @@ Future<void> tapLastText(WidgetTester tester, String text) async {
 Future<void> tapByKey(WidgetTester tester, Key key) async {
   final finder = find.byKey(key);
   await waitForVisible(tester, finder);
-  await tester.tap(finder);
+  await tester.ensureVisible(finder.first);
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.tap(finder.first);
   await tester.pump();
 }
 
 Future<void> tapCustomAppBarBack(WidgetTester tester) async {
   await tapByKey(tester, customAppBarBackButtonKey);
+}
+
+Future<void> dismissKeyboard(WidgetTester tester) async {
+  await tester.testTextInput.receiveAction(TextInputAction.done);
+  await tester.pump(const Duration(milliseconds: 300));
 }
 
 Future<void> ensureLastFinderVisible(
