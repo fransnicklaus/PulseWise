@@ -11,6 +11,8 @@ const loginSubmitButtonKey = Key('login_submit_button');
 const patientProfileLogoutActionKey = Key('patient_profile_logout_action');
 const patientProfileEditActionKey = Key('patient_profile_edit_action');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
+const patientHomeEmergencyContactCardKey =
+    Key('patient_home_emergency_contact_card');
 const patientMedicationManageAddButtonKey =
     Key('patient_medication_manage_add_button');
 const patientMedicationNameFieldKey = Key('patient_medication_name_field');

@@ -11,6 +11,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_medication_lifecycle_test.dart`
 - `integration_test/patient_diary_history_flow_test.dart`
 - `integration_test/patient_profile_edit_flow_test.dart`
+- `integration_test/patient_emergency_contacts_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -69,6 +70,15 @@ mengubah data backend.
 
 Termin 6 hanya melakukan navigasi dan membaca data profil; test tidak membuat
 atau mengubah data backend.
+
+## Skenario Termin 7
+
+- Pasien valid membuka Beranda.
+- Pasien membuka halaman Kontak Darurat.
+- Pasien kembali ke Beranda tanpa menambah atau mengubah kontak.
+
+Termin 7 hanya melakukan navigasi dan membaca data kontak darurat; test tidak
+membuat atau mengubah data backend.
 
 ## Konfigurasi Backend
 
@@ -146,6 +156,16 @@ Jalankan Termin 6 profile edit navigation flow:
 
 ```bash
 flutter test integration_test/patient_profile_edit_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 7 emergency contacts navigation flow:
+
+```bash
+flutter test integration_test/patient_emergency_contacts_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \

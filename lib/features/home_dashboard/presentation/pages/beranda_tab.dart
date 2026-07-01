@@ -841,6 +841,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                 // Emergency Contact Card
                 const SizedBox(height: 16),
                 GestureDetector(
+                  key: const Key('patient_home_emergency_contact_card'),
                   onTap: () {
                     context.push('/home/contacts');
                   },
