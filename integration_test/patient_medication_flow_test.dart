@@ -47,8 +47,12 @@ void main() {
         );
         await waitForVisible(tester, find.text('Nama Obat'));
 
-        await tapLastText(tester, 'Lanjut');
+        await tapByKey(tester, patientMedicationNextButtonKey);
         await waitForVisible(
+          tester,
+          find.text('Isi nama dan pilih bentuk terlebih dahulu.'),
+        );
+        await waitForAbsent(
           tester,
           find.text('Isi nama dan pilih bentuk terlebih dahulu.'),
         );
@@ -59,18 +63,16 @@ void main() {
         );
         await tester.pump();
 
-        await tapLastText(tester, 'Lanjut');
-        await waitForVisible(
-          tester,
-          find.text('Isi nama dan pilih bentuk terlebih dahulu.'),
-        );
-
-        await tapLastText(tester, 'Pill');
-        await tapLastText(tester, 'Lanjut');
+        await tapByKey(tester, patientMedicationFormPillOptionKey);
+        await tapByKey(tester, patientMedicationNextButtonKey);
         await waitForVisible(tester, find.text('Besar Dosis'));
 
-        await tapLastText(tester, 'Lanjut');
+        await tapByKey(tester, patientMedicationNextButtonKey);
         await waitForVisible(
+          tester,
+          find.text('Isi besar dosis terlebih dahulu.'),
+        );
+        await waitForAbsent(
           tester,
           find.text('Isi besar dosis terlebih dahulu.'),
         );
@@ -79,7 +81,7 @@ void main() {
             find.byKey(patientMedicationDoseFieldKey), 'abc');
         await tester.pump();
 
-        await tapLastText(tester, 'Lanjut');
+        await tapByKey(tester, patientMedicationNextButtonKey);
         await waitForVisible(
           tester,
           find.text('Besar dosis hanya boleh angka.'),

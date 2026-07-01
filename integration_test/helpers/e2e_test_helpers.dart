@@ -13,6 +13,9 @@ const patientMedicationManageAddButtonKey =
     Key('patient_medication_manage_add_button');
 const patientMedicationNameFieldKey = Key('patient_medication_name_field');
 const patientMedicationDoseFieldKey = Key('patient_medication_dose_field');
+const patientMedicationFormPillOptionKey =
+    Key('patient_medication_form_pill_option');
+const patientMedicationNextButtonKey = Key('patient_medication_next_button');
 
 Future<void> clearPulseWiseSession() async {
   await AppSessionStore.clearSession();
@@ -145,6 +148,13 @@ Future<void> tapLastText(WidgetTester tester, String text) async {
   await tester.tap(finder.last);
 }
 
+Future<void> tapByKey(WidgetTester tester, Key key) async {
+  final finder = find.byKey(key);
+  await waitForVisible(tester, finder);
+  await tester.tap(finder);
+  await tester.pump();
+}
+
 Future<void> ensureLastFinderVisible(
   WidgetTester tester,
   Finder finder, {
@@ -193,4 +203,21 @@ Future<Finder> waitForAnyVisible(
 
   final descriptions = finders.map((finder) => finder.toString()).join(', ');
   throw TestFailure('Timed out waiting for visible finder: $descriptions');
+}
+
+Future<void> waitForAbsent(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 100),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    if (finder.evaluate().isEmpty) {
+      return;
+    }
+    await tester.pump(step);
+  }
+
+  throw TestFailure('Timed out waiting for absent finder: $finder');
 }

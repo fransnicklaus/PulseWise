@@ -277,6 +277,9 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
                         itemBuilder: (_, index) {
                           final item = filteredForms[index];
                           return RadioListTile<String>(
+                            key: Key(
+                              'patient_medication_form_${item.toLowerCase()}_option',
+                            ),
                             value: item,
                             groupValue: _selectedForm,
                             activeColor: const Color(0xFFE64060),
@@ -782,6 +785,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
           if (_currentStep > 0) const SizedBox(width: 10),
           Expanded(
             child: ElevatedButton(
+              key: const Key('patient_medication_next_button'),
               onPressed:
                   _isSubmitting ? null : (isLast ? _saveReminder : _nextStep),
               style: ElevatedButton.styleFrom(
