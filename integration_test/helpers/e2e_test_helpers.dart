@@ -19,6 +19,8 @@ const patientProfileMlQuestionnaireActionKey =
 const patientProfileDeleteAccountActionKey =
     Key('patient_profile_delete_account_action');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
+const patientDiaryQrShareButtonKey = Key('patient_diary_qr_share_button');
+const patientDiaryQrShareContentKey = Key('patient_diary_qr_share_content');
 const patientHomeEmergencyContactCardKey =
     Key('patient_home_emergency_contact_card');
 const patientEducationWearableCardKey = Key('patient_education_wearable_card');

@@ -76,6 +76,7 @@ class _DiaryQrPageState extends ConsumerState<DiaryQrPage> {
         // ),
       ),
       body: SafeArea(
+        key: const Key('patient_diary_qr_share_content'),
         child: Column(
           children: [
             // Container(

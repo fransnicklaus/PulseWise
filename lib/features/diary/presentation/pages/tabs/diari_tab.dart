@@ -429,27 +429,33 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Diari Kesehatan',
-                                          style: TextStyle(
-                                            fontSize: 25,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF525252),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Diari Kesehatan',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 25,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF525252),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          _todayLabel(),
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xFF525252),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            _todayLabel(),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF525252),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                     if (!isSkeleton)
                                       Row(
@@ -474,6 +480,32 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                               ),
                                               child: const Icon(
                                                 Icons.history,
+                                                color: Color(0xFFE64060),
+                                                size: 24,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          GestureDetector(
+                                            key: const Key(
+                                              'patient_diary_qr_share_button',
+                                            ),
+                                            onTap: () =>
+                                                context.push('/home/diary-qr'),
+                                            child: Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.2),
+                                                border: Border.all(
+                                                    color: Colors.grey
+                                                        .withOpacity(0.2)),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: const Icon(
+                                                Icons.qr_code_2,
                                                 color: Color(0xFFE64060),
                                                 size: 24,
                                               ),

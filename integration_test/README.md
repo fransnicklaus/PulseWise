@@ -20,6 +20,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_dashboard_overview_flow_test.dart`
 - `integration_test/patient_health_ml_navigation_flow_test.dart`
 - `integration_test/patient_delete_account_navigation_flow_test.dart`
+- `integration_test/patient_diary_qr_share_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -168,6 +169,16 @@ native Health Connect.
 
 Termin 17 hanya melakukan navigasi ke halaman hapus akun; test tidak menghapus
 akun dan tidak menembak endpoint penghapusan akun.
+
+## Skenario Termin 18
+
+- Pasien valid membuka tab Diari.
+- Pasien membuka halaman QR Share Pasien.
+- Halaman menampilkan QR share atau state error pembuatan QR.
+- Pasien kembali ke tab Diari tanpa membuka scanner kamera.
+
+Termin 18 tidak membuka halaman scan QR. Halaman QR share dapat membuat token
+share sementara di backend karena itu adalah perilaku halaman saat dibuka.
 
 ## Konfigurasi Backend
 
@@ -319,6 +330,16 @@ Jalankan Termin 17 delete account navigation flow:
 
 ```bash
 flutter test integration_test/patient_delete_account_navigation_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 18 diary QR share flow:
+
+```bash
+flutter test integration_test/patient_diary_qr_share_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
