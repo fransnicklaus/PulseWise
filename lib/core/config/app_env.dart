@@ -12,12 +12,6 @@ class AppEnv {
         '1087013148919-gv3qj9k0se9hj4ptbilei9ro1hfv5h41.apps.googleusercontent.com',
   );
 
-  static const String googleWebClientIdPlayStore = String.fromEnvironment(
-    'GOOGLE_WEB_CLIENT_ID_PLAY_STORE',
-    defaultValue:
-        '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com',
-  );
-
   static const String googleClientId = String.fromEnvironment(
     'GOOGLE_CLIENT_ID',
     defaultValue:

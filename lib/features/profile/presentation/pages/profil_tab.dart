@@ -11,6 +11,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/legal_links.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/platform/health_connect_visibility.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -46,9 +47,7 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     cancelButton: 'Batal',
     cropButton: 'Simpan',
   );
-  static final Uri _privacyPolicyUri = Uri.parse(
-    'https://pulsewise-cms.algoritme.tech/privacy-policy',
-  );
+  static final Uri _privacyPolicyUri = Uri.parse(privacyPolicyUrl);
 
   bool _isUploadingAvatar = false;
   bool _didAutoRetryAuthFetch = false;
@@ -496,12 +495,15 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    if (await canLaunchUrl(_privacyPolicyUri)) {
-      await launchUrl(_privacyPolicyUri, mode: LaunchMode.externalApplication);
-      return;
-    }
+    final openedExternally = await launchUrl(
+      _privacyPolicyUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (openedExternally || !mounted) return;
 
-    if (!mounted) return;
+    final openedInApp = await launchUrl(_privacyPolicyUri);
+    if (openedInApp || !mounted) return;
+
     AppToast.warning(
       context,
       'Tautan kebijakan privasi belum bisa dibuka saat ini.',

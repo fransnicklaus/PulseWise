@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
+import 'package:pulsewise/core/constants/legal_links.dart';
 import 'package:pulsewise/core/network/api_dio_provider.dart';
 import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
@@ -39,9 +40,6 @@ class RegisterPage extends ConsumerStatefulWidget {
 }
 
 class _RegisterPageState extends ConsumerState<RegisterPage> {
-  static const String _privacyPolicyUrl =
-      'https://pulsewise-cms.algoritme.tech/privacy-policy';
-
   final _usernameController = TextEditingController();
   final _firstNameController = TextEditingController();
   final _lastNameController = TextEditingController();
@@ -468,13 +466,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Future<void> _openPrivacyPolicy() async {
-    final uri = Uri.parse(_privacyPolicyUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return;
-    }
+    final uri = Uri.parse(privacyPolicyUrl);
+    final openedExternally = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (openedExternally || !mounted) return;
 
-    if (!mounted) return;
+    final openedInApp = await launchUrl(uri);
+    if (openedInApp || !mounted) return;
+
     AppToast.warning(
       context,
       'Tautan kebijakan privasi tidak dapat dibuka saat ini.',

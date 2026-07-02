@@ -5,12 +5,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-def keystoreProperties = new Properties()
-def keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-}
-
 def googleServicesJson = file("google-services.json")
 if (googleServicesJson.exists()) {
     apply plugin: "com.google.gms.google-services"
@@ -52,18 +46,11 @@ android {
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        release {
-            keyAlias = keystoreProperties["keyAlias"]
-            keyPassword = keystoreProperties["keyPassword"]
-            storeFile = keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null
-            storePassword = keystoreProperties["storePassword"]
-        }
-    }
-
     buildTypes {
         release {
-            signingConfig = signingConfigs.release
+            // Keep release optimizations, but sign with the default Android debug
+            // keystore so local release APKs behave like debug for Google Sign-In.
+            signingConfig = signingConfigs.debug
         }
     }
 }

@@ -14,7 +14,7 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 });
 
 const _fallbackGoogleClientId =
-    '1087013148919-bc7n421oeuf5tj3brf7vlg1cgedo7qh1.apps.googleusercontent.com';
+    '1087013148919-gv3qj9k0se9hj4ptbilei9ro1hfv5h41.apps.googleusercontent.com';
 const _googleSignInScopes = <String>['email', 'profile'];
 
 String _firstNonEmptyValue(
