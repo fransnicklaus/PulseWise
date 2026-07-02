@@ -8,6 +8,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/auth_flow_test.dart`
 - `integration_test/forgot_password_flow_test.dart`
 - `integration_test/forgot_password_navigation_flow_test.dart`
+- `integration_test/login_empty_validation_flow_test.dart`
 - `integration_test/patient_shell_flow_test.dart`
 - `integration_test/patient_medication_flow_test.dart`
 - `integration_test/patient_medication_lifecycle_test.dart`
@@ -123,6 +124,15 @@ atau menembak backend.
 Termin 11 hanya menguji navigasi halaman lupa sandi; test tidak mengirim OTP
 atau menembak backend.
 
+## Skenario Termin 12
+
+- User membuka halaman login.
+- User menekan tombol masuk tanpa mengisi email dan kata sandi.
+- App menampilkan peringatan input wajib diisi.
+
+Termin 12 hanya menguji validasi lokal login kosong; test tidak menembak
+backend.
+
 ## Konfigurasi Backend
 
 Test yang menyentuh backend tidak dijalankan secara default. Ini disengaja agar
@@ -149,6 +159,12 @@ Jalankan Termin 11 forgot password navigation flow:
 
 ```bash
 flutter test integration_test/forgot_password_navigation_flow_test.dart
+```
+
+Jalankan Termin 12 login empty validation flow:
+
+```bash
+flutter test integration_test/login_empty_validation_flow_test.dart
 ```
 
 Jalankan auth flow penuh ke backend testing/staging:
