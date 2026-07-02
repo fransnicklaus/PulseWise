@@ -223,6 +223,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               ),
               const SizedBox(height: 12),
               TextFormField(
+                key: const Key('forgot_password_email_field'),
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(fontSize: 18, color: Color(0xFF1F2937)),
@@ -478,6 +479,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                                 children: [
                                   Expanded(
                                     child: OutlinedButton(
+                                      key: const Key(
+                                        'forgot_password_cancel_button',
+                                      ),
                                       onPressed:
                                           _isSubmitting ? null : _previousStep,
                                       style: OutlinedButton.styleFrom(
@@ -505,6 +509,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: ElevatedButton(
+                                      key: const Key(
+                                        'forgot_password_submit_button',
+                                      ),
                                       onPressed:
                                           _isSubmitting ? null : _nextStep,
                                       style: ElevatedButton.styleFrom(

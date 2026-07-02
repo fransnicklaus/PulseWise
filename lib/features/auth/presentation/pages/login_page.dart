@@ -429,6 +429,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
+                                  key: const Key(
+                                    'login_forgot_password_button',
+                                  ),
                                   onPressed: () =>
                                       context.push('/login/forgot-password'),
                                   style: TextButton.styleFrom(
