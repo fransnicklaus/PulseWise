@@ -294,6 +294,7 @@ class _MlQuestionnairePageState extends ConsumerState<MlQuestionnairePage> {
         onBackPressed: _goHomeSafely,
       ),
       body: SafeArea(
+        key: const Key('patient_ml_questionnaire_content'),
         child: _isInitialLoading
             ? _buildLoadingScreen()
             : Form(

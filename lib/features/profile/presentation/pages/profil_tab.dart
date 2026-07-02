@@ -1086,6 +1086,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                           _ActionRow(
                             label: 'Isi Kuisioner ML',
+                            actionKey: const Key(
+                              'patient_profile_ml_questionnaire_action',
+                            ),
                             onTap: _goToMlQuestionnaire,
                           ),
                           _ActionRow(

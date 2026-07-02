@@ -415,6 +415,7 @@ class _PatientMlAssessmentPageState
         onBackPressed: () => context.pop(),
       ),
       body: SafeArea(
+        key: const Key('patient_ml_assessment_content'),
         child: Form(
           key: _formKey,
           child: Column(

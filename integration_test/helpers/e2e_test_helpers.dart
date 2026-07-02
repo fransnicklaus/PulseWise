@@ -14,9 +14,14 @@ const forgotPasswordSubmitButtonKey = Key('forgot_password_submit_button');
 const forgotPasswordCancelButtonKey = Key('forgot_password_cancel_button');
 const patientProfileLogoutActionKey = Key('patient_profile_logout_action');
 const patientProfileEditActionKey = Key('patient_profile_edit_action');
+const patientProfileMlQuestionnaireActionKey =
+    Key('patient_profile_ml_questionnaire_action');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
 const patientHomeEmergencyContactCardKey =
     Key('patient_home_emergency_contact_card');
+const patientEducationWearableCardKey = Key('patient_education_wearable_card');
+const patientEducationHealthConnectGuideButtonKey =
+    Key('patient_education_health_connect_guide_button');
 const patientEducationSearchFieldKey = Key('patient_education_search_field');
 const patientEducationFirstArticleCardKey =
     Key('patient_education_article_card_0');
@@ -25,6 +30,13 @@ const patientEducationArticleDetailContentKey =
 const patientHomeHealthDetailButtonKey =
     Key('patient_home_health_detail_button');
 const patientDashboardContentKey = Key('patient_dashboard_content');
+const patientDashboardMlAssessmentButtonKey =
+    Key('patient_dashboard_ml_assessment_button');
+const patientDashboardMlHistoryButtonKey =
+    Key('patient_dashboard_ml_history_button');
+const patientMlQuestionnaireContentKey =
+    Key('patient_ml_questionnaire_content');
+const patientMlAssessmentContentKey = Key('patient_ml_assessment_content');
 const patientMedicationManageAddButtonKey =
     Key('patient_medication_manage_add_button');
 const patientMedicationNameFieldKey = Key('patient_medication_name_field');
@@ -170,14 +182,23 @@ Future<void> logoutFromPatientProfile(WidgetTester tester) async {
   );
 }
 
-Future<void> dismissOptionalPatientPrompt(WidgetTester tester) async {
-  await tester.pump(const Duration(milliseconds: 300));
+Future<void> dismissOptionalPatientPrompt(
+  WidgetTester tester, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final end = DateTime.now().add(timeout);
 
-  final healthPromptVisible =
-      find.text('Hubungkan Smartwatch Anda?').evaluate().isNotEmpty ||
-          find.text('Lanjutkan Setup Health Connect?').evaluate().isNotEmpty;
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 150));
 
-  if (healthPromptVisible) {
+    final healthPromptVisible =
+        find.text('Hubungkan Smartwatch Anda?').evaluate().isNotEmpty ||
+            find.text('Lanjutkan Setup Health Connect?').evaluate().isNotEmpty;
+
+    if (!healthPromptVisible) {
+      continue;
+    }
+
     await tester.pageBack();
     await tester.pump(const Duration(milliseconds: 300));
   }
@@ -217,6 +238,41 @@ Future<void> tapCustomAppBarBack(WidgetTester tester) async {
       await tester.pump(const Duration(milliseconds: 300));
     }
   }
+}
+
+Future<void> tapCustomAppBarBackUntilVisible(
+  WidgetTester tester,
+  Finder destinationFinder, {
+  Duration timeout = const Duration(seconds: 45),
+}) async {
+  final backFinder = find.byKey(customAppBarBackButtonKey);
+  await waitForVisible(tester, backFinder);
+  await pumpUntilNoTransientCallbacks(tester);
+  await tester.tap(backFinder.last, warnIfMissed: false);
+
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 150));
+    if (destinationFinder.evaluate().isNotEmpty) {
+      return;
+    }
+  }
+
+  if (backFinder.evaluate().isNotEmpty) {
+    final didPop = await tester.binding.handlePopRoute();
+    if (didPop) {
+      await waitForVisible(
+        tester,
+        destinationFinder,
+        timeout: const Duration(seconds: 15),
+      );
+      return;
+    }
+  }
+
+  throw TestFailure(
+    'Timed out after custom back waiting for destination: $destinationFinder',
+  );
 }
 
 Future<void> pumpUntilNoTransientCallbacks(

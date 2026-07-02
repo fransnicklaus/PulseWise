@@ -655,6 +655,7 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             InkWell(
+              key: const Key('patient_education_wearable_card'),
               borderRadius: BorderRadius.circular(16),
               onTap: () {
                 setState(() {
@@ -760,6 +761,9 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
+                  key: const Key(
+                    'patient_education_health_connect_guide_button',
+                  ),
                   onPressed: () => context.push('/home/health-connect'),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFFE64060),
@@ -781,32 +785,6 @@ class _WearableConnectionCardState extends State<_WearableConnectionCard>
               ),
             ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final String label;
-
-  const _InfoChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFBCDD6)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF475569),
         ),
       ),
     );

@@ -621,6 +621,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                               child:
                                                                   OutlinedButton
                                                                       .icon(
+                                                                key: const Key(
+                                                                    'patient_dashboard_ml_assessment_button'),
                                                                 style: OutlinedButton
                                                                     .styleFrom(
                                                                   foregroundColor:
@@ -660,6 +662,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                               child:
                                                                   OutlinedButton
                                                                       .icon(
+                                                                key: const Key(
+                                                                    'patient_dashboard_ml_history_button'),
                                                                 style: OutlinedButton
                                                                     .styleFrom(
                                                                   foregroundColor:
@@ -789,6 +793,8 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
                                                                   child:
                                                                       FilledButton
                                                                           .icon(
+                                                                    key: const Key(
+                                                                        'patient_dashboard_ml_assessment_button'),
                                                                     onPressed: () =>
                                                                         context.push(
                                                                             '/home/patient-dashboard/ml-assessment'),
@@ -1183,6 +1189,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
+            key: const Key('patient_dashboard_ml_assessment_button'),
             onPressed: () =>
                 context.push('/home/patient-dashboard/ml-assessment'),
             style: FilledButton.styleFrom(
@@ -1517,6 +1524,7 @@ class _PatientDashboardPageState extends ConsumerState<PatientDashboardPage> {
           if (readinessGroups.isEmpty) ...[
             const SizedBox(height: 32),
             ElevatedButton.icon(
+              key: const Key('patient_dashboard_ml_assessment_button'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE13D5A),
                 foregroundColor: Colors.white,

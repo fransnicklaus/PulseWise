@@ -18,6 +18,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_emergency_contacts_flow_test.dart`
 - `integration_test/patient_education_article_flow_test.dart`
 - `integration_test/patient_dashboard_overview_flow_test.dart`
+- `integration_test/patient_health_ml_navigation_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -141,6 +142,21 @@ backend.
 - Form login tetap menampilkan tombol masuk tanpa melakukan submit.
 
 Termin 13 hanya menguji input lokal form login; test tidak menembak backend.
+
+## Skenario Termin 14-16
+
+- Pasien valid membuka tab Edukasi.
+- Pasien membuka panduan Health Connect tanpa menekan tombol native install,
+  settings, atau permission.
+- Pasien membuka Kuisioner ML dari tab Profil tanpa mengirim kuisioner.
+- Pasien membuka Dashboard Pasien dari Beranda.
+- Pasien membuka Form Asesmen ML tanpa menyimpan asesmen.
+- Jika tombol history tersedia di dashboard, pasien membuka Riwayat Prediksi ML
+  lalu kembali.
+
+Termin 14-16 hanya melakukan navigasi dan membaca halaman Health Connect/ML;
+test tidak submit kuisioner, tidak submit asesmen, dan tidak menjalankan aksi
+native Health Connect.
 
 ## Konfigurasi Backend
 
@@ -272,6 +288,16 @@ Jalankan Termin 9 patient dashboard overview flow:
 
 ```bash
 flutter test integration_test/patient_dashboard_overview_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 14-16 patient Health Connect + ML navigation flow:
+
+```bash
+flutter test integration_test/patient_health_ml_navigation_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
