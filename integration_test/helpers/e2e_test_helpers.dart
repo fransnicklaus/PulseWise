@@ -16,6 +16,8 @@ const patientProfileLogoutActionKey = Key('patient_profile_logout_action');
 const patientProfileEditActionKey = Key('patient_profile_edit_action');
 const patientProfileMlQuestionnaireActionKey =
     Key('patient_profile_ml_questionnaire_action');
+const patientProfileDeleteAccountActionKey =
+    Key('patient_profile_delete_account_action');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
 const patientHomeEmergencyContactCardKey =
     Key('patient_home_emergency_contact_card');

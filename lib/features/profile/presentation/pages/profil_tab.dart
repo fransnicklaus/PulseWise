@@ -1093,6 +1093,9 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                           ),
                           _ActionRow(
                             label: 'Hapus Akun Permanen',
+                            actionKey: const Key(
+                              'patient_profile_delete_account_action',
+                            ),
                             onTap: () => context.push('/home/delete-account'),
                           ),
                           _ActionRow(

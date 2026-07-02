@@ -19,6 +19,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_education_article_flow_test.dart`
 - `integration_test/patient_dashboard_overview_flow_test.dart`
 - `integration_test/patient_health_ml_navigation_flow_test.dart`
+- `integration_test/patient_delete_account_navigation_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -157,6 +158,16 @@ Termin 13 hanya menguji input lokal form login; test tidak menembak backend.
 Termin 14-16 hanya melakukan navigasi dan membaca halaman Health Connect/ML;
 test tidak submit kuisioner, tidak submit asesmen, dan tidak menjalankan aksi
 native Health Connect.
+
+## Skenario Termin 17
+
+- Pasien valid membuka tab Profil.
+- Pasien membuka halaman Hapus Akun.
+- Halaman menampilkan tahap konfirmasi penghapusan dan tombol kirim OTP.
+- Pasien kembali ke tab Profil tanpa mengetik konfirmasi dan tanpa mengirim OTP.
+
+Termin 17 hanya melakukan navigasi ke halaman hapus akun; test tidak menghapus
+akun dan tidak menembak endpoint penghapusan akun.
 
 ## Konfigurasi Backend
 
@@ -298,6 +309,16 @@ Jalankan Termin 14-16 patient Health Connect + ML navigation flow:
 
 ```bash
 flutter test integration_test/patient_health_ml_navigation_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 17 delete account navigation flow:
+
+```bash
+flutter test integration_test/patient_delete_account_navigation_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
