@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
 import 'package:pulsewise/features/auth/data/models/account_deletion_models.dart';
 import 'package:pulsewise/features/auth/presentation/providers/account_deletion_provider.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
-import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
-import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
-import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
 class DeleteAccountPage extends ConsumerStatefulWidget {
   const DeleteAccountPage({super.key});
@@ -140,19 +136,12 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
 
   Future<void> _completeLocalLogout() async {
     await ref.read(authProvider.notifier).logout();
-    ref.invalidate(authMeProvider);
-    ref.invalidate(patientProfileProvider);
-    ref.invalidate(quickDashboardProvider);
-    ref.invalidate(dashboardVitalsProvider);
-    ref.invalidate(currentDiaryProvider);
-    ref.invalidate(emergencyContactsProvider);
-    ref.read(previousNavIndexProvider.notifier).state = 0;
-    ref.read(dashboardNavIndexProvider.notifier).state = 0;
-    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+    await prepareAppForUnauthenticatedSession(ref);
 
     if (!mounted) return;
     AppToast.success(context, 'Akun berhasil dihapus permanen.');
     context.go('/login');
+    scheduleAppSessionScopeReset();
   }
 
   void _resetToStepOne() {

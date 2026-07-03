@@ -14,14 +14,12 @@ import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/constants/legal_links.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/platform/health_connect_visibility.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
-import 'package:pulsewise/features/dashboard_shell/presentation/providers/dashboard_provider.dart';
-import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/emergency_contacts/presentation/providers/emergency_contacts_provider.dart';
-import 'package:pulsewise/features/home_dashboard/presentation/providers/dashboard_overview_provider.dart';
 import 'package:pulsewise/features/profile/data/models/profile_models.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -142,18 +140,11 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
 
   Future<void> _onLogout() async {
     await ref.read(authProvider.notifier).logout();
-    ref.invalidate(authMeProvider);
-    ref.invalidate(patientProfileProvider);
-    ref.invalidate(quickDashboardProvider);
-    ref.invalidate(dashboardVitalsProvider);
-    ref.invalidate(currentDiaryProvider);
-    ref.invalidate(emergencyContactsProvider);
-    ref.read(previousNavIndexProvider.notifier).state = 0;
-    ref.read(dashboardNavIndexProvider.notifier).state = 0;
-    ref.read(healthConnectLoginPromptArmedProvider.notifier).state = false;
+    await prepareAppForUnauthenticatedSession(ref);
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun');
     _goSafely('/login');
+    scheduleAppSessionScopeReset();
   }
 
   Future<void> _confirmLogout() async {

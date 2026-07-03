@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
@@ -14,11 +15,11 @@ class DoctorPendingVerificationPage extends ConsumerWidget {
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     await ref.read(authProvider.notifier).logout();
-    ref.invalidate(doctorProfileProvider);
-    ref.invalidate(doctorProfileNotifierProvider);
+    await prepareAppForUnauthenticatedSession(ref);
     if (!context.mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun dokter');
     context.go('/login');
+    scheduleAppSessionScopeReset();
   }
 
   Future<void> _refreshProfile(WidgetRef ref) async {

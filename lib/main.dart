@@ -7,6 +7,7 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:pulsewise/core/constants/app_roles.dart';
 import 'package:pulsewise/core/notifications/fcm_service.dart';
 import 'package:pulsewise/core/notifications/reminder_notification_coordinator.dart';
+import 'package:pulsewise/core/session/app_session_scope_controller.dart';
 import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'core/config/routes.dart';
 import 'injection_container.dart' as di;
@@ -31,9 +32,7 @@ void main() async {
   }
 
   runApp(
-    ProviderScope(
-      child: MyApp(initialLocation: initialLocation),
-    ),
+    AppSessionScopeHost(initialLocation: initialLocation),
   );
 }
 
@@ -71,6 +70,45 @@ Future<String> _resolveInitialLocation() async {
   } catch (_) {
     await AppSessionStore.clearSession();
     return '/login';
+  }
+}
+
+class AppSessionScopeHost extends StatefulWidget {
+  const AppSessionScopeHost({
+    super.key,
+    required this.initialLocation,
+  });
+
+  final String initialLocation;
+
+  @override
+  State<AppSessionScopeHost> createState() => _AppSessionScopeHostState();
+}
+
+class _AppSessionScopeHostState extends State<AppSessionScopeHost> {
+  @override
+  void initState() {
+    super.initState();
+    AppSessionScopeController.instance.addListener(_handleScopeReset);
+  }
+
+  @override
+  void dispose() {
+    AppSessionScopeController.instance.removeListener(_handleScopeReset);
+    super.dispose();
+  }
+
+  void _handleScopeReset() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ProviderScope(
+      key: ValueKey(AppSessionScopeController.instance.revision),
+      child: MyApp(initialLocation: widget.initialLocation),
+    );
   }
 }
 

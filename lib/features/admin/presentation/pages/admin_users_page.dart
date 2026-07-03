@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/admin/data/models/admin_models.dart';
 import 'package:pulsewise/features/admin/presentation/providers/admin_providers.dart';
 import 'package:pulsewise/features/admin/presentation/widgets/admin_widgets.dart';
-import 'package:pulsewise/features/admin_shell/presentation/providers/admin_dashboard_provider.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 
 class AdminUsersPage extends ConsumerStatefulWidget {
@@ -84,13 +84,11 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
 
   Future<void> _onLogout() async {
     await ref.read(authProvider.notifier).logout();
-    ref.invalidate(adminOverviewProvider);
-    ref.invalidate(adminPendingDoctorsProvider);
-    ref.invalidate(adminUsersNotifierProvider);
-    ref.read(adminDashboardNavIndexProvider.notifier).state = 0;
+    await prepareAppForUnauthenticatedSession(ref);
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun admin');
     context.go('/login');
+    scheduleAppSessionScopeReset();
   }
 
   Future<void> _confirmLogout() async {

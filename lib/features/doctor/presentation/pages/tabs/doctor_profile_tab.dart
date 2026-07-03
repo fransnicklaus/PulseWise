@@ -8,12 +8,12 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/session/account_scoped_state.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/auth/presentation/providers/auth_provider.dart';
 import 'package:pulsewise/features/doctor/data/models/doctor_profile_models.dart';
 import 'package:pulsewise/features/doctor/presentation/providers/doctor_profile_provider.dart';
-import 'package:pulsewise/features/doctor_shell/presentation/providers/doctor_dashboard_provider.dart';
 
 class DoctorProfileTab extends ConsumerStatefulWidget {
   const DoctorProfileTab({super.key});
@@ -59,12 +59,11 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
 
   Future<void> _onLogout() async {
     await ref.read(authProvider.notifier).logout();
-    ref.invalidate(doctorProfileProvider);
-    ref.invalidate(doctorProfileNotifierProvider);
-    ref.read(doctorDashboardNavIndexProvider.notifier).state = 0;
+    await prepareAppForUnauthenticatedSession(ref);
     if (!mounted) return;
     AppToast.success(context, 'Berhasil keluar dari akun dokter');
     context.go('/login');
+    scheduleAppSessionScopeReset();
   }
 
   Future<void> _confirmLogout() async {

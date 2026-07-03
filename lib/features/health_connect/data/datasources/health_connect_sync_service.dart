@@ -22,6 +22,13 @@ class HealthConnectSyncService {
   static const _keyLastSyncHeartRate = 'hc_last_sync_heart_rate';
   static const _keyLastSyncSleep = 'hc_last_sync_sleep';
 
+  static Future<void> clearLocalSyncState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_keyLastSyncExercise);
+    await prefs.remove(_keyLastSyncHeartRate);
+    await prefs.remove(_keyLastSyncSleep);
+  }
+
   /// Returns true if Health Connect is available AND permissions are granted.
   Future<bool> _isReady() async {
     try {
