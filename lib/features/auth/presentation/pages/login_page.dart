@@ -25,12 +25,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isRedirectingToGoogle = false;
+  bool _isConsumingGoogleRedirectResult = false;
+  Timer? _googleRedirectPollTimer;
 
   @override
   void initState() {
     super.initState();
     if (kIsWeb) {
       unawaited(_consumeGoogleRedirectResult());
+      _googleRedirectPollTimer = Timer.periodic(
+        const Duration(milliseconds: 800),
+        (_) => unawaited(_consumeGoogleRedirectResult()),
+      );
     }
   }
 
@@ -60,35 +66,54 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
+    _googleRedirectPollTimer?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _consumeGoogleRedirectResult() async {
-    final redirectResult = await consumeGoogleWebRedirectSignInResult();
-    if (!mounted || redirectResult == null) return;
+    if (_isConsumingGoogleRedirectResult) return;
+    _isConsumingGoogleRedirectResult = true;
+    try {
+      final redirectResult = await consumeGoogleWebRedirectSignInResult();
+      if (!mounted || redirectResult == null) {
+        return;
+      }
 
-    final errorMessage = (redirectResult.error ?? '').trim();
-    if (errorMessage.isNotEmpty) {
-      AppToast.error(context, errorMessage);
-      return;
-    }
+      if (_isRedirectingToGoogle && mounted) {
+        setState(() => _isRedirectingToGoogle = false);
+      }
 
-    final idToken = (redirectResult.idToken ?? '').trim();
-    if (idToken.isEmpty) {
+      final errorMessage = (redirectResult.error ?? '').trim();
+      if (errorMessage.isNotEmpty) {
+        AppToast.error(context, errorMessage);
+        return;
+      }
+
+      final idToken = (redirectResult.idToken ?? '').trim();
+      if (idToken.isEmpty) {
+        AppToast.error(
+          context,
+          'ID token Google tidak ditemukan setelah redirect login.',
+        );
+        return;
+      }
+
+      _logGoogleUi('Google redirect callback received, exchanging idToken');
+      final result =
+          await ref.read(authProvider.notifier).loginWithGoogleIdToken(idToken);
+      if (!mounted) return;
+      _handleGoogleResult(result);
+    } catch (error) {
+      if (!mounted) return;
       AppToast.error(
         context,
-        'ID token Google tidak ditemukan setelah redirect login.',
+        error.toString().replaceFirst('Exception: ', ''),
       );
-      return;
+    } finally {
+      _isConsumingGoogleRedirectResult = false;
     }
-
-    _logGoogleUi('Google redirect callback received, exchanging idToken');
-    final result =
-        await ref.read(authProvider.notifier).loginWithGoogleIdToken(idToken);
-    if (!mounted) return;
-    _handleGoogleResult(result);
   }
 
   Future<void> _onLogin() async {
@@ -163,6 +188,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   void _handleGoogleResult(GoogleAuthFlowResult result) {
     if (!mounted) return;
+    if (_isRedirectingToGoogle) {
+      setState(() => _isRedirectingToGoogle = false);
+    }
     if (!result.success) {
       _logGoogleUi('Showing error toast');
       AppToast.error(

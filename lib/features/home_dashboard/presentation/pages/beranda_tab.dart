@@ -1066,6 +1066,7 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                                   key: const Key(
                                     'patient_home_health_detail_button',
                                   ),
+                                  behavior: HitTestBehavior.opaque,
                                   onTap: () {
                                     context.push('/home/patient-dashboard');
                                   },

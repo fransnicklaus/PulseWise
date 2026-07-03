@@ -27,13 +27,48 @@
     <div class="message">Melanjutkan login Google ke PulseWise...</div>
     <script>
       (function () {
-        var requestKey = 'pulsewise_google_redirect_request';
         var resultKey = 'pulsewise_google_redirect_result';
+        var resultIdTokenKey = 'pw_google_id_token';
+        var resultErrorKey = 'pw_google_error';
+        var allowedOrigins = [
+          'https://pulsewise.algoritme.tech',
+          'https://pulsewisetest.vercel.app',
+        ];
 
         function parseHashParameters() {
           var hash = window.location.hash || '';
           var normalized = hash.charAt(0) === '#' ? hash.slice(1) : hash;
           return new URLSearchParams(normalized);
+        }
+
+        function decodeBase64Url(value) {
+          if (!value) {
+            return null;
+          }
+
+          var normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+          while (normalized.length % 4 !== 0) {
+            normalized += '=';
+          }
+
+          try {
+            return atob(normalized);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function decodeStatePayload(rawState) {
+          var decoded = decodeBase64Url(rawState);
+          if (!decoded) {
+            return null;
+          }
+
+          try {
+            return JSON.parse(decoded);
+          } catch (_) {
+            return null;
+          }
         }
 
         function decodeJwtPayload(token) {
@@ -55,66 +90,90 @@
         }
 
         function storeResult(payload) {
-          sessionStorage.setItem(resultKey, JSON.stringify(payload));
+          localStorage.setItem(resultKey, JSON.stringify(payload));
+        }
+
+        function resolveReturnUrl(statePayload) {
+          var fallback = window.location.origin + '/login';
+          var candidate = statePayload && statePayload.returnUrl
+            ? String(statePayload.returnUrl)
+            : fallback;
+
+          try {
+            var parsed = new URL(candidate);
+            if (allowedOrigins.indexOf(parsed.origin) !== -1) {
+              return parsed.toString();
+            }
+          } catch (_) {}
+
+          return fallback;
+        }
+
+        function buildReturnUrl(returnUrl, payload) {
+          var target = new URL(returnUrl);
+          var hashParams = new URLSearchParams();
+
+          if (payload && payload.idToken) {
+            hashParams.set(resultIdTokenKey, payload.idToken);
+          }
+
+          if (payload && payload.error) {
+            hashParams.set(resultErrorKey, payload.error);
+          }
+
+          target.hash = hashParams.toString();
+          return target.toString();
+        }
+
+        function redirectBack(returnUrl, payload) {
+          var targetUrl = buildReturnUrl(returnUrl, payload);
+          window.setTimeout(function () {
+            window.location.replace(targetUrl);
+          }, 250);
         }
 
         var params = parseHashParameters();
-        var rawRequest = sessionStorage.getItem(requestKey);
-        var request = {};
-        var returnUrl = '/login';
-
-        if (rawRequest) {
-          try {
-            request = JSON.parse(rawRequest) || {};
-            if (request.returnUrl) {
-              returnUrl = request.returnUrl;
-            }
-          } catch (_) {}
-        }
-
-        sessionStorage.removeItem(requestKey);
+        var statePayload = decodeStatePayload(params.get('state'));
+        var returnUrl = resolveReturnUrl(statePayload);
+        var expectedNonce =
+          statePayload && statePayload.nonce ? String(statePayload.nonce) : '';
 
         var error = params.get('error');
         var errorDescription = params.get('error_description');
         if (error) {
-          storeResult({
-            error:
-              'Login Google gagal: ' +
-              (errorDescription || error).replace(/\+/g, ' '),
-          });
-          window.location.replace(returnUrl);
+          var authError =
+            'Login Google gagal: ' +
+            (errorDescription || error).replace(/\+/g, ' ');
+          storeResult({ error: authError });
+          redirectBack(returnUrl, { error: authError });
           return;
         }
 
-        var state = params.get('state');
-        if (!request.state || !state || request.state !== state) {
-          storeResult({
-            error: 'Status login Google tidak cocok. Silakan coba lagi.',
-          });
-          window.location.replace(returnUrl);
+        if (!expectedNonce) {
+          var stateError = 'Status login Google tidak valid. Silakan coba lagi.';
+          storeResult({ error: stateError });
+          redirectBack(returnUrl, { error: stateError });
           return;
         }
 
         var idToken = params.get('id_token');
         if (!idToken) {
-          storeResult({
-            error: 'ID token Google tidak ditemukan pada redirect login.',
-          });
-          window.location.replace(returnUrl);
+          var tokenError = 'ID token Google tidak ditemukan pada redirect login.';
+          storeResult({ error: tokenError });
+          redirectBack(returnUrl, { error: tokenError });
           return;
         }
 
         var payload = decodeJwtPayload(idToken);
-        if (!payload || !payload.nonce || payload.nonce !== request.nonce) {
-          storeResult({
-            error: 'Nonce login Google tidak valid. Silakan coba lagi.',
-          });
-          window.location.replace(returnUrl);
+        if (!payload || !payload.nonce || payload.nonce !== expectedNonce) {
+          var nonceError = 'Nonce login Google tidak valid. Silakan coba lagi.';
+          storeResult({ error: nonceError });
+          redirectBack(returnUrl, { error: nonceError });
           return;
         }
 
         storeResult({ idToken: idToken });
-        window.location.replace(returnUrl);
+        redirectBack(returnUrl, { idToken: idToken });
       })();
     </script>
   </body>

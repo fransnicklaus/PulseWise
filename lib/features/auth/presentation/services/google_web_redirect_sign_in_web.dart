@@ -14,8 +14,9 @@ class GoogleWebRedirectSignInResult {
   final String? error;
 }
 
-const _requestStorageKey = 'pulsewise_google_redirect_request';
 const _resultStorageKey = 'pulsewise_google_redirect_result';
+const _resultHashIdTokenKey = 'pw_google_id_token';
+const _resultHashErrorKey = 'pw_google_error';
 const _scopes = 'openid email profile';
 const _googleAuthorizationEndpoint =
     'https://accounts.google.com/o/oauth2/v2/auth';
@@ -34,16 +35,13 @@ Future<void> beginGoogleWebRedirectSignIn({
     throw Exception('Google Web Client ID belum dikonfigurasi.');
   }
 
-  final state = _generateRandomValue();
   final nonce = _generateRandomValue();
   final callbackUri = Uri.parse(_googleRedirectCallbackUri);
-  final returnUrl = html.window.location.href;
-
-  html.window.sessionStorage[_requestStorageKey] = jsonEncode({
-    'state': state,
-    'nonce': nonce,
-    'returnUrl': returnUrl,
-  });
+  final returnUrl = '${html.window.location.origin}/login';
+  final state = _encodeGoogleRedirectState(
+    nonce: nonce,
+    returnUrl: returnUrl,
+  );
 
   final authorizationUri = Uri.parse(
     _googleAuthorizationEndpoint,
@@ -64,12 +62,17 @@ Future<void> beginGoogleWebRedirectSignIn({
 
 Future<GoogleWebRedirectSignInResult?>
     consumeGoogleWebRedirectSignInResult() async {
-  final rawResult = html.window.sessionStorage[_resultStorageKey];
+  final hashResult = _consumeGoogleWebRedirectResultFromHash();
+  if (hashResult != null) {
+    return hashResult;
+  }
+
+  final rawResult = html.window.localStorage[_resultStorageKey];
   if (rawResult == null || rawResult.trim().isEmpty) {
     return null;
   }
 
-  html.window.sessionStorage.remove(_resultStorageKey);
+  html.window.localStorage.remove(_resultStorageKey);
 
   try {
     final payload = jsonDecode(rawResult);
@@ -91,6 +94,52 @@ Future<GoogleWebRedirectSignInResult?>
       error: 'Gagal membaca hasil login Google web.',
     );
   }
+}
+
+GoogleWebRedirectSignInResult? _consumeGoogleWebRedirectResultFromHash() {
+  final rawHash = html.window.location.hash;
+  if (rawHash.trim().isEmpty || rawHash.trim() == '#') {
+    return null;
+  }
+
+  final normalizedHash =
+      rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+
+  Map<String, String> params;
+  try {
+    params = Uri.splitQueryString(normalizedHash);
+  } catch (_) {
+    return null;
+  }
+
+  final idToken = (params[_resultHashIdTokenKey] ?? '').trim();
+  final error = (params[_resultHashErrorKey] ?? '').trim();
+  if (idToken.isEmpty && error.isEmpty) {
+    return null;
+  }
+
+  final cleanedUrl =
+      '${html.window.location.pathname}${html.window.location.search}';
+  html.window.history.replaceState(null, html.document.title, cleanedUrl);
+
+  return GoogleWebRedirectSignInResult(
+    idToken: idToken.isEmpty ? null : idToken,
+    error: error.isEmpty ? null : error,
+  );
+}
+
+String _encodeGoogleRedirectState({
+  required String nonce,
+  required String returnUrl,
+}) {
+  final payload = jsonEncode({
+    'nonce': nonce,
+    'returnUrl': returnUrl,
+    'requestId': _generateRandomValue(24),
+    'issuedAt': DateTime.now().millisecondsSinceEpoch,
+  });
+
+  return base64Url.encode(utf8.encode(payload));
 }
 
 String _generateRandomValue([int length = 40]) {

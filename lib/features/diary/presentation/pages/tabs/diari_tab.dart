@@ -198,8 +198,9 @@ class _DiariTabState extends ConsumerState<DiariTab> {
 
   String _formatTime(DateTime? time) {
     if (time == null) return '--:--';
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
+    final localTime = time.toLocal();
+    final hour = localTime.hour.toString().padLeft(2, '0');
+    final minute = localTime.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
@@ -506,29 +507,6 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                               ),
                                               child: const Icon(
                                                 Icons.qr_code_2,
-                                                color: Color(0xFFE64060),
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          GestureDetector(
-                                            onTap: () => context
-                                                .push('/home/diary-qr/scan'),
-                                            child: Container(
-                                              width: 48,
-                                              height: 48,
-                                              decoration: BoxDecoration(
-                                                color: Colors.white
-                                                    .withOpacity(0.2),
-                                                border: Border.all(
-                                                    color: Colors.grey
-                                                        .withOpacity(0.2)),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: const Icon(
-                                                Icons.qr_code_scanner,
                                                 color: Color(0xFFE64060),
                                                 size: 24,
                                               ),

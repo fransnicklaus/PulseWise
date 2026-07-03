@@ -1007,23 +1007,6 @@ class _FoodMacroAnalysisCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (analysis.confidence.isNotEmpty)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFEDD5),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    'Akurasi ${analysis.confidence}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF9A3412),
-                    ),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 12),

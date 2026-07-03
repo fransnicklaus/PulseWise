@@ -1,8 +1,13 @@
 {
     "name": "PulseWise",
     "short_name": "PulseWise",
-    "start_url": ".",
+    "id": "/",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
+    "launch_handler": {
+        "client_mode": "navigate-existing"
+    },
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
     "description": "PulseWise membantu pasien dan dokter memantau kesehatan jantung.",

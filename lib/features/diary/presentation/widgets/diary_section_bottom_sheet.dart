@@ -1295,7 +1295,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
           ),
           const SizedBox(height: 18),
           const Text(
-            'Tekanan Darah (opsional)',
+            'Tekanan Sistolik (opsional)',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -1323,6 +1323,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                       const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: 'Sistolik',
+                    hintText: 'Contoh: 120',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                     suffixText: 'mmHg',
                     errorText: _metrikSystolicError,
                     filled: true,
@@ -1365,6 +1367,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                       const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
                   decoration: InputDecoration(
                     labelText: 'Diastolik',
+                    hintText: 'Contoh: 80',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
                     suffixText: 'mmHg',
                     errorText: _metrikDiastolicError,
                     filled: true,
@@ -1389,6 +1393,53 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Tekanan Diastolik (opsional)',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _diastolicController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) {
+              if (_metrikDiastolicError == null && _metrikFormError == null) {
+                return;
+              }
+              setState(() {
+                _metrikDiastolicError = null;
+                _metrikFormError = null;
+              });
+            },
+            style: const TextStyle(fontSize: 17, color: Color(0xFF0F172A)),
+            decoration: InputDecoration(
+              labelText: 'Diastolik',
+              hintText: 'Contoh: 80',
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+              suffixText: 'mmHg',
+              errorText: _metrikDiastolicError,
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Color(0xFFE64060)),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           const Text(

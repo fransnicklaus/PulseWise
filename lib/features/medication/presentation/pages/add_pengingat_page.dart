@@ -649,7 +649,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
               ),
               const SizedBox(height: 12),
               ...List.generate(_intakeCount, (index) {
-                final label = '${_ordinalIntake(index + 1)} intake';
+                final label = '${_ordinalIntake(index + 1)}';
                 final selectedTime = _intakeTimes[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
@@ -1049,10 +1049,7 @@ class _AddPengingatPageState extends ConsumerState<AddPengingatPage> {
   }
 
   String _ordinalIntake(int number) {
-    if (number == 1) return '1st';
-    if (number == 2) return '2nd';
-    if (number == 3) return '3rd';
-    return '${number}th';
+    return 'Dosis ${number}';
   }
 
   TimeOfDay _defaultIntakeTime(int index) {

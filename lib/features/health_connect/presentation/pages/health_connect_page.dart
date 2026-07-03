@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/custom_app_bar.dart';
+import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
+import 'package:pulsewise/features/health_connect/data/datasources/health_connect_sync_service.dart';
 import 'package:pulsewise/features/health_connect/presentation/providers/health_connect_provider.dart';
 import 'package:pulsewise/features/profile/presentation/providers/profile_provider.dart';
 
@@ -100,6 +102,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   Map<String, dynamic>? _prettyData;
   bool _isSyncingBackendHealthConnectState = false;
   bool _didPersistConnectedStatusThisVisit = false;
+  bool _isSyncingDiaryFromHealthConnect = false;
+  bool _didTriggerDiarySyncThisVisit = false;
 
   @override
   void initState() {
@@ -662,6 +666,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
     if (currentProfile?.isHealthConnectConnected == true &&
         currentProfile?.healthConnectPreference == 'connect_now') {
       _didPersistConnectedStatusThisVisit = true;
+      await _syncDiaryFromHealthConnectIfNeeded();
       return;
     }
 
@@ -682,6 +687,35 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
       );
     } finally {
       _isSyncingBackendHealthConnectState = false;
+    }
+
+    await _syncDiaryFromHealthConnectIfNeeded();
+  }
+
+  Future<void> _syncDiaryFromHealthConnectIfNeeded() async {
+    final ready = _readyStatus() == true;
+    if (!ready ||
+        _isSyncingDiaryFromHealthConnect ||
+        _didTriggerDiarySyncThisVisit) {
+      return;
+    }
+
+    _isSyncingDiaryFromHealthConnect = true;
+    try {
+      final diaryNotifier = ref.read(currentDiaryProvider.notifier);
+      final service = HealthConnectSyncService(diaryNotifier: diaryNotifier);
+      await service.syncAll();
+      await diaryNotifier.invalidateCurrentDiaryQuery();
+      _didTriggerDiarySyncThisVisit = true;
+      debugPrint(
+        '[HealthConnectPage] Health Connect data sync triggered from setup page.',
+      );
+    } catch (e) {
+      debugPrint(
+        '[HealthConnectPage] Failed to sync Health Connect data: $e',
+      );
+    } finally {
+      _isSyncingDiaryFromHealthConnect = false;
     }
   }
 

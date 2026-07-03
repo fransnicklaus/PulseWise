@@ -775,7 +775,10 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
               icon: const Icon(Icons.logout, size: 22),
               label: const Text(
                 'Keluar',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFE64060)),
               ),
             ),
           ),
@@ -2164,6 +2167,7 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isKeluar = label.toLowerCase().contains('keluar');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
@@ -2179,16 +2183,16 @@ class _ActionRow extends StatelessWidget {
                 Expanded(
                   child: Text(
                     label,
-                    style: const TextStyle(
-                      color: Color(0xFF0F172A),
+                    style: TextStyle(
+                      color: isKeluar ? Colors.red : Color(0xFF0F172A),
                       fontSize: 18,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
-                  color: Color(0xFF94A3B8),
+                  color: isKeluar ? Colors.red : Color(0xFF94A3B8),
                   size: 28,
                 ),
               ],
