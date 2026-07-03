@@ -83,7 +83,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   };
 
   final List<HealthConnectDataType> _types = const [
-    HealthConnectDataType.Steps,
+    // HealthConnectDataType.Steps,
     HealthConnectDataType.ExerciseSession,
     HealthConnectDataType.HeartRate,
     HealthConnectDataType.SleepSession,

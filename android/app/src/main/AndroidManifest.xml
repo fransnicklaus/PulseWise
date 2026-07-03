@@ -8,8 +8,6 @@
     <!-- <uses-permission
         android:name="android.permission.ACTIVITY_RECOGNITION"/> -->
     <uses-permission
-        android:name="android.permission.health.READ_STEPS"/>
-    <uses-permission
         android:name="android.permission.health.READ_EXERCISE"/>
     <uses-permission
         android:name="android.permission.health.READ_HEART_RATE"/>
