@@ -227,6 +227,7 @@ class _DetailPengingatPageState extends ConsumerState<DetailPengingatPage> {
                   },
                 ),
           data: (item) => SingleChildScrollView(
+            key: const Key('patient_medication_detail_content'),
             padding: const EdgeInsets.only(bottom: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

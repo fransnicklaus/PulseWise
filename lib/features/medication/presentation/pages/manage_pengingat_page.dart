@@ -254,6 +254,7 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
 
               final item = state.items[dataIndex];
               return _MedicationCard(
+                cardIndex: dataIndex,
                 item: item,
                 onTap: () => _openMedicationDetail(item.medicationId),
               );
@@ -326,16 +327,21 @@ class _ManagePengingatPageState extends ConsumerState<ManagePengingatPage> {
 
 class _MedicationCard extends StatelessWidget {
   final MedicationItem item;
+  final int cardIndex;
   final VoidCallback onTap;
 
-  const _MedicationCard({required this.item, required this.onTap});
+  const _MedicationCard({
+    required this.cardIndex,
+    required this.item,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: InkWell(
-        key: Key('patient_medication_manage_card_${item.name}'),
+        key: Key('patient_medication_manage_card_$cardIndex'),
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Container(

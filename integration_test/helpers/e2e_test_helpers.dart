@@ -52,6 +52,10 @@ const patientMedicationCalendarManageButtonKey =
     Key('patient_medication_calendar_manage_button');
 const patientMedicationCalendarScrollViewKey =
     Key('patient_medication_calendar_scroll_view');
+const patientMedicationManageFirstCardKey =
+    Key('patient_medication_manage_card_0');
+const patientMedicationDetailContentKey =
+    Key('patient_medication_detail_content');
 const patientMedicationStatusSaveButtonKey =
     Key('patient_medication_status_save_button');
 const patientMedicationStatusManageButtonKey =

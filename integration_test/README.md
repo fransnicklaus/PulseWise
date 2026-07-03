@@ -21,6 +21,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_health_ml_navigation_flow_test.dart`
 - `integration_test/patient_delete_account_navigation_flow_test.dart`
 - `integration_test/patient_diary_qr_share_flow_test.dart`
+- `integration_test/patient_medication_manage_detail_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -179,6 +180,16 @@ akun dan tidak menembak endpoint penghapusan akun.
 
 Termin 18 tidak membuka halaman scan QR. Halaman QR share dapat membuat token
 share sementara di backend karena itu adalah perilaku halaman saat dibuka.
+
+## Skenario Termin 19
+
+- Pasien valid membuka tab Pengingat.
+- Pasien membuka halaman Kelola Pengingat.
+- Pasien membuka detail pengingat obat pertama dari daftar.
+- Pasien kembali ke halaman Kelola Pengingat lalu ke Kalender Obat.
+
+Termin 19 hanya melakukan navigasi/read-only pada daftar dan detail pengingat.
+Test tidak membuat, mengubah, menandai diminum, atau menghapus pengingat.
 
 ## Konfigurasi Backend
 
@@ -340,6 +351,16 @@ Jalankan Termin 18 diary QR share flow:
 
 ```bash
 flutter test integration_test/patient_diary_qr_share_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 19 medication manage detail flow:
+
+```bash
+flutter test integration_test/patient_medication_manage_detail_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
