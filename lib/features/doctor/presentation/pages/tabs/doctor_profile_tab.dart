@@ -653,6 +653,7 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
         _isNetworkError(profileState.errorCause) && profile != null;
 
     return Scaffold(
+      key: const Key('doctor_profile_tab_content'),
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
         child: RefreshIndicator(

@@ -26,6 +26,16 @@ class E2eTestConfig {
     defaultValue: '',
   );
 
+  static const String doctorEmail = String.fromEnvironment(
+    'E2E_DOCTOR_EMAIL',
+    defaultValue: '',
+  );
+
+  static const String doctorPassword = String.fromEnvironment(
+    'E2E_DOCTOR_PASSWORD',
+    defaultValue: '',
+  );
+
   static const String invalidEmail = String.fromEnvironment(
     'E2E_INVALID_EMAIL',
     defaultValue: 'invalid.e2e@example.test',
@@ -45,6 +55,12 @@ class E2eTestConfig {
   static bool get hasPatientCredentials =>
       patientEmail.trim().isNotEmpty && patientPassword.trim().isNotEmpty;
 
+  static bool get hasDoctorCredentials =>
+      doctorEmail.trim().isNotEmpty && doctorPassword.trim().isNotEmpty;
+
   static bool get canRunPatientAuthFlow =>
       canTouchBackend && hasPatientCredentials;
+
+  static bool get canRunDoctorAuthFlow =>
+      canTouchBackend && hasDoctorCredentials;
 }

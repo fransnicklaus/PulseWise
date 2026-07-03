@@ -69,17 +69,18 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(doctorPatientsNotifierProvider);
-    final showOfflinePage =
-        _isNetworkError(state.errorCause) && state.items.isEmpty && !state.isLoading;
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
     final showOfflineBanner =
         _isNetworkError(state.errorCause) && state.items.isNotEmpty;
-    final showInitialNonNetworkError =
-        state.error != null &&
+    final showInitialNonNetworkError = state.error != null &&
         !_isNetworkError(state.errorCause) &&
         state.items.isEmpty &&
         !state.isLoading;
 
     return Scaffold(
+      key: const Key('doctor_patients_tab_content'),
       backgroundColor: const Color(0xFFF1F5F9),
       body: SafeArea(
         child: Column(
@@ -107,7 +108,8 @@ class _DoctorPatientsTabState extends ConsumerState<DoctorPatientsTab> {
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(24, 0, 24, 16),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.all(Radius.circular(999)),
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(999)),
                             child: LinearProgressIndicator(
                               minHeight: 4,
                               color: Color(0xFF3B82F6),

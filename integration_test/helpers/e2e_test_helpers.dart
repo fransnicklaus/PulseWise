@@ -64,6 +64,8 @@ const patientMedicationDetailDeleteButtonKey =
     Key('patient_medication_detail_delete_button');
 const patientMedicationConfirmDeleteButtonKey =
     Key('patient_medication_confirm_delete_button');
+const doctorPatientsTabContentKey = Key('doctor_patients_tab_content');
+const doctorProfileTabContentKey = Key('doctor_profile_tab_content');
 const customAppBarBackButtonKey = Key('custom_app_bar_back_button');
 
 Key patientMedicationManageCardKey(String medicationName) {
@@ -140,6 +142,37 @@ Future<void> loginAsPatient(
   await dismissOptionalPatientPrompt(tester);
 }
 
+Future<void> loginAsDoctor(
+  WidgetTester tester, {
+  required String email,
+  required String password,
+}) async {
+  await enterLoginCredentials(
+    tester,
+    email: email,
+    password: password,
+  );
+  await submitLogin(tester);
+
+  await waitForAnyVisible(
+    tester,
+    [
+      find.byKey(doctorPatientsTabContentKey),
+      find.text('Daftar Pasien'),
+      find.text('Verifikasi Dokter'),
+      find.text('Menunggu Verifikasi Admin'),
+    ],
+    timeout: const Duration(seconds: 60),
+  );
+
+  if (find.text('Verifikasi Dokter').evaluate().isNotEmpty ||
+      find.text('Menunggu Verifikasi Admin').evaluate().isNotEmpty) {
+    throw TestFailure(
+      'Doctor E2E account must be active/verified before doctor shell tests can run.',
+    );
+  }
+}
+
 void ensurePatientProfileReadyForE2e() {
   if (find.text('Profil Belum Lengkap').evaluate().isNotEmpty ||
       find.text('Isi Profil Sekarang').evaluate().isNotEmpty) {
@@ -153,6 +186,11 @@ Future<void> openPatientTab(WidgetTester tester, String label) async {
   await tapLastText(tester, label);
   await tester.pump(const Duration(milliseconds: 500));
   await dismissOptionalPatientPrompt(tester);
+}
+
+Future<void> openDoctorTab(WidgetTester tester, String label) async {
+  await tapLastText(tester, label);
+  await tester.pump(const Duration(milliseconds: 500));
 }
 
 Future<void> logoutFromPatientProfile(WidgetTester tester) async {

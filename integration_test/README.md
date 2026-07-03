@@ -22,6 +22,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_delete_account_navigation_flow_test.dart`
 - `integration_test/patient_diary_qr_share_flow_test.dart`
 - `integration_test/patient_medication_manage_detail_flow_test.dart`
+- `integration_test/doctor_shell_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -191,6 +192,17 @@ share sementara di backend karena itu adalah perilaku halaman saat dibuka.
 Termin 19 hanya melakukan navigasi/read-only pada daftar dan detail pengingat.
 Test tidak membuat, mengubah, menandai diminum, atau menghapus pengingat.
 
+## Skenario Termin 20
+
+- Dokter aktif login ke shell dokter.
+- Test memastikan tab `QR` tersedia tanpa membuka scanner kamera.
+- Dokter membuka tab `Edukasi`.
+- Dokter membuka tab `Profil`.
+- Dokter kembali ke tab `Pasien`.
+
+Termin 20 hanya melakukan navigasi shell dokter. Test membutuhkan akun dokter
+dummy yang sudah aktif/terverifikasi admin dan tidak melakukan scan QR.
+
 ## Konfigurasi Backend
 
 Test yang menyentuh backend tidak dijalankan secara default. Ini disengaja agar
@@ -200,6 +212,11 @@ Siapkan akun dummy pasien di backend testing/staging:
 
 - `E2E_PATIENT_EMAIL`
 - `E2E_PATIENT_PASSWORD`
+
+Siapkan akun dummy dokter aktif jika ingin menjalankan flow dokter:
+
+- `E2E_DOCTOR_EMAIL`
+- `E2E_DOCTOR_PASSWORD`
 
 Jalankan test lokal yang tidak menyentuh backend:
 
@@ -365,6 +382,16 @@ flutter test integration_test/patient_medication_manage_detail_flow_test.dart \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
   --dart-define=E2E_PATIENT_PASSWORD=change-me
+```
+
+Jalankan Termin 20 doctor shell flow:
+
+```bash
+flutter test integration_test/doctor_shell_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_DOCTOR_EMAIL=doctor.e2e@example.com \
+  --dart-define=E2E_DOCTOR_PASSWORD=change-me
 ```
 
 ## Device/Emulator
