@@ -71,6 +71,7 @@ const doctorProfileTabContentKey = Key('doctor_profile_tab_content');
 const adminButtonKey = Key('patient_profile_admin_panel_button');
 const adminOverviewContentKey = Key('admin_overview_content');
 const adminUsersContentKey = Key('admin_users_content');
+const adminDoctorsReviewContentKey = Key('admin_doctors_review_content');
 const adminShellMenuButtonKey = Key('admin_shell_menu_button');
 const adminShellHomeButtonKey = Key('admin_shell_home_button');
 const adminShellUsersButtonKey = Key('admin_shell_users_button');

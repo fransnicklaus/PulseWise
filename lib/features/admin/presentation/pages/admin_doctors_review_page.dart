@@ -36,12 +36,12 @@ class _AdminDoctorsReviewPageState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(adminDoctorsReviewNotifierProvider);
-    final showOfflinePage =
-        _isNetworkError(state.errorCause) && state.items.isEmpty && !state.isLoading;
+    final showOfflinePage = _isNetworkError(state.errorCause) &&
+        state.items.isEmpty &&
+        !state.isLoading;
     final showOfflineBanner =
         _isNetworkError(state.errorCause) && state.items.isNotEmpty;
-    final showInitialNonNetworkError =
-        state.error != null &&
+    final showInitialNonNetworkError = state.error != null &&
         !_isNetworkError(state.errorCause) &&
         state.items.isEmpty &&
         !state.isLoading;
@@ -60,6 +60,7 @@ class _AdminDoctorsReviewPageState
             .read(adminDoctorsReviewNotifierProvider.notifier)
             .refreshDoctors(),
         child: ListView(
+          key: const Key('admin_doctors_review_content'),
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [
