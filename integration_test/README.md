@@ -23,6 +23,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_diary_qr_share_flow_test.dart`
 - `integration_test/patient_medication_manage_detail_flow_test.dart`
 - `integration_test/doctor_shell_flow_test.dart`
+- `integration_test/doctor_profile_edit_flow_test.dart`
 - `integration_test/admin_shell_flow_test.dart`
 - `integration_test/admin_doctors_review_flow_test.dart`
 - `integration_test/admin_user_detail_flow_test.dart`
@@ -237,6 +238,16 @@ tidak approve/reject dokter, dan tidak mengubah status akun dokter.
 Termin 23 hanya membaca detail akun admin sendiri. Test tidak mengubah status
 akun, tidak suspend/activate user, dan tidak membuka detail review dokter.
 
+## Skenario Termin 24
+
+- Dokter aktif login ke shell dokter.
+- Dokter membuka tab `Profil`.
+- Dokter membuka halaman `Edit Profil Dokter`.
+- Dokter kembali ke tab Profil tanpa menyimpan perubahan.
+
+Termin 24 hanya membaca dan membuka form edit profil dokter. Test tidak
+menyimpan perubahan profil dokter.
+
 ## Konfigurasi Backend
 
 Test yang menyentuh backend tidak dijalankan secara default. Ini disengaja agar
@@ -427,6 +438,16 @@ Jalankan Termin 20 doctor shell flow:
 
 ```bash
 flutter test integration_test/doctor_shell_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_DOCTOR_EMAIL=doctor.e2e@example.com \
+  --dart-define=E2E_DOCTOR_PASSWORD=change-me
+```
+
+Jalankan Termin 24 doctor profile edit flow:
+
+```bash
+flutter test integration_test/doctor_profile_edit_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_DOCTOR_EMAIL=doctor.e2e@example.com \

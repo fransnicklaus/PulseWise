@@ -660,6 +660,7 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
           onRefresh: _refreshProfile,
           color: const Color(0xFFE64060),
           child: ListView(
+            key: const Key('doctor_profile_scroll_view'),
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
             children: [
@@ -794,6 +795,7 @@ class _DoctorProfileTabState extends ConsumerState<DoctorProfileTab> {
                     ),
                     _ActionRow(
                       label: 'Edit Profil',
+                      actionKey: const Key('doctor_profile_edit_action'),
                       onTap: () => context.push('/doctor/home/update-profile'),
                     ),
                     _ActionRow(
@@ -897,10 +899,12 @@ class _InfoRow extends StatelessWidget {
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
     required this.label,
+    this.actionKey,
     this.onTap,
   });
 
   final String label;
+  final Key? actionKey;
   final VoidCallback? onTap;
 
   @override
@@ -908,6 +912,7 @@ class _ActionRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
+        key: actionKey,
         onTap: onTap ?? () {},
         borderRadius: BorderRadius.circular(12),
         child: Padding(

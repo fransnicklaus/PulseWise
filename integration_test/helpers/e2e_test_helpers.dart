@@ -68,6 +68,9 @@ const patientMedicationConfirmDeleteButtonKey =
     Key('patient_medication_confirm_delete_button');
 const doctorPatientsTabContentKey = Key('doctor_patients_tab_content');
 const doctorProfileTabContentKey = Key('doctor_profile_tab_content');
+const doctorProfileScrollViewKey = Key('doctor_profile_scroll_view');
+const doctorProfileEditActionKey = Key('doctor_profile_edit_action');
+const doctorEditProfileContentKey = Key('doctor_edit_profile_content');
 const adminButtonKey = Key('patient_profile_admin_panel_button');
 const adminOverviewContentKey = Key('admin_overview_content');
 const adminUsersContentKey = Key('admin_users_content');

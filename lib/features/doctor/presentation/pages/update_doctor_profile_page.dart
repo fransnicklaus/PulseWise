@@ -152,6 +152,7 @@ class _UpdateDoctorProfilePageState
           }
 
           return ListView(
+            key: const Key('doctor_edit_profile_content'),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             children: [
               _buildSectionTitle('Informasi Dokter'),
