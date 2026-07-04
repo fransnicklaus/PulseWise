@@ -6,6 +6,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 ## File
 
 - `integration_test/auth_flow_test.dart`
+- `integration_test/all_e2e_flows_test.dart`
 - `integration_test/forgot_password_flow_test.dart`
 - `integration_test/forgot_password_navigation_flow_test.dart`
 - `integration_test/login_empty_validation_flow_test.dart`
@@ -273,6 +274,24 @@ Jalankan test lokal yang tidak menyentuh backend:
 ```bash
 flutter test integration_test/auth_flow_test.dart
 ```
+
+Jalankan semua flow E2E dari satu entrypoint agar build/install tidak diulang
+untuk setiap file test:
+
+```bash
+flutter test integration_test/all_e2e_flows_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=E2E_ALLOW_DEFAULT_API=true \
+  --dart-define=E2E_PATIENT_EMAIL=patient.e2e@example.com \
+  --dart-define=E2E_PATIENT_PASSWORD=change-me \
+  --dart-define=E2E_DOCTOR_EMAIL=doctor.e2e@example.com \
+  --dart-define=E2E_DOCTOR_PASSWORD=change-me \
+  --dart-define=E2E_ADMIN_EMAIL=admin.e2e@example.com \
+  --dart-define=E2E_ADMIN_PASSWORD=change-me
+```
+
+Jika credential dokter atau admin tidak diberikan, flow terkait akan otomatis
+di-skip sesuai guard masing-masing test.
 
 Jalankan Termin 10 forgot password validation flow:
 
