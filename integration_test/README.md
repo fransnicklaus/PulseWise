@@ -23,6 +23,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/patient_diary_qr_share_flow_test.dart`
 - `integration_test/patient_medication_manage_detail_flow_test.dart`
 - `integration_test/doctor_shell_flow_test.dart`
+- `integration_test/admin_shell_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -203,6 +204,18 @@ Test tidak membuat, mengubah, menandai diminum, atau menghapus pengingat.
 Termin 20 hanya melakukan navigasi shell dokter. Test membutuhkan akun dokter
 dummy yang sudah aktif/terverifikasi admin dan tidak melakukan scan QR.
 
+## Skenario Termin 21
+
+- Admin valid login ke shell user biasa.
+- Admin membuka tab Profil.
+- Admin membuka `Buka Admin Panel`.
+- Admin melihat halaman `Panel Admin`.
+- Admin membuka halaman `Users` / `Kelola Pengguna`.
+- Admin kembali ke halaman `Panel Admin`.
+
+Termin 21 hanya melakukan navigasi shell admin. Test tidak membuka detail user,
+tidak approve/reject dokter, dan tidak mengubah status akun.
+
 ## Konfigurasi Backend
 
 Test yang menyentuh backend tidak dijalankan secara default. Ini disengaja agar
@@ -217,6 +230,11 @@ Siapkan akun dummy dokter aktif jika ingin menjalankan flow dokter:
 
 - `E2E_DOCTOR_EMAIL`
 - `E2E_DOCTOR_PASSWORD`
+
+Siapkan akun dummy admin jika ingin menjalankan flow admin:
+
+- `E2E_ADMIN_EMAIL`
+- `E2E_ADMIN_PASSWORD`
 
 Jalankan test lokal yang tidak menyentuh backend:
 
@@ -392,6 +410,16 @@ flutter test integration_test/doctor_shell_flow_test.dart \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_DOCTOR_EMAIL=doctor.e2e@example.com \
   --dart-define=E2E_DOCTOR_PASSWORD=change-me
+```
+
+Jalankan Termin 21 admin shell flow:
+
+```bash
+flutter test integration_test/admin_shell_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_ADMIN_EMAIL=admin.e2e@example.com \
+  --dart-define=E2E_ADMIN_PASSWORD=change-me
 ```
 
 ## Device/Emulator

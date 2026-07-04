@@ -18,6 +18,8 @@ const patientProfileMlQuestionnaireActionKey =
     Key('patient_profile_ml_questionnaire_action');
 const patientProfileDeleteAccountActionKey =
     Key('patient_profile_delete_account_action');
+const patientProfileAdminPanelButtonKey =
+    Key('patient_profile_admin_panel_button');
 const patientDiaryHistoryButtonKey = Key('patient_diary_history_button');
 const patientDiaryQrShareButtonKey = Key('patient_diary_qr_share_button');
 const patientDiaryQrShareContentKey = Key('patient_diary_qr_share_content');
@@ -66,6 +68,12 @@ const patientMedicationConfirmDeleteButtonKey =
     Key('patient_medication_confirm_delete_button');
 const doctorPatientsTabContentKey = Key('doctor_patients_tab_content');
 const doctorProfileTabContentKey = Key('doctor_profile_tab_content');
+const adminButtonKey = Key('patient_profile_admin_panel_button');
+const adminOverviewContentKey = Key('admin_overview_content');
+const adminUsersContentKey = Key('admin_users_content');
+const adminShellMenuButtonKey = Key('admin_shell_menu_button');
+const adminShellHomeButtonKey = Key('admin_shell_home_button');
+const adminShellUsersButtonKey = Key('admin_shell_users_button');
 const customAppBarBackButtonKey = Key('custom_app_bar_back_button');
 
 Key patientMedicationManageCardKey(String medicationName) {
@@ -96,7 +104,11 @@ Future<void> launchPulseWise(
 
   await tester.pumpWidget(
     ProviderScope(
-      child: MyApp(initialLocation: initialLocation),
+      key: UniqueKey(),
+      child: MyApp(
+        key: UniqueKey(),
+        initialLocation: initialLocation,
+      ),
     ),
   );
   await tester.pump();
@@ -171,6 +183,31 @@ Future<void> loginAsDoctor(
       'Doctor E2E account must be active/verified before doctor shell tests can run.',
     );
   }
+}
+
+Future<void> loginAsAdmin(
+  WidgetTester tester, {
+  required String email,
+  required String password,
+}) async {
+  await enterLoginCredentials(
+    tester,
+    email: email,
+    password: password,
+  );
+  await submitLogin(tester);
+
+  await waitForAnyVisible(
+    tester,
+    [
+      find.text('Beranda'),
+      find.text('Profil'),
+      find.byKey(patientProfileAdminPanelButtonKey),
+      find.text('Profil Belum Lengkap'),
+    ],
+    timeout: const Duration(seconds: 60),
+  );
+  await dismissOptionalPatientPrompt(tester);
 }
 
 void ensurePatientProfileReadyForE2e() {

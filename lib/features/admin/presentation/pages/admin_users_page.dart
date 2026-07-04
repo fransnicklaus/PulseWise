@@ -213,6 +213,7 @@ class _AdminUsersPageState extends ConsumerState<AdminUsersPage> {
         onRefresh: () =>
             ref.read(adminUsersNotifierProvider.notifier).refreshUsers(),
         child: ListView(
+          key: const Key('admin_users_content'),
           controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),

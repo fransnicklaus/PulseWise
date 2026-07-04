@@ -184,6 +184,7 @@ class AdminOverviewPage extends ConsumerWidget {
         backgroundColor: Colors.white,
         onRefresh: () => _refresh(ref),
         child: ListView(
+          key: const Key('admin_overview_content'),
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           children: [

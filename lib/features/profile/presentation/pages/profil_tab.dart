@@ -989,6 +989,14 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
                         authMeAsync.asData?.value.avatarPhoto,
                       ),
                       const SizedBox(height: 8),
+                      if (isAdminViewer) ...[
+                        _buildAdminPanelButton(
+                          buttonKey: const Key(
+                            'patient_profile_admin_panel_button',
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
                       _SectionCard(
                         title: 'Informasi Pribadi',
                         children: [
@@ -1547,13 +1555,14 @@ class _ProfilTabState extends ConsumerState<ProfilTab> {
     );
   }
 
-  Widget _buildAdminPanelButton() {
+  Widget _buildAdminPanelButton({Key? buttonKey}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
-          onPressed: () => context.push('/admin/home'),
+          key: buttonKey,
+          onPressed: () => context.go('/admin/home'),
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFF7C3AED),
             side: const BorderSide(color: Color(0xFFC4B5FD)),

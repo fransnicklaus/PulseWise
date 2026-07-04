@@ -800,6 +800,7 @@ class AdminShellScaffold extends StatelessWidget {
                 : Builder(
                     builder: (actionContext) {
                       return IconButton(
+                        key: const Key('admin_shell_menu_button'),
                         onPressed: () =>
                             Scaffold.of(actionContext).openEndDrawer(),
                         icon: Container(
@@ -889,6 +890,7 @@ class _AdminSidePanel extends StatelessWidget {
               ),
               const SizedBox(height: 22),
               _AdminSidePanelButton(
+                key: const Key('admin_shell_home_button'),
                 label: 'Home',
                 icon: Icons.space_dashboard_rounded,
                 isSelected: currentSection == AdminShellSection.home,
@@ -896,6 +898,7 @@ class _AdminSidePanel extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _AdminSidePanelButton(
+                key: const Key('admin_shell_users_button'),
                 label: 'Users',
                 icon: Icons.groups_rounded,
                 isSelected: currentSection == AdminShellSection.users,
@@ -936,6 +939,7 @@ class _AdminSidePanel extends StatelessWidget {
 
 class _AdminSidePanelButton extends StatelessWidget {
   const _AdminSidePanelButton({
+    super.key,
     required this.label,
     required this.icon,
     required this.isSelected,
