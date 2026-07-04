@@ -25,6 +25,7 @@ Termin 1 berisi fondasi E2E untuk auth flow memakai package resmi Flutter
 - `integration_test/doctor_shell_flow_test.dart`
 - `integration_test/admin_shell_flow_test.dart`
 - `integration_test/admin_doctors_review_flow_test.dart`
+- `integration_test/admin_user_detail_flow_test.dart`
 - `integration_test/helpers/e2e_test_config.dart`
 - `integration_test/helpers/e2e_test_helpers.dart`
 
@@ -225,6 +226,16 @@ tidak approve/reject dokter, dan tidak mengubah status akun.
 
 Termin 22 hanya membuka halaman review dokter. Test tidak membuka detail dokter,
 tidak approve/reject dokter, dan tidak mengubah status akun dokter.
+
+## Skenario Termin 23
+
+- Admin valid login.
+- Test mengambil `userId` admin dari session login.
+- Admin membuka halaman `Detail Pengguna` untuk akun admin tersebut.
+- Halaman detail menampilkan `Informasi Akun` / `Timeline Akun`.
+
+Termin 23 hanya membaca detail akun admin sendiri. Test tidak mengubah status
+akun, tidak suspend/activate user, dan tidak membuka detail review dokter.
 
 ## Konfigurasi Backend
 
@@ -436,6 +447,16 @@ Jalankan Termin 22 admin doctors review flow:
 
 ```bash
 flutter test integration_test/admin_doctors_review_flow_test.dart \
+  --dart-define=E2E_RUN_BACKEND_TESTS=true \
+  --dart-define=API_BASE_URL=https://your-staging-api.example.com \
+  --dart-define=E2E_ADMIN_EMAIL=admin.e2e@example.com \
+  --dart-define=E2E_ADMIN_PASSWORD=change-me
+```
+
+Jalankan Termin 23 admin user detail flow:
+
+```bash
+flutter test integration_test/admin_user_detail_flow_test.dart \
   --dart-define=E2E_RUN_BACKEND_TESTS=true \
   --dart-define=API_BASE_URL=https://your-staging-api.example.com \
   --dart-define=E2E_ADMIN_EMAIL=admin.e2e@example.com \

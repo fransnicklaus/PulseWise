@@ -31,15 +31,11 @@ class AdminUserDetailPage extends ConsumerWidget {
     final user = detailState.user;
     final errorCause = detailState.errorCause;
     final shouldShowInitialLoading =
-        !detailState.hasUser &&
-        detailState.error == null &&
-        errorCause == null;
-    final hasInitialNetworkFailure =
-        errorCause != null &&
+        !detailState.hasUser && detailState.error == null && errorCause == null;
+    final hasInitialNetworkFailure = errorCause != null &&
         _isNetworkError(errorCause) &&
         !detailState.hasUser;
-    final hasInitialNonNetworkFailure =
-        errorCause != null &&
+    final hasInitialNonNetworkFailure = errorCause != null &&
         !_isNetworkError(errorCause) &&
         !detailState.hasUser;
 
@@ -54,7 +50,8 @@ class AdminUserDetailPage extends ConsumerWidget {
         color: AdminPalette.accent,
         backgroundColor: Colors.white,
         onRefresh: () => _refresh(ref),
-        child: shouldShowInitialLoading || (detailState.isLoading && !detailState.hasUser)
+        child: shouldShowInitialLoading ||
+                (detailState.isLoading && !detailState.hasUser)
             ? const _AdminDetailLoadingView()
             : hasInitialNetworkFailure
                 ? ListView(
@@ -93,17 +90,16 @@ class AdminUserDetailPage extends ConsumerWidget {
                       )
                     : user == null
                         ? const _AdminDetailLoadingView()
-                    : _AdminUserDetailContent(
-                        user: user,
-                        isRefreshing: detailState.isRefreshing,
-                        hasRefreshNetworkFailure:
-                            errorCause != null &&
-                            _isNetworkError(errorCause) &&
-                            detailState.hasUser,
-                        onRetryRefresh: () => ref
-                            .read(adminUserDetailProvider(userId).notifier)
-                            .fetchInitial(),
-                      ),
+                        : _AdminUserDetailContent(
+                            user: user,
+                            isRefreshing: detailState.isRefreshing,
+                            hasRefreshNetworkFailure: errorCause != null &&
+                                _isNetworkError(errorCause) &&
+                                detailState.hasUser,
+                            onRetryRefresh: () => ref
+                                .read(adminUserDetailProvider(userId).notifier)
+                                .fetchInitial(),
+                          ),
       ),
     );
   }
@@ -129,6 +125,7 @@ class _AdminUserDetailContent extends ConsumerWidget {
         doctorProfile != null && doctorProfile.doctorId.trim().isNotEmpty;
 
     return ListView(
+      key: const Key('admin_user_detail_content'),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
       children: [
