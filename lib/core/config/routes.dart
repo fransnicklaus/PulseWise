@@ -301,7 +301,14 @@ GoRouter buildRouterConfig({String initialLocation = '/login'}) {
               ),
               GoRoute(
                 path: 'print',
-                builder: (context, state) => const PrintPage(),
+                builder: (context, state) {
+                  final extra = state.extra;
+
+                  return PrintPage(
+                    dashboardData:
+                        extra is patient_ui.PatientDashboardData ? extra : null,
+                  );
+                },
               ),
             ],
           ),

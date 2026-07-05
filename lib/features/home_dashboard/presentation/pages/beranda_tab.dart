@@ -324,16 +324,16 @@ class _BerandaTabState extends ConsumerState<BerandaTab>
                           ),
                         ),
                         SizedBox(height: 4),
-                        Text(
-                          'Jalankan prediksi kesehatan untuk melihat ringkasan risiko Anda.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            height: 1.3,
-                          ),
-                        ),
+                        // Text(
+                        //   'Jalankan prediksi kesehatan untuk melihat ringkasan risiko Anda.',
+                        //   textAlign: TextAlign.center,
+                        //   style: TextStyle(
+                        //     color: Color(0xFF64748B),
+                        //     fontSize: 12,
+                        //     fontWeight: FontWeight.w500,
+                        //     height: 1.3,
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
