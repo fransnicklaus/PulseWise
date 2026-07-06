@@ -26,72 +26,113 @@ class PwaInstallPromptController extends ChangeNotifier {
     _installed = _detectInstalled();
     _platform = _detectPlatform();
     _bindListeners();
+    _syncFromWindow(notify: false);
   }
 
-  Object? _deferredPromptEvent;
   bool _installed = false;
   late final PwaInstallPlatform _platform;
-  StreamSubscription<html.Event>? _beforeInstallSubscription;
+  StreamSubscription<html.Event>? _availabilitySubscription;
   StreamSubscription<html.Event>? _appInstalledSubscription;
 
   bool get isInstalled => _installed;
 
-  bool get canPromptInstall => _deferredPromptEvent != null && !_installed;
+  bool get canPromptInstall => !_installed && _jsCanPromptInstall();
 
   PwaInstallPlatform get platform => _platform;
 
   Future<PwaInstallOutcome> promptInstall() async {
+    _syncFromWindow(notify: false);
+
     if (_installed) {
       return PwaInstallOutcome.alreadyInstalled;
     }
 
-    final deferredPromptEvent = _deferredPromptEvent;
-    if (deferredPromptEvent == null) {
+    if (!_jsCanPromptInstall()) {
       return platform == PwaInstallPlatform.chromium
           ? PwaInstallOutcome.unavailable
           : PwaInstallOutcome.unsupported;
     }
 
     try {
-      final promptPromise =
-          js_util.callMethod<Object?>(deferredPromptEvent, 'prompt', const []);
-
-      Object? choiceResult;
-      if (promptPromise != null) {
-        choiceResult = await js_util.promiseToFuture<Object?>(promptPromise);
-      }
-
-      choiceResult ??= await js_util.promiseToFuture<Object?>(
-        js_util.getProperty<Object>(deferredPromptEvent, 'userChoice'),
+      final result = await js_util.promiseToFuture<Object?>(
+        js_util.callMethod<Object>(
+          html.window as Object,
+          'pulsewisePromptInstall',
+          const [],
+        ),
       );
 
-      _deferredPromptEvent = null;
-      notifyListeners();
+      _syncFromWindow();
 
-      final outcome =
-          js_util.getProperty<Object?>(choiceResult as Object, 'outcome');
-      return outcome?.toString() == 'accepted'
-          ? PwaInstallOutcome.accepted
-          : PwaInstallOutcome.dismissed;
+      switch ((result ?? _jsInstallStatus()).toString()) {
+        case 'accepted':
+          return PwaInstallOutcome.accepted;
+        case 'dismissed':
+          return PwaInstallOutcome.dismissed;
+        case 'installed':
+          return PwaInstallOutcome.alreadyInstalled;
+        case 'unavailable':
+          return PwaInstallOutcome.unavailable;
+        default:
+          return PwaInstallOutcome.error;
+      }
     } catch (_) {
+      _syncFromWindow();
       return PwaInstallOutcome.error;
     }
   }
 
   void _bindListeners() {
-    _beforeInstallSubscription = html.window.on['beforeinstallprompt'].listen(
-      (event) {
-        event.preventDefault();
-        _deferredPromptEvent = event;
-        notifyListeners();
-      },
-    );
+    _availabilitySubscription = html.window
+        .on['pulsewise-install-availability-changed']
+        .listen((_) => _syncFromWindow());
 
     _appInstalledSubscription = html.window.on['appinstalled'].listen((_) {
       _installed = true;
-      _deferredPromptEvent = null;
       notifyListeners();
     });
+  }
+
+  void _syncFromWindow({bool notify = true}) {
+    final status = _jsInstallStatus();
+    final installed = _detectInstalled() || status == 'installed';
+    final changed = installed != _installed;
+
+    _installed = installed;
+
+    if (notify && changed) {
+      notifyListeners();
+      return;
+    }
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  bool _jsCanPromptInstall() {
+    try {
+      return js_util.callMethod<bool>(
+        html.window as Object,
+        'pulsewiseCanPromptInstall',
+        const [],
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _jsInstallStatus() {
+    try {
+      final result = js_util.callMethod<Object>(
+        html.window as Object,
+        'pulsewiseGetInstallStatus',
+        const [],
+      );
+      return (result ?? 'idle').toString();
+    } catch (_) {
+      return 'idle';
+    }
   }
 
   bool _detectInstalled() {
@@ -132,7 +173,7 @@ class PwaInstallPromptController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _beforeInstallSubscription?.cancel();
+    _availabilitySubscription?.cancel();
     _appInstalledSubscription?.cancel();
     super.dispose();
   }

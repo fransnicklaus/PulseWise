@@ -87,8 +87,7 @@
       display: none !important;
     }
   </style>
-  
-  
+
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
   <style id="splash-screen-style">
     html {
@@ -99,7 +98,7 @@
       margin: 0;
       min-height: 100%;
       background-color: #FFFFFF;
-          background-size: 100% 100%;
+      background-size: 100% 100%;
     }
 
     .center {
@@ -147,13 +146,85 @@
       bottom: 0;
       right: 0;
     }
+
+    #splash,
+    #splash * {
+      pointer-events: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+      -webkit-touch-callout: none !important;
+      -webkit-user-drag: none !important;
+    }
   </style>
   <script id="splash-screen-script">
-    function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
+    window.__pulsewiseDeferredInstallPrompt = null;
+    window.__pulsewiseInstallStatus = 'idle';
+
+    function notifyPulseWiseInstallAvailability() {
+      window.dispatchEvent(
+        new CustomEvent('pulsewise-install-availability-changed', {
+          detail: {
+            canPrompt: !!window.__pulsewiseDeferredInstallPrompt,
+            status: window.__pulsewiseInstallStatus,
+          },
+        }),
+      );
     }
+
+    function removeSplashFromWeb() {
+      document.getElementById('splash')?.remove();
+      document.getElementById('splash-branding')?.remove();
+      document.body.style.background = 'transparent';
+    }
+
+    window.pulsewiseCanPromptInstall = function () {
+      return !!window.__pulsewiseDeferredInstallPrompt;
+    };
+
+    window.pulsewiseGetInstallStatus = function () {
+      return window.__pulsewiseInstallStatus;
+    };
+
+    window.pulsewisePromptInstall = async function () {
+      const deferredPrompt = window.__pulsewiseDeferredInstallPrompt;
+      if (!deferredPrompt) {
+        window.__pulsewiseInstallStatus = 'unavailable';
+        notifyPulseWiseInstallAvailability();
+        return window.__pulsewiseInstallStatus;
+      }
+
+      try {
+        await deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        const outcome = choiceResult?.outcome === 'accepted' ? 'accepted' : 'dismissed';
+        window.__pulsewiseInstallStatus = outcome;
+        return outcome;
+      } catch (error) {
+        window.__pulsewiseInstallStatus = 'error';
+        return 'error';
+      } finally {
+        window.__pulsewiseDeferredInstallPrompt = null;
+        notifyPulseWiseInstallAvailability();
+      }
+    };
+
+    window.addEventListener('beforeinstallprompt', function (event) {
+      event.preventDefault();
+      window.__pulsewiseDeferredInstallPrompt = event;
+      window.__pulsewiseInstallStatus = 'available';
+      notifyPulseWiseInstallAvailability();
+    });
+
+    window.addEventListener('appinstalled', function () {
+      window.__pulsewiseDeferredInstallPrompt = null;
+      window.__pulsewiseInstallStatus = 'installed';
+      notifyPulseWiseInstallAvailability();
+    });
+
+    window.addEventListener('flutter-first-frame', removeSplashFromWeb);
+    window.addEventListener('load', function () {
+      window.setTimeout(removeSplashFromWeb, 3500);
+    });
   </script>
 </head>
 <body>
@@ -162,7 +233,7 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
-  
+
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
@@ -173,6 +244,4 @@
     }
   </script>
   <script src="flutter_bootstrap.js" async=""></script>
-
-
 </body></html>
