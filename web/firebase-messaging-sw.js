@@ -1,4 +1,10 @@
 const APP_FALLBACK_PATH = "/";
+const SERVICE_WORKER_VERSION = "2026-07-06-mobile-push-debug-1";
+
+console.log(
+  `[firebase-messaging-sw.js] loaded ${SERVICE_WORKER_VERSION}`,
+  self.location.href,
+);
 
 function extractNotificationTarget(notification) {
   const data = notification?.data || {};
@@ -118,12 +124,20 @@ messaging.onBackgroundMessage((payload) => {
     payload?.fcmOptions?.link ||
     payload?.data?.link ||
     payload?.data?.click_action ||
+    payload?.data?.route ||
     "/";
 
-  self.registration.showNotification(title, {
+  console.log("[firebase-messaging-sw.js] show data notification", {
+    title,
+    link,
+  });
+
+  return self.registration.showNotification(title, {
     body,
     icon: "/icons/Icon-192.png",
     badge: "/icons/Icon-192.png",
     data: { link },
+  }).catch((error) => {
+    console.error("[firebase-messaging-sw.js] showNotification failed", error);
   });
 });

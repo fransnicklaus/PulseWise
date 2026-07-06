@@ -6,3 +6,5 @@ Future<void> showBrowserForegroundNotification({
   String? tag,
   String? link,
 }) async {}
+
+Future<void> logBrowserPushDiagnostics({String source = 'manual'}) async {}

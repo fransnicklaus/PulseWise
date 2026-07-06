@@ -111,6 +111,8 @@ class AppFcmService {
 
     if (!kIsWeb) {
       await _setupLocalNotifications();
+    } else {
+      await logBrowserPushDiagnostics(source: 'fcm_initialize');
     }
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: true,
@@ -145,11 +147,22 @@ class AppFcmService {
   Future<NotificationSettings?> requestNotificationPermission() async {
     if (!_firebaseReady) return null;
     try {
-      return await _messaging.requestPermission(
+      if (kIsWeb) {
+        await logBrowserPushDiagnostics(source: 'before_permission_request');
+      }
+      final settings = await _messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
+      debugPrint(
+        '[FCM] Notification permission status='
+        '${settings.authorizationStatus}',
+      );
+      if (kIsWeb) {
+        await logBrowserPushDiagnostics(source: 'after_permission_request');
+      }
+      return settings;
     } catch (e) {
       debugPrint('[FCM] Failed to request notification permission: $e');
       return null;
