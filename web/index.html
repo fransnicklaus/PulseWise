@@ -162,6 +162,38 @@
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
+
+  <script>
+    (function () {
+      if (window.pulseWisePwaInstallBridge) {
+        return;
+      }
+
+      var bridge = {
+        deferredPrompt: null,
+        installed: false,
+        setPrompt: function (event) {
+          if (event && typeof event.preventDefault === 'function') {
+            event.preventDefault();
+          }
+          bridge.deferredPrompt = event;
+          window.dispatchEvent(new CustomEvent('pulsewise_pwa_prompt_ready'));
+        },
+        clearPrompt: function () {
+          bridge.deferredPrompt = null;
+        },
+        markInstalled: function () {
+          bridge.installed = true;
+          bridge.deferredPrompt = null;
+          window.dispatchEvent(new CustomEvent('pulsewise_pwa_installed'));
+        },
+      };
+
+      window.pulseWisePwaInstallBridge = bridge;
+      window.addEventListener('beforeinstallprompt', bridge.setPrompt);
+      window.addEventListener('appinstalled', bridge.markInstalled);
+    })();
+  </script>
   
   <script>
     if ('serviceWorker' in navigator) {

@@ -26,13 +26,20 @@ class PwaInstallPromptController extends ChangeNotifier {
     _installed = _detectInstalled();
     _platform = _detectPlatform();
     _bindListeners();
+    _syncPromptFromBridge(notify: false);
   }
+
+  static const _bridgeName = 'pulseWisePwaInstallBridge';
+  static const _promptReadyEvent = 'pulsewise_pwa_prompt_ready';
+  static const _installedEvent = 'pulsewise_pwa_installed';
 
   Object? _deferredPromptEvent;
   bool _installed = false;
   late final PwaInstallPlatform _platform;
   StreamSubscription<html.Event>? _beforeInstallSubscription;
   StreamSubscription<html.Event>? _appInstalledSubscription;
+  StreamSubscription<html.Event>? _bridgePromptReadySubscription;
+  StreamSubscription<html.Event>? _bridgeInstalledSubscription;
 
   bool get isInstalled => _installed;
 
@@ -66,6 +73,7 @@ class PwaInstallPromptController extends ChangeNotifier {
       );
 
       _deferredPromptEvent = null;
+      _clearBridgePrompt();
       notifyListeners();
 
       final outcome =
@@ -83,15 +91,80 @@ class PwaInstallPromptController extends ChangeNotifier {
       (event) {
         event.preventDefault();
         _deferredPromptEvent = event;
+        _setBridgePrompt(event);
         notifyListeners();
       },
     );
 
     _appInstalledSubscription = html.window.on['appinstalled'].listen((_) {
-      _installed = true;
-      _deferredPromptEvent = null;
-      notifyListeners();
+      _markInstalled();
     });
+
+    _bridgePromptReadySubscription =
+        html.window.on[_promptReadyEvent].listen((_) {
+      _syncPromptFromBridge();
+    });
+
+    _bridgeInstalledSubscription = html.window.on[_installedEvent].listen((_) {
+      _markInstalled();
+    });
+  }
+
+  Object? _bridge() {
+    if (!js_util.hasProperty(html.window, _bridgeName)) {
+      return null;
+    }
+
+    return js_util.getProperty<Object?>(html.window, _bridgeName);
+  }
+
+  void _syncPromptFromBridge({bool notify = true}) {
+    if (_installed) return;
+
+    final bridge = _bridge();
+    if (bridge == null) return;
+
+    final promptEvent = js_util.getProperty<Object?>(bridge, 'deferredPrompt');
+    if (promptEvent == null || identical(promptEvent, _deferredPromptEvent)) {
+      return;
+    }
+
+    _deferredPromptEvent = promptEvent;
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void _setBridgePrompt(Object event) {
+    final bridge = _bridge();
+    if (bridge == null || !js_util.hasProperty(bridge, 'setPrompt')) {
+      return;
+    }
+
+    try {
+      js_util.callMethod<Object?>(bridge, 'setPrompt', [event]);
+    } catch (_) {
+      // The local Dart listener already captured the event.
+    }
+  }
+
+  void _clearBridgePrompt() {
+    final bridge = _bridge();
+    if (bridge == null || !js_util.hasProperty(bridge, 'clearPrompt')) {
+      return;
+    }
+
+    try {
+      js_util.callMethod<Object?>(bridge, 'clearPrompt', const []);
+    } catch (_) {
+      // The Dart-side prompt state has already been cleared.
+    }
+  }
+
+  void _markInstalled() {
+    _installed = true;
+    _deferredPromptEvent = null;
+    notifyListeners();
   }
 
   bool _detectInstalled() {
@@ -134,6 +207,8 @@ class PwaInstallPromptController extends ChangeNotifier {
   void dispose() {
     _beforeInstallSubscription?.cancel();
     _appInstalledSubscription?.cancel();
+    _bridgePromptReadySubscription?.cancel();
+    _bridgeInstalledSubscription?.cancel();
     super.dispose();
   }
 }
