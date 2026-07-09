@@ -9,6 +9,8 @@ import '../models/food_macro_analysis.dart';
 class FoodNutritionEstimateApi {
   FoodNutritionEstimateApi(this._dio);
 
+  static const Duration nutritionEstimateTimeout = Duration(minutes: 2);
+
   final Dio _dio;
 
   Future<FoodMacroAnalysis> estimateNutrition({
@@ -40,6 +42,7 @@ class FoodNutritionEstimateApi {
         '/users/$userId/nutrition-estimates',
         data: payload,
         options: Options(
+          receiveTimeout: nutritionEstimateTimeout,
           headers: {
             'Authorization': 'Bearer $token',
           },

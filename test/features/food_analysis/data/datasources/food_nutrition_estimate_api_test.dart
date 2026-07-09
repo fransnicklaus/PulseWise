@@ -45,6 +45,10 @@ void main() {
 
       expect(observedOptions.method, 'POST');
       expect(observedOptions.path, '/users/patient-1/nutrition-estimates');
+      expect(
+        observedOptions.receiveTimeout,
+        FoodNutritionEstimateApi.nutritionEstimateTimeout,
+      );
       expect(observedOptions.headers['Authorization'], 'Bearer food-token');
       expect(observedOptions.data, {
         'mealName': 'Nasi Goreng',
