@@ -3,7 +3,7 @@ import 'package:flutter_health_connect/flutter_health_connect.dart';
 import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Syncs Health Connect data (exercise, heart rate, sleep) to the backend.
+/// Syncs Health Connect data (exercise, heart rate, sleep, SpO2) to the backend.
 /// Uses SharedPreferences to track last-synced timestamps per data type,
 /// so only genuinely new records are submitted on each sync call.
 class HealthConnectSyncService {
@@ -15,18 +15,21 @@ class HealthConnectSyncService {
     HealthConnectDataType.ExerciseSession,
     HealthConnectDataType.HeartRate,
     HealthConnectDataType.SleepSession,
+    HealthConnectDataType.OxygenSaturation,
   ];
 
   // SharedPreferences keys for the last-synced timestamp per type
   static const _keyLastSyncExercise = 'hc_last_sync_exercise';
   static const _keyLastSyncHeartRate = 'hc_last_sync_heart_rate';
   static const _keyLastSyncSleep = 'hc_last_sync_sleep';
+  static const _keyLastSyncOxygenSaturation = 'hc_last_sync_oxygen_saturation';
 
   static Future<void> clearLocalSyncState() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyLastSyncExercise);
     await prefs.remove(_keyLastSyncHeartRate);
     await prefs.remove(_keyLastSyncSleep);
+    await prefs.remove(_keyLastSyncOxygenSaturation);
   }
 
   /// Returns true if Health Connect is available AND permissions are granted.
@@ -42,7 +45,7 @@ class HealthConnectSyncService {
     }
   }
 
-  /// Main entry-point: sync all three data types silently.
+  /// Main entry-point: sync all data types silently.
   Future<void> syncAll() async {
     if (!await _isReady()) {
       debugPrint('[HC Sync] Not ready (HC unavailable or no permissions)');
@@ -53,8 +56,64 @@ class HealthConnectSyncService {
       _syncExercise(),
       _syncHeartRate(),
       _syncSleep(),
+      _syncOxygenSaturation(),
     ]);
     debugPrint('[HC Sync] Done.');
+  }
+
+  // â”€â”€ Oxygen Saturation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  Future<void> _syncOxygenSaturation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().toUtc();
+
+      final lastSyncMs = prefs.getInt(_keyLastSyncOxygenSaturation);
+      final start = lastSyncMs != null
+          ? DateTime.fromMillisecondsSinceEpoch(lastSyncMs, isUtc: true)
+          : DateTime.utc(now.year, now.month, now.day);
+
+      debugPrint('[HC Sync] Oxygen saturation: fetching from $start');
+
+      final result = await HealthConnectFactory.getRecord(
+        type: HealthConnectDataType.OxygenSaturation,
+        startTime: start,
+        endTime: now,
+      );
+
+      final records = (result['records'] as List?) ?? [];
+      final percentages = <num>[];
+
+      for (final record in records) {
+        if (record is! Map) continue;
+        final value = _oxygenSaturationFromRecord(record);
+        if (value != null) percentages.add(value);
+      }
+
+      if (percentages.isEmpty) {
+        debugPrint('[HC Sync] Oxygen saturation: no new samples since $start');
+        return;
+      }
+
+      final avg = percentages.fold<num>(0, (sum, value) => sum + value) /
+          percentages.length;
+      final avgRounded = avg.round().clamp(0, 100);
+
+      try {
+        await diaryNotifier.addBodyMetricsFromModal({
+          'oxygenSaturation': avgRounded,
+        });
+        debugPrint('[HC Sync] Oxygen saturation saved: $avgRounded%');
+        await prefs.setInt(
+          _keyLastSyncOxygenSaturation,
+          now.millisecondsSinceEpoch,
+        );
+      } catch (e) {
+        debugPrint('[HC Sync] Oxygen saturation save failed: $e');
+      }
+    } catch (e) {
+      debugPrint('[HC Sync] _syncOxygenSaturation error: $e');
+    }
   }
 
   // ── Exercise ────────────────────────────────────────────────────────────────
@@ -313,6 +372,34 @@ class HealthConnectSyncService {
     if (value is num) return value;
     if (value is String) return num.tryParse(value);
     return null;
+  }
+
+  num? _oxygenSaturationFromRecord(Map record) {
+    final value = _toNum(
+      record['percentage'] ??
+          record['oxygenSaturation'] ??
+          record['oxygenSaturationPercentage'] ??
+          record['value'],
+    );
+    if (value != null) return _normalizePercentage(value);
+
+    final percentage = record['percentage'];
+    if (percentage is Map) {
+      final nestedValue = _toNum(
+        percentage['value'] ??
+            percentage['inPercent'] ??
+            percentage['percentage'] ??
+            percentage['percent'],
+      );
+      if (nestedValue != null) return _normalizePercentage(nestedValue);
+    }
+
+    return null;
+  }
+
+  num _normalizePercentage(num value) {
+    if (value > 0 && value <= 1) return value * 100;
+    return value;
   }
 
   static const Map<int, String> _exerciseTypeCodeMap = {

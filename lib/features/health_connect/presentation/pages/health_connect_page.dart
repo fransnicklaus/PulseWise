@@ -87,6 +87,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
     HealthConnectDataType.ExerciseSession,
     HealthConnectDataType.HeartRate,
     HealthConnectDataType.SleepSession,
+    HealthConnectDataType.OxygenSaturation,
   ];
 
   bool _showRaw = false;
