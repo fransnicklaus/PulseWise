@@ -51,6 +51,7 @@ android {
             // Keep release optimizations, but sign with the default Android debug
             // keystore so local release APKs behave like debug for Google Sign-In.
             signingConfig = signingConfigs.debug
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
