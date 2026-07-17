@@ -13,6 +13,7 @@ class DiaryDetail {
   final List<DiaryActivity> activities;
   final List<DiaryConsumption> consumptions;
   final List<DiarySleep> sleeps;
+  final List<DiaryNote> notes;
 
   const DiaryDetail({
     required this.diaryId,
@@ -29,6 +30,7 @@ class DiaryDetail {
     required this.activities,
     required this.consumptions,
     required this.sleeps,
+    this.notes = const [],
   });
 
   factory DiaryDetail.fromJson(Map<String, dynamic> json) {
@@ -64,6 +66,10 @@ class DiaryDetail {
       sleeps: ((json['sleeps'] as List?) ?? const [])
           .map((e) => DiarySleep.fromJson(e as Map<String, dynamic>))
           .toList(),
+      notes: ((json['notes'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => DiaryNote.fromJson(e.cast<String, dynamic>()))
+          .toList(),
     );
   }
 
@@ -82,6 +88,7 @@ class DiaryDetail {
     List<DiaryActivity>? activities,
     List<DiaryConsumption>? consumptions,
     List<DiarySleep>? sleeps,
+    List<DiaryNote>? notes,
   }) {
     return DiaryDetail(
       diaryId: diaryId ?? this.diaryId,
@@ -101,6 +108,42 @@ class DiaryDetail {
       activities: activities ?? this.activities,
       consumptions: consumptions ?? this.consumptions,
       sleeps: sleeps ?? this.sleeps,
+      notes: notes ?? this.notes,
+    );
+  }
+}
+
+class DiaryNote {
+  final String noteId;
+  final String diaryId;
+  final String authorUserId;
+  final String authorRole;
+  final String authorName;
+  final String content;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const DiaryNote({
+    required this.noteId,
+    required this.diaryId,
+    required this.authorUserId,
+    required this.authorRole,
+    required this.authorName,
+    required this.content,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory DiaryNote.fromJson(Map<String, dynamic> json) {
+    return DiaryNote(
+      noteId: (json['noteId'] ?? '').toString(),
+      diaryId: (json['diaryId'] ?? '').toString(),
+      authorUserId: (json['authorUserId'] ?? '').toString(),
+      authorRole: (json['authorRole'] ?? '').toString(),
+      authorName: (json['authorName'] ?? '').toString(),
+      content: (json['content'] ?? '').toString(),
+      createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+      updatedAt: DateTime.tryParse((json['updatedAt'] ?? '').toString()),
     );
   }
 }

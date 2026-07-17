@@ -27,6 +27,7 @@ class DoctorPatientDiaryHistoryPage extends StatelessWidget {
       child: const RiwayatDiariPage(
         title: 'Riwayat Diari Pasien',
         subtitle: 'Semua catatan harian pasien yang terhubung',
+        enableMyNoteEditor: true,
       ),
     );
   }

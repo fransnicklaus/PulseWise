@@ -5,6 +5,7 @@ import 'package:pulsewise/core/network/network_error_utils.dart';
 import 'package:pulsewise/core/utils/app_toast.dart';
 import 'package:pulsewise/core/widgets/expandable_text.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
+import 'package:pulsewise/features/diary/data/models/diary_models.dart';
 import 'package:pulsewise/features/diary/presentation/providers/current_diary_provider.dart';
 import 'package:pulsewise/features/diary/presentation/providers/diary_history_provider.dart';
 import 'package:pulsewise/features/diary/presentation/widgets/diary_section_bottom_sheet.dart';
@@ -32,6 +33,10 @@ class _DiariTabState extends ConsumerState<DiariTab> {
 
   Future<void> _openSectionModal(String sectionTitle) async {
     final normalizedSection = sectionTitle.trim().toLowerCase();
+    final currentDiary = ref.read(currentDiaryProvider).diary;
+    final initialNote = normalizedSection == 'catatan'
+        ? _myPatientNote(currentDiary?.notes)?.content
+        : null;
     final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
@@ -69,6 +74,7 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                   .read(currentDiaryProvider.notifier)
                   .addSleepFromModal(payload)
               : null,
+          initialNote: initialNote,
         ),
       ),
     );
@@ -77,7 +83,16 @@ class _DiariTabState extends ConsumerState<DiariTab> {
 
     final section = (result['section'] ?? '').toString().trim().toLowerCase();
     try {
-      if (section == 'gejala') {
+      if (section == 'catatan') {
+        if (result['note'] != null) {
+          await ref
+              .read(currentDiaryProvider.notifier)
+              .saveMyNoteFromModal(result);
+          await _refreshDiaryData();
+          if (!mounted) return;
+          AppToast.success(context, 'Catatan berhasil disimpan');
+        }
+      } else if (section == 'gejala') {
         if (result['saved'] == true) {
           await _refreshDiaryData();
           if (!mounted) return;
@@ -253,6 +268,16 @@ class _DiariTabState extends ConsumerState<DiariTab> {
         .loadCurrentDiaryForToday(preserveCurrentData: true);
   }
 
+  DiaryNote? _myPatientNote(List<DiaryNote>? notes) {
+    if (notes == null || notes.isEmpty) return null;
+    for (final note in notes) {
+      if (note.authorRole.toString().toLowerCase() == 'patient') {
+        return note;
+      }
+    }
+    return null;
+  }
+
   bool _isNetworkError(Object? error) {
     return error != null && isNetworkRequestError(error);
   }
@@ -307,6 +332,8 @@ class _DiariTabState extends ConsumerState<DiariTab> {
       ..sort((a, b) => compareByTimeDesc(a.timeStamp, b.timeStamp));
     final consumptions = [...?diary?.consumptions]
       ..sort((a, b) => compareByTimeDesc(a.timeStamp, b.timeStamp));
+    final notes = [...?diary?.notes]
+      ..sort((a, b) => compareByTimeDesc(a.updatedAt, b.updatedAt));
 
     final latestMetric = (diary?.bodyMetrics.isNotEmpty ?? false)
         ? diary!.bodyMetrics.first
@@ -1280,6 +1307,79 @@ class _DiariTabState extends ConsumerState<DiariTab> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 20),
+
+                              // Catatan Section
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24.0),
+                                child: _SectionCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          const Icon(Icons.note_alt,
+                                              color: Color(0xFF8B5CF6),
+                                              size: 24),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'Catatan',
+                                            style: TextStyle(
+                                              fontSize: 19,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF525252),
+                                            ),
+                                          ),
+                                          if (!isSkeleton) ...[
+                                            const Spacer(),
+                                            _SectionAddButton(
+                                              onTap: () =>
+                                                  _openSectionModal('Catatan'),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      if (notes.isEmpty && !isSkeleton)
+                                        const Text(
+                                          'Belum ada catatan hari ini',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            color: Color(0xFF62748E),
+                                          ),
+                                        )
+                                      else if (isSkeleton)
+                                        const Padding(
+                                          padding: EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            'Catatan dari dokter atau pasien akan muncul di sini...',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              color: Color(0xFF334155),
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Column(
+                                          children: [
+                                            for (var i = 0;
+                                                i < notes.length;
+                                                i++) ...[
+                                              _DiaryNoteTile(note: notes[i]),
+                                              if (i != notes.length - 1)
+                                                const SizedBox(height: 10),
+                                            ],
+                                          ],
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                               if (diaryState.error != null &&
                                   !hasNetworkError) ...[
                                 const SizedBox(height: 16),
@@ -1336,6 +1436,79 @@ class _SectionAddButton extends StatelessWidget {
                 style: TextStyle(fontSize: 14, color: Color(0xFFE64060))),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DiaryNoteTile extends StatelessWidget {
+  const _DiaryNoteTile({required this.note});
+
+  final DiaryNote note;
+
+  String get _authorLabel {
+    final role = note.authorRole.toLowerCase();
+    if (role == 'doctor') return 'Dokter';
+    if (role == 'patient') return 'Pasien';
+    return role.isEmpty ? 'Catatan' : role;
+  }
+
+  Color get _accentColor {
+    return note.authorRole.toLowerCase() == 'doctor'
+        ? const Color(0xFF2563EB)
+        : const Color(0xFFE64060);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authorName = note.authorName.trim();
+    final subtitle =
+        authorName.isEmpty ? _authorLabel : '$_authorLabel - $authorName';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _accentColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            note.content,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF334155),
+              height: 1.5,
+            ),
+          ),
+        ],
       ),
     );
   }

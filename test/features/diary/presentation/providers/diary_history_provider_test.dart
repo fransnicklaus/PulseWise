@@ -182,6 +182,50 @@ void main() {
       );
     });
 
+    test('saveMyNoteForDate upserts current user note and refreshes detail',
+        () async {
+      final diaryDate = DateTime(2026, 6, 28);
+      late DateTime observedDate;
+      late String observedContent;
+      final api = _FakeDiaryApi(
+        fetchDiaryDetailHandler: (date) async => _diaryDetail('diary-1', date),
+        upsertCurrentNoteHandler: (date, content) async {
+          observedDate = date;
+          observedContent = content;
+          return _note(content);
+        },
+      );
+      final notifier = DiaryHistoryNotifier(api);
+
+      await notifier.loadDiaryDetail(diaryDate);
+      await notifier.saveMyNoteForDate(diaryDate, '  kondisi membaik  ');
+
+      expect(observedDate, diaryDate);
+      expect(observedContent, 'kondisi membaik');
+      expect(api.fetchDiaryDetailCalls, 2);
+      expect(notifier.state.detailsByDiaryId[diaryDate], isNotNull);
+    });
+
+    test('saveMyNoteForDate deletes current user note when content is empty',
+        () async {
+      final diaryDate = DateTime(2026, 6, 28);
+      late DateTime observedDate;
+      final api = _FakeDiaryApi(
+        fetchDiaryDetailHandler: (date) async => _diaryDetail('diary-1', date),
+        deleteCurrentNoteHandler: (date) async {
+          observedDate = date;
+          return true;
+        },
+      );
+      final notifier = DiaryHistoryNotifier(api);
+
+      await notifier.loadDiaryDetail(diaryDate);
+      await notifier.saveMyNoteForDate(diaryDate, '   ');
+
+      expect(observedDate, diaryDate);
+      expect(api.fetchDiaryDetailCalls, 2);
+    });
+
     test('clearCache resets state to initial values', () async {
       final notifier = DiaryHistoryNotifier(_FakeDiaryApi(
         fetchDiaryHistoryHandler: ({
@@ -225,12 +269,17 @@ class _FakeDiaryApi extends DiaryApi {
     this.fetchDiaryHistoryHandler,
     this.fetchDiaryDetailHandler,
     this.fetchSleepDiaryByDateHandler,
+    this.upsertCurrentNoteHandler,
+    this.deleteCurrentNoteHandler,
   }) : super(Dio());
 
   final _FetchDiaryHistoryHandler? fetchDiaryHistoryHandler;
   final Future<DiaryDetail> Function(DateTime date)? fetchDiaryDetailHandler;
   final Future<Map<String, dynamic>?> Function(DateTime date)?
       fetchSleepDiaryByDateHandler;
+  final Future<DiaryNote> Function(DateTime date, String content)?
+      upsertCurrentNoteHandler;
+  final Future<bool> Function(DateTime date)? deleteCurrentNoteHandler;
 
   int fetchDiaryHistoryCalls = 0;
   int fetchDiaryDetailCalls = 0;
@@ -281,6 +330,27 @@ class _FakeDiaryApi extends DiaryApi {
     }
     return null;
   }
+
+  @override
+  Future<DiaryNote> upsertMyDiaryNoteForCurrentUserByDate({
+    required DateTime date,
+    required String content,
+  }) async {
+    final handler = upsertCurrentNoteHandler;
+    if (handler != null) {
+      return handler(date, content);
+    }
+    return _note(content);
+  }
+
+  @override
+  Future<bool> deleteMyDiaryNoteForCurrentUserByDate(DateTime date) async {
+    final handler = deleteCurrentNoteHandler;
+    if (handler != null) {
+      return handler(date);
+    }
+    return true;
+  }
 }
 
 DiaryHistoryItem _historyItem(String diaryId) {
@@ -304,5 +374,18 @@ DiaryDetail _diaryDetail(String diaryId, DateTime diaryDate) {
     activities: const [],
     consumptions: const [],
     sleeps: const [],
+  );
+}
+
+DiaryNote _note(String content) {
+  return DiaryNote(
+    noteId: 'note-1',
+    diaryId: 'diary-1',
+    authorUserId: 'user-1',
+    authorRole: 'patient',
+    authorName: 'Pasien',
+    content: content,
+    createdAt: DateTime(2026, 6, 28, 8),
+    updatedAt: DateTime(2026, 6, 28, 9),
   );
 }

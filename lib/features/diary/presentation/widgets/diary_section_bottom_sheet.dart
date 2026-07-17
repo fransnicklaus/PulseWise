@@ -26,6 +26,7 @@ class DiarySectionBottomSheet extends StatefulWidget {
   final AktivitasSubmitCallback? onSubmitAktivitas;
   final MetriksSubmitCallback? onSubmitMetriks;
   final TidurSubmitCallback? onSubmitTidur;
+  final String? initialNote;
 
   const DiarySectionBottomSheet({
     super.key,
@@ -36,6 +37,7 @@ class DiarySectionBottomSheet extends StatefulWidget {
     this.onSubmitAktivitas,
     this.onSubmitMetriks,
     this.onSubmitTidur,
+    this.initialNote,
   });
 
   @override
@@ -208,6 +210,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
   final TextEditingController _outdoorMinutesController =
       TextEditingController();
   final TextEditingController _activityNoteController = TextEditingController();
+  late final TextEditingController _catatanController =
+      TextEditingController(text: widget.initialNote);
 
   TimeOfDay _activityStartTime = TimeOfDay.now();
   TimeOfDay _activityEndTime = TimeOfDay(
@@ -374,6 +378,7 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
     _mealDescriptionController.dispose();
     _outdoorMinutesController.dispose();
     _activityNoteController.dispose();
+    _catatanController.dispose();
     super.dispose();
   }
 
@@ -1002,6 +1007,8 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
       case 'konsumsi':
       case 'konsumsi harian':
         return _buildKonsumsiContent();
+      case 'catatan':
+        return _buildCatatanContent();
       case 'tidur':
         return _buildTidurSection();
       default:
@@ -1010,6 +1017,67 @@ class _DiarySectionBottomSheetState extends State<DiarySectionBottomSheet> {
         }
         return const SizedBox(height: 8);
     }
+  }
+
+  Widget _buildCatatanContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'Masukkan catatan yang ingin disimpan',
+          style: TextStyle(
+            fontSize: 16,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _catatanController,
+          maxLines: 5,
+          decoration: InputDecoration(
+            hintText: 'Tulis catatan Anda di sini...',
+            filled: true,
+            fillColor: const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Color(0xFFE64060)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFE64060),
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).pop({
+                'section': widget.title,
+                'note': _catatanController.text,
+              });
+            },
+            child: const Text(
+              'Simpan Catatan',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildTidurSection() {

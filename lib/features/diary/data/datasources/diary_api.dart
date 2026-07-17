@@ -28,6 +28,10 @@ class DiaryApi {
     return AppSessionStore.requireUserId();
   }
 
+  String _formatDate(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
   Exception _requestError(DioException error, String fallbackMessage) {
     if (isNetworkRequestError(error)) {
       throw error;
@@ -265,6 +269,96 @@ class DiaryApi {
         (body?['message'] ?? 'Gagal menyimpan data tidur').toString(),
       );
     }
+  }
+
+  Future<DiaryNote> upsertMyDiaryNoteByDate({
+    required String patientId,
+    required String diaryDate,
+    required String content,
+  }) async {
+    final token = await _readBearerToken();
+
+    try {
+      final response = await _dio.put<Map<String, dynamic>>(
+        '/users/$patientId/diaries/by-date/notes/me',
+        data: {
+          'diaryDate': diaryDate,
+          'content': content,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final body = response.data;
+      if (body == null || body['success'] != true || body['data'] == null) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal menyimpan catatan diary').toString(),
+        );
+      }
+
+      return DiaryNote.fromJson(body['data'] as Map<String, dynamic>);
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal menyimpan catatan diary.');
+    }
+  }
+
+  Future<DiaryNote> upsertMyDiaryNoteForCurrentUserByDate({
+    required DateTime date,
+    required String content,
+  }) async {
+    final patientId = await _readPatientId();
+    return upsertMyDiaryNoteByDate(
+      patientId: patientId,
+      diaryDate: _formatDate(date),
+      content: content,
+    );
+  }
+
+  Future<bool> deleteMyDiaryNoteByDate({
+    required String patientId,
+    required DateTime date,
+  }) async {
+    final token = await _readBearerToken();
+
+    try {
+      final response = await _dio.delete<Map<String, dynamic>>(
+        '/users/$patientId/diaries/by-date/notes/me',
+        queryParameters: {
+          'date': _formatDate(date),
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final body = response.data;
+      if (body == null || body['success'] != true) {
+        throw Exception(
+          (body?['message'] ?? 'Gagal menghapus catatan diary').toString(),
+        );
+      }
+
+      final data = body['data'];
+      if (data is Map<String, dynamic>) {
+        return data['deleted'] == true;
+      }
+      return true;
+    } on DioException catch (error) {
+      throw _requestError(error, 'Gagal menghapus catatan diary.');
+    }
+  }
+
+  Future<bool> deleteMyDiaryNoteForCurrentUserByDate(DateTime date) async {
+    final patientId = await _readPatientId();
+    return deleteMyDiaryNoteByDate(
+      patientId: patientId,
+      date: date,
+    );
   }
 
   Future<void> addDiarySymptomByDate({

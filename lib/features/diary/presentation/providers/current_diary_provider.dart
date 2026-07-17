@@ -59,6 +59,7 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
             activities: const [],
             consumptions: const [],
             sleeps: [DiarySleep.fromJson(sleepData)],
+            notes: const [],
           );
         } else {
           state = CurrentDiaryState(
@@ -147,6 +148,21 @@ class CurrentDiaryNotifier extends StateNotifier<CurrentDiaryState> {
       wakeTime: wakeTime,
       sleepDurationHours: duration,
     );
+  }
+
+  Future<void> saveMyNoteFromModal(Map<String, dynamic> payload) async {
+    final content =
+        (payload['note'] ?? payload['content'] ?? '').toString().trim();
+    final date = DateTime.now();
+
+    if (content.isEmpty) {
+      await _diaryApi.deleteMyDiaryNoteForCurrentUserByDate(date);
+    } else {
+      await _diaryApi.upsertMyDiaryNoteForCurrentUserByDate(
+        date: date,
+        content: content,
+      );
+    }
   }
 
   Future<void> addSymptomsFromModal(Map<String, dynamic> payload) async {

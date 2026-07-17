@@ -136,4 +136,28 @@ class DoctorPatientDiaryHistoryNotifier extends DiaryHistoryNotifier {
       );
     }
   }
+
+  @override
+  Future<void> saveMyNoteForDate(DateTime diaryDate, String content) async {
+    final trimmedContent = content.trim();
+    if (trimmedContent.isEmpty) {
+      await _diaryApi.deleteMyDiaryNoteByDate(
+        patientId: _patientId,
+        date: diaryDate,
+      );
+    } else {
+      await _diaryApi.upsertMyDiaryNoteByDate(
+        patientId: _patientId,
+        diaryDate:
+            '${diaryDate.year.toString().padLeft(4, '0')}-${diaryDate.month.toString().padLeft(2, '0')}-${diaryDate.day.toString().padLeft(2, '0')}',
+        content: trimmedContent,
+      );
+    }
+
+    if (!mounted) return;
+
+    final nextDetails = {...state.detailsByDiaryId}..remove(diaryDate);
+    state = state.copyWith(detailsByDiaryId: nextDetails);
+    await loadDiaryDetail(diaryDate);
+  }
 }

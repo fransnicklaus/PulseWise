@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pulsewise/core/network/network_error_utils.dart';
+import 'package:pulsewise/core/storage/app_session_store.dart';
 import 'package:pulsewise/core/widgets/no_connection_state.dart';
 import 'package:pulsewise/features/diary/data/models/diary_models.dart';
 import 'package:pulsewise/features/diary/presentation/providers/diary_history_provider.dart';
@@ -14,10 +15,12 @@ class RiwayatDiariPage extends ConsumerStatefulWidget {
     super.key,
     this.title = 'Riwayat Diari',
     this.subtitle = 'Semua catatan kesehatan Anda',
+    this.enableMyNoteEditor = false,
   });
 
   final String title;
   final String subtitle;
+  final bool enableMyNoteEditor;
 
   @override
   ConsumerState<RiwayatDiariPage> createState() => _RiwayatDiariPageState();
@@ -108,6 +111,84 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
         );
       }
     });
+  }
+
+  Future<void> _openMyNoteEditor(DateTime diaryDate, DiaryDetail detail) async {
+    final userId = (await AppSessionStore.readUserId())?.trim();
+    DiaryNote? myNote;
+    if ((userId ?? '').isNotEmpty) {
+      for (final note in detail.notes) {
+        if (note.authorUserId.trim() == userId) {
+          myNote = note;
+          break;
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    final controller = TextEditingController(text: myNote?.content ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Catatan Saya'),
+          content: TextField(
+            controller: controller,
+            maxLines: 6,
+            decoration: const InputDecoration(
+              hintText: 'Tulis catatan untuk diari ini...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Batal'),
+            ),
+            if (myNote != null)
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(''),
+                child: const Text('Hapus'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+
+    if (result == null || !mounted) return;
+
+    try {
+      await ref.read(diaryHistoryProvider.notifier).saveMyNoteForDate(
+            diaryDate,
+            result,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.trim().isEmpty
+                ? 'Catatan berhasil dihapus'
+                : 'Catatan berhasil disimpan',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst('Exception: ', ''),
+          ),
+          backgroundColor: const Color(0xFFB91C1C),
+        ),
+      );
+    }
   }
 
   DateTime _asDateOnly(DateTime value) {
@@ -487,6 +568,16 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                                               error: detailError,
                                               errorCause: detailErrorCause,
                                               detail: detail,
+                                              enableMyNoteEditor:
+                                                  widget.enableMyNoteEditor,
+                                              onEditMyNote:
+                                                  widget.enableMyNoteEditor &&
+                                                          detail != null
+                                                      ? () => _openMyNoteEditor(
+                                                            item.diaryDate!,
+                                                            detail,
+                                                          )
+                                                      : null,
                                               onRetry: () => ref
                                                   .read(diaryHistoryProvider
                                                       .notifier)
@@ -550,6 +641,8 @@ class _ExpandedArea extends StatelessWidget {
   final String? error;
   final Object? errorCause;
   final DiaryDetail? detail;
+  final bool enableMyNoteEditor;
+  final VoidCallback? onEditMyNote;
   final VoidCallback onRetry;
   final String Function(DateTime?) formatTime;
 
@@ -558,6 +651,8 @@ class _ExpandedArea extends StatelessWidget {
     required this.error,
     required this.errorCause,
     required this.detail,
+    required this.enableMyNoteEditor,
+    required this.onEditMyNote,
     required this.onRetry,
     required this.formatTime,
   });
@@ -636,6 +731,8 @@ class _ExpandedArea extends StatelessWidget {
 
     return _ExpandedDiaryContent(
       detail: detail!,
+      enableMyNoteEditor: enableMyNoteEditor,
+      onEditMyNote: onEditMyNote,
       formatTime: formatTime,
     );
   }
@@ -643,10 +740,14 @@ class _ExpandedArea extends StatelessWidget {
 
 class _ExpandedDiaryContent extends StatelessWidget {
   final DiaryDetail detail;
+  final bool enableMyNoteEditor;
+  final VoidCallback? onEditMyNote;
   final String Function(DateTime?) formatTime;
 
   const _ExpandedDiaryContent({
     required this.detail,
+    required this.enableMyNoteEditor,
+    required this.onEditMyNote,
     required this.formatTime,
   });
 
@@ -700,6 +801,9 @@ class _ExpandedDiaryContent extends StatelessWidget {
         (b.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0))
             .compareTo(a.timeStamp ?? DateTime.fromMillisecondsSinceEpoch(0)));
     final sleeps = [...detail.sleeps];
+    final notes = [...detail.notes]..sort((a, b) =>
+        (b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
 
     final latestMetric = bodyMetrics.isNotEmpty ? bodyMetrics.first : null;
     final latestHeartRate = latestMetric?.latestHeartRate ??
@@ -856,9 +960,45 @@ class _ExpandedDiaryContent extends StatelessWidget {
                 )
                 .toList(),
           ),
+          const SizedBox(height: 10),
+          _SimpleSection(
+            title: 'Catatan',
+            isEmpty: notes.isEmpty,
+            emptyLabel: 'Tidak ada catatan',
+            action: enableMyNoteEditor
+                ? IconButton(
+                    tooltip: 'Edit catatan saya',
+                    onPressed: onEditMyNote,
+                    icon: const Icon(Icons.edit_note_rounded),
+                    color: const Color(0xFFE64060),
+                  )
+                : null,
+            children: notes
+                .map(
+                  (note) => _SimpleRow(
+                    leading: _formatNoteRole(note.authorRole),
+                    title: note.authorName.isEmpty
+                        ? _formatNoteRole(note.authorRole)
+                        : note.authorName,
+                    subtitle: note.content,
+                  ),
+                )
+                .toList(),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatNoteRole(String role) {
+    switch (role.toLowerCase()) {
+      case 'doctor':
+        return 'Dokter';
+      case 'patient':
+        return 'Pasien';
+      default:
+        return role.isEmpty ? '-' : role;
+    }
   }
 }
 
@@ -867,12 +1007,14 @@ class _SimpleSection extends StatelessWidget {
   final bool isEmpty;
   final String emptyLabel;
   final List<Widget> children;
+  final Widget? action;
 
   const _SimpleSection({
     required this.title,
     required this.isEmpty,
     required this.emptyLabel,
     required this.children,
+    this.action,
   });
 
   IconData _iconForTitle() {
@@ -946,6 +1088,10 @@ class _SimpleSection extends StatelessWidget {
                   ),
                 ),
               ),
+              if (action != null) ...[
+                const SizedBox(width: 6),
+                action!,
+              ],
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

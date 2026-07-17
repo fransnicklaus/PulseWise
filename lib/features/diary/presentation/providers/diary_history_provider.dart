@@ -166,6 +166,24 @@ class DiaryHistoryNotifier extends StateNotifier<DiaryHistoryState> {
     }
   }
 
+  Future<void> saveMyNoteForDate(DateTime diaryDate, String content) async {
+    final trimmedContent = content.trim();
+    if (trimmedContent.isEmpty) {
+      await _diaryApi.deleteMyDiaryNoteForCurrentUserByDate(diaryDate);
+    } else {
+      await _diaryApi.upsertMyDiaryNoteForCurrentUserByDate(
+        date: diaryDate,
+        content: trimmedContent,
+      );
+    }
+
+    if (!mounted) return;
+
+    final nextDetails = {...state.detailsByDiaryId}..remove(diaryDate);
+    state = state.copyWith(detailsByDiaryId: nextDetails);
+    await loadDiaryDetail(diaryDate);
+  }
+
   void clearCache() {
     if (!mounted) return;
     state = const DiaryHistoryState();

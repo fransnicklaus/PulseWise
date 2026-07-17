@@ -73,6 +73,62 @@ void main() {
       expect(notifier.state.loadingDetailDiaryIds, isNot(contains(diaryDate)));
       expect(notifier.state.detailErrorsByDiaryId, isEmpty);
     });
+
+    test('saveMyNoteForDate upserts doctor note for selected patient',
+        () async {
+      final diaryDate = DateTime(2026, 6, 29);
+      late String observedPatientId;
+      late String observedDiaryDate;
+      late String observedContent;
+      final notifier = DoctorPatientDiaryHistoryNotifier(
+        _FakeDiaryApi(
+          fetchDetailForUserHandler: (patientId, date) async {
+            return _diaryDetail('diary-1', date);
+          },
+          upsertNoteForUserHandler: (patientId, diaryDate, content) async {
+            observedPatientId = patientId;
+            observedDiaryDate = diaryDate;
+            observedContent = content;
+            return _note(content);
+          },
+        ),
+        'patient-1',
+      );
+
+      await notifier.loadDiaryDetail(diaryDate);
+      await notifier.saveMyNoteForDate(diaryDate, '  pantau tekanan darah  ');
+
+      expect(observedPatientId, 'patient-1');
+      expect(observedDiaryDate, '2026-06-29');
+      expect(observedContent, 'pantau tekanan darah');
+      expect(notifier.state.detailsByDiaryId[diaryDate], isNotNull);
+    });
+
+    test('saveMyNoteForDate deletes doctor note for selected patient',
+        () async {
+      final diaryDate = DateTime(2026, 6, 29);
+      late String observedPatientId;
+      late DateTime observedDate;
+      final notifier = DoctorPatientDiaryHistoryNotifier(
+        _FakeDiaryApi(
+          fetchDetailForUserHandler: (patientId, date) async {
+            return _diaryDetail('diary-1', date);
+          },
+          deleteNoteForUserHandler: (patientId, date) async {
+            observedPatientId = patientId;
+            observedDate = date;
+            return true;
+          },
+        ),
+        'patient-1',
+      );
+
+      await notifier.loadDiaryDetail(diaryDate);
+      await notifier.saveMyNoteForDate(diaryDate, '');
+
+      expect(observedPatientId, 'patient-1');
+      expect(observedDate, diaryDate);
+    });
   });
 }
 
@@ -89,6 +145,8 @@ class _FakeDiaryApi extends DiaryApi {
     this.fetchHistoryForUserHandler,
     this.fetchDetailForUserHandler,
     this.fetchSleepForUserHandler,
+    this.upsertNoteForUserHandler,
+    this.deleteNoteForUserHandler,
   }) : super(Dio());
 
   final _FetchHistoryForUserHandler? fetchHistoryForUserHandler;
@@ -96,6 +154,13 @@ class _FakeDiaryApi extends DiaryApi {
       fetchDetailForUserHandler;
   final Future<Map<String, dynamic>?> Function(String patientId, DateTime date)?
       fetchSleepForUserHandler;
+  final Future<DiaryNote> Function(
+    String patientId,
+    String diaryDate,
+    String content,
+  )? upsertNoteForUserHandler;
+  final Future<bool> Function(String patientId, DateTime date)?
+      deleteNoteForUserHandler;
 
   @override
   Future<DiaryHistoryResponse> fetchDiaryHistoryForUser(
@@ -149,6 +214,31 @@ class _FakeDiaryApi extends DiaryApi {
     }
     return null;
   }
+
+  @override
+  Future<DiaryNote> upsertMyDiaryNoteByDate({
+    required String patientId,
+    required String diaryDate,
+    required String content,
+  }) async {
+    final handler = upsertNoteForUserHandler;
+    if (handler != null) {
+      return handler(patientId, diaryDate, content);
+    }
+    return _note(content);
+  }
+
+  @override
+  Future<bool> deleteMyDiaryNoteByDate({
+    required String patientId,
+    required DateTime date,
+  }) async {
+    final handler = deleteNoteForUserHandler;
+    if (handler != null) {
+      return handler(patientId, date);
+    }
+    return true;
+  }
 }
 
 DiaryHistoryItem _historyItem(String diaryId) {
@@ -172,5 +262,18 @@ DiaryDetail _diaryDetail(String diaryId, DateTime diaryDate) {
     activities: const [],
     consumptions: const [],
     sleeps: const [],
+  );
+}
+
+DiaryNote _note(String content) {
+  return DiaryNote(
+    noteId: 'note-1',
+    diaryId: 'diary-1',
+    authorUserId: 'doctor-1',
+    authorRole: 'doctor',
+    authorName: 'Dokter',
+    content: content,
+    createdAt: DateTime(2026, 6, 29, 8),
+    updatedAt: DateTime(2026, 6, 29, 9),
   );
 }
