@@ -344,12 +344,14 @@ class DiaryHistoryItem {
   final String userId;
   final DateTime? diaryDate;
   final DateTime? createdAt;
+  final List<DiaryNote> notes;
 
   const DiaryHistoryItem({
     required this.diaryId,
     required this.userId,
     required this.diaryDate,
     required this.createdAt,
+    this.notes = const [],
   });
 
   factory DiaryHistoryItem.fromJson(Map<String, dynamic> json) {
@@ -358,6 +360,10 @@ class DiaryHistoryItem {
       userId: (json['userId'] ?? '').toString(),
       diaryDate: DateTime.tryParse((json['diaryDate'] ?? '').toString()),
       createdAt: DateTime.tryParse((json['createdAt'] ?? '').toString()),
+      notes: ((json['notes'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((e) => DiaryNote.fromJson(e.cast<String, dynamic>()))
+          .toList(),
     );
   }
 }

@@ -528,6 +528,17 @@ class _RiwayatDiariPageState extends ConsumerState<RiwayatDiariPage> {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
+                                        if (item.notes.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${item.notes.length} catatan',
+                                            style: const TextStyle(
+                                              color: Color(0xFFE64060),
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),

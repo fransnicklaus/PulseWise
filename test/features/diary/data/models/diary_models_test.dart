@@ -137,6 +137,18 @@ void main() {
             'userId': 'user-1',
             'diaryDate': '2026-06-28T00:00:00.000Z',
             'createdAt': '2026-06-28T08:00:00.000Z',
+            'notes': [
+              {
+                'noteId': 'note-1',
+                'diaryId': 'diary-1',
+                'authorUserId': 'doctor-1',
+                'authorRole': 'doctor',
+                'authorName': 'Dokter PulseWise',
+                'content': 'Pantau tekanan darah sebelum tidur.',
+                'createdAt': '2026-06-28T09:00:00.000Z',
+                'updatedAt': '2026-06-28T09:05:00.000Z',
+              },
+            ],
           },
         ],
         'pagination': {
@@ -150,6 +162,12 @@ void main() {
       expect(response.items.single.diaryId, 'diary-1');
       expect(response.items.single.diaryDate,
           DateTime.parse('2026-06-28T00:00:00.000Z'));
+      expect(response.items.single.notes.single.noteId, 'note-1');
+      expect(response.items.single.notes.single.authorRole, 'doctor');
+      expect(
+        response.items.single.notes.single.content,
+        'Pantau tekanan darah sebelum tidur.',
+      );
       expect(response.pagination.page, 2);
       expect(response.pagination.limit, 5);
       expect(response.pagination.totalItems, 9);
