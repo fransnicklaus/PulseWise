@@ -2428,8 +2428,84 @@ class PredictionMetricCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 24),
+          // Legend Section
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        color: Color(0xFF64748B), size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Keterangan Warna:',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A202C),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildLegendItem(
+                    Colors.green, 'Rekomendasi tidak harus dipatuhi'),
+                const SizedBox(height: 12),
+                _buildLegendItem(Colors.orange,
+                    'Rekomendasi dapat dilakukan secara perlahan-lahan'),
+                const SizedBox(height: 12),
+                _buildLegendItem(Colors.red, 'Rekomendasi harus dilakukan'),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334155),
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
