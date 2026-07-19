@@ -89,6 +89,11 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
     HealthConnectDataType.SleepSession,
     HealthConnectDataType.OxygenSaturation,
   ];
+  final List<HealthConnectDataType> _requiredTypes = const [
+    HealthConnectDataType.ExerciseSession,
+    HealthConnectDataType.HeartRate,
+    HealthConnectDataType.SleepSession,
+  ];
 
   bool _showRaw = false;
   bool _isBusy = false;
@@ -96,6 +101,7 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   bool? _isApiSupported;
   bool? _isInstalled;
   bool? _hasPermissions;
+  bool? _hasRequiredPermissions;
   String _lastAction = 'Belum ada aksi';
   String _rawData = '-';
   String _statusNote =
@@ -151,12 +157,17 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
       try {
         final supported = await HealthConnectFactory.isApiSupported();
         bool? installed;
-        bool? granted;
+        bool? requiredGranted;
+        bool? allGranted;
 
         if (supported) {
           installed = await HealthConnectFactory.isAvailable();
           if (installed) {
-            granted = await HealthConnectFactory.hasPermissions(
+            requiredGranted = await HealthConnectFactory.hasPermissions(
+              _requiredTypes,
+              readOnly: true,
+            );
+            allGranted = await HealthConnectFactory.hasPermissions(
               _types,
               readOnly: true,
             );
@@ -165,8 +176,10 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
 
         final nextStatusNote = supported
             ? installed == true
-                ? granted == true
-                    ? 'Health Connect sudah siap digunakan di PulseWise.'
+                ? requiredGranted == true
+                    ? allGranted == true
+                        ? 'Health Connect sudah siap digunakan di PulseWise.'
+                        : 'Izin utama sudah diberikan. Izin SpO2 dapat ditambahkan jika tersedia.'
                     : 'Health Connect sudah terpasang, tetapi izin data belum diberikan.'
                 : 'Perangkat mendukung, tetapi aplikasi Health Connect belum terpasang.'
             : 'Perangkat ini belum mendukung Health Connect.';
@@ -175,7 +188,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
         setState(() {
           _isApiSupported = supported;
           _isInstalled = installed;
-          _hasPermissions = granted;
+          _hasPermissions = allGranted;
+          _hasRequiredPermissions = requiredGranted;
           if (updateStatusNote) {
             _statusNote = nextStatusNote;
           }
@@ -186,7 +200,8 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
             data: {
               'supported': supported,
               'installed': installed,
-              'permissionsGranted': granted,
+              'requiredPermissionsGranted': requiredGranted,
+              'allPermissionsGranted': allGranted,
             },
           );
         }
@@ -328,20 +343,30 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   Future<void> _checkPermissions() async {
     await _runBusyAction('Memeriksa izin data', () async {
       try {
-        final granted = await HealthConnectFactory.hasPermissions(
+        final requiredGranted = await HealthConnectFactory.hasPermissions(
+          _requiredTypes,
+          readOnly: true,
+        );
+        final allGranted = await HealthConnectFactory.hasPermissions(
           _types,
           readOnly: true,
         );
         if (!mounted) return;
         setState(() {
-          _hasPermissions = granted;
-          _statusNote = granted
-              ? 'Izin data sudah diberikan.'
+          _hasPermissions = allGranted;
+          _hasRequiredPermissions = requiredGranted;
+          _statusNote = requiredGranted
+              ? allGranted
+                  ? 'Izin data sudah diberikan.'
+                  : 'Izin utama sudah diberikan. Izin SpO2 dapat ditambahkan jika tersedia.'
               : 'Izin data belum diberikan.';
         });
         _setResult(
           action: 'Periksa Izin Data',
-          data: {'granted': granted},
+          data: {
+            'requiredPermissionsGranted': requiredGranted,
+            'allPermissionsGranted': allGranted,
+          },
         );
         await _persistConnectedStatusIfNeeded();
       } catch (e) {
@@ -361,24 +386,38 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   Future<void> _requestPermissions() async {
     await _runBusyAction('Meminta izin data', () async {
       try {
-        final granted = await HealthConnectFactory.requestPermissions(
+        await HealthConnectFactory.requestPermissions(
+          _types,
+          readOnly: true,
+        );
+        final requiredGranted = await HealthConnectFactory.hasPermissions(
+          _requiredTypes,
+          readOnly: true,
+        );
+        final allGranted = await HealthConnectFactory.hasPermissions(
           _types,
           readOnly: true,
         );
         if (!mounted) return;
         setState(() {
-          _hasPermissions = granted;
-          _statusNote = granted
-              ? 'Izin data berhasil diberikan.'
+          _hasPermissions = allGranted;
+          _hasRequiredPermissions = requiredGranted;
+          _statusNote = requiredGranted
+              ? allGranted
+                  ? 'Izin data berhasil diberikan.'
+                  : 'Izin utama berhasil diberikan. Izin SpO2 belum aktif atau belum tersedia.'
               : 'Izin data belum diberikan. Silakan coba lagi.';
         });
         _setResult(
           action: 'Minta Izin Data',
-          data: {'granted': granted},
+          data: {
+            'requiredPermissionsGranted': requiredGranted,
+            'allPermissionsGranted': allGranted,
+          },
         );
         await _persistConnectedStatusIfNeeded();
         if (!mounted) return;
-        if (granted) {
+        if (requiredGranted) {
           AppToast.success(context, 'Izin Health Connect berhasil diberikan');
         } else {
           AppToast.info(context, 'Izin belum diberikan');
@@ -646,13 +685,13 @@ class _HealthConnectPageState extends ConsumerState<HealthConnectPage> {
   bool? _readyStatus() {
     if (_isApiSupported == null &&
         _isInstalled == null &&
-        _hasPermissions == null) {
+        _hasRequiredPermissions == null) {
       return null;
     }
 
     return _isApiSupported == true &&
         _isInstalled == true &&
-        _hasPermissions == true;
+        _hasRequiredPermissions == true;
   }
 
   Future<void> _persistConnectedStatusIfNeeded() async {

@@ -11,13 +11,6 @@ class HealthConnectSyncService {
 
   HealthConnectSyncService({required this.diaryNotifier});
 
-  static const _types = [
-    HealthConnectDataType.ExerciseSession,
-    HealthConnectDataType.HeartRate,
-    HealthConnectDataType.SleepSession,
-    HealthConnectDataType.OxygenSaturation,
-  ];
-
   // SharedPreferences keys for the last-synced timestamp per type
   static const _keyLastSyncExercise = 'hc_last_sync_exercise';
   static const _keyLastSyncHeartRate = 'hc_last_sync_heart_rate';
@@ -32,14 +25,10 @@ class HealthConnectSyncService {
     await prefs.remove(_keyLastSyncOxygenSaturation);
   }
 
-  /// Returns true if Health Connect is available AND permissions are granted.
-  Future<bool> _isReady() async {
+  /// Returns true if Health Connect is available on this device.
+  Future<bool> _isAvailable() async {
     try {
-      final available = await HealthConnectFactory.isAvailable();
-      if (!available) return false;
-      final granted =
-          await HealthConnectFactory.hasPermissions(_types, readOnly: true);
-      return granted;
+      return await HealthConnectFactory.isAvailable();
     } catch (_) {
       return false;
     }
@@ -47,18 +36,54 @@ class HealthConnectSyncService {
 
   /// Main entry-point: sync all data types silently.
   Future<void> syncAll() async {
-    if (!await _isReady()) {
-      debugPrint('[HC Sync] Not ready (HC unavailable or no permissions)');
+    if (!await _isAvailable()) {
+      debugPrint('[HC Sync] Not ready (HC unavailable)');
       return;
     }
     debugPrint('[HC Sync] Starting Health Connect sync...');
     await Future.wait([
-      _syncExercise(),
-      _syncHeartRate(),
-      _syncSleep(),
-      _syncOxygenSaturation(),
+      _syncIfPermitted(
+        HealthConnectDataType.ExerciseSession,
+        'Exercise',
+        _syncExercise,
+      ),
+      _syncIfPermitted(
+        HealthConnectDataType.HeartRate,
+        'Heart rate',
+        _syncHeartRate,
+      ),
+      _syncIfPermitted(
+        HealthConnectDataType.SleepSession,
+        'Sleep',
+        _syncSleep,
+      ),
+      _syncIfPermitted(
+        HealthConnectDataType.OxygenSaturation,
+        'Oxygen saturation',
+        _syncOxygenSaturation,
+      ),
     ]);
     debugPrint('[HC Sync] Done.');
+  }
+
+  Future<void> _syncIfPermitted(
+    HealthConnectDataType type,
+    String label,
+    Future<void> Function() sync,
+  ) async {
+    try {
+      final granted = await HealthConnectFactory.hasPermissions(
+        [type],
+        readOnly: true,
+      );
+      if (!granted) {
+        debugPrint('[HC Sync] $label skipped: read permission not granted');
+        return;
+      }
+      await sync();
+    } catch (e) {
+      debugPrint('[HC Sync] $label permission check failed: $e');
+    }
   }
 
   // â”€â”€ Oxygen Saturation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -229,7 +254,7 @@ class HealthConnectSyncService {
       }
 
       if (bpmValues.isEmpty) {
-        debugPrint('[HC Sync] Heart rate: no new samples since $start');
+        debugPrint('[HC Sync] Heart rate: no new samples since $start until $now');
         return;
       }
 
@@ -272,7 +297,7 @@ class HealthConnectSyncService {
 
       final records = (result['records'] as List?) ?? [];
       if (records.isEmpty) {
-        debugPrint('[HC Sync] Sleep: no new records since $start');
+        debugPrint('[HC Sync] Sleep: no new records since $start until $now');
         return;
       }
 
